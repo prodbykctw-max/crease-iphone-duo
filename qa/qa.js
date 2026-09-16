@@ -147,6 +147,65 @@ const checkFn = () => {
   const fps = await page.evaluate(() => new Promise(r => { let n = 0; const t0 = performance.now(); const f = () => { n++; if (performance.now() - t0 < 2000) requestAnimationFrame(f); else r(n / 2); }; requestAnimationFrame(f); }));
   ok('renders frames (headless CPU renderer at 3x, not device speed)', fps > 12, fps.toFixed(1) + ' fps headless');
 
+  // ---- smash / bump / scoring FX ----
+  {
+    const fc = await browser.newContext({ viewport: CLOSED, deviceScaleFactor: 3, isMobile: true, hasTouch: true });
+    const fp = await fc.newPage();
+    fp.on('pageerror', e => errors.push('fx: ' + e.message));
+    fp.on('console', m => { if (m.type() === 'error') errors.push('fx: ' + m.text()); });
+    await fp.goto(URL);
+    await fp.waitForTimeout(500);
+    await fp.tap('#bSolo');
+    await fp.waitForTimeout(2000);
+    // SMASH: human paddle driven fast straight through a resting puck
+    let r = await fp.evaluate(() => {
+      const c = window.__crease, g = c.game, L = c.view.L, pd = g.paddles[0], pk = g.pucks[0];
+      g.state = 'play'; g.paddles[1].u = g.paddles[1].tu = 0.1;
+      pk.u = 0.5; pk.v = L * 0.7; pk.vu = 0; pk.vv = 0;
+      pd.u = pd.tu = 0.5; pd.v = L * 0.92; pd.tv = L * 0.52;
+      c.sim(0.25, 1 / 120);
+      return { smashT: pk.smashT, spd: Math.hypot(pk.vu, pk.vv), pops: g.pops.map(p => p.text) };
+    });
+    ok('SMASH triggers on a hard flick (white-hot, faster, popup)', r.smashT > 0 && r.pops.includes('SMASH!') && r.spd > 3.4, JSON.stringify(r));
+    // BUMP: puck driven into a crease bumper
+    r = await fp.evaluate(() => {
+      const c = window.__crease, g = c.game, L = c.view.L, b = g.bumpers[0];
+      g.pops = []; g.state = 'play';
+      const pk = { u: 0, v: 0, vu: 0, vv: 0, r: 0.042, last: 1, trail: [], side: 1, dead: false, smashT: 0, bumped: false };
+      g.pucks = [pk];
+      pk.smashT = 0; pk.u = b.u; pk.v = L / 2 + 0.2; pk.vu = 0; pk.vv = -1.2; pk.bumped = false;
+      g.paddles[0].u = g.paddles[0].tu = 0.85; g.paddles[0].v = g.paddles[0].tv = L - 0.15;
+      c.sim(0.3, 1 / 120);
+      return { bumped: pk.bumped, vv: pk.vv, spd: Math.hypot(pk.vu, pk.vv), pops: g.pops.map(p => p.text), flash: b.flash };
+    });
+    ok('BUMP kicks the puck back with at least bump speed', r.bumped && r.vv > 0 && r.spd >= 1.8 * 0.9 && r.pops.includes('BUMP'), JSON.stringify(r));
+    // BANK SHOT: a bumped puck that scores gets its own label, board punches
+    r = await fp.evaluate(() => {
+      const c = window.__crease, g = c.game, L = c.view.L;
+      const pk = { u: 0, v: 0, vu: 0, vv: 0, r: 0.042, last: 1, trail: [], side: -1, dead: false, smashT: 0, bumped: false };
+      g.pucks = [pk]; g.state = 'play';
+      g.pops = []; g.score = [2, 1]; g.shields = [0, 0];
+      g.paddles[1].u = g.paddles[1].tu = 0.1;
+      pk.u = 0.5; pk.v = 0.15; pk.vu = 0; pk.vv = -2; pk.bumped = true; pk.last = 1;
+      c.sim(0.5, 1 / 120);
+      const b = g.board[0];
+      return { score: g.score, pops: g.pops.map(p => p.text), chunk: b.chunk, state: g.state };
+    });
+    ok('bumped puck scores as BANK SHOT, board takes the point', r.score[0] === 3 && r.pops.includes('BANK SHOT') && r.chunk === 3, JSON.stringify(r));
+    await fp.screenshot({ path: OUT + '/fx-bank-shot.png' });
+    r = await fp.evaluate(() => { const c = window.__crease; c.sim(2, 1 / 60); return { shown: c.game.board[0].shown }; });
+    ok('race bar fill catches up to the score', Math.abs(r.shown - 3) < 0.05, JSON.stringify(r));
+    // 10 min human-vs-CPU-style sim with bumpers + smashes: invariants
+    const inv = await fp.evaluate((check) => {
+      const f = new Function('return (' + check + ')()'); const c = window.__crease; c.newMatch('demo'); const bad = new Set();
+      let smashes = 0, bumps = 0;
+      for (let i = 0; i < 600; i++) { c.sim(1); f().forEach(x => bad.add(x)); for (const p of c.game.pops) { if (p.text === 'BUMP' && p.t < 1.01 / 60 + 1e-9) bumps++; } }
+      return [...bad].slice(0, 8);
+    }, checkFn.toString());
+    ok('10 min sim with bumpers: no escapes / NaN / half crossing', inv.length === 0, inv.join('; '));
+    await fc.close();
+  }
+
   // ---- intro cutscene ----
   for (const [name, vp] of [['closed', CLOSED], ['open', OPEN]]) {
     const ic = await browser.newContext({ viewport: vp, deviceScaleFactor: 3, isMobile: true, hasTouch: true });
@@ -154,6 +213,7 @@ const checkFn = () => {
     ip.on('pageerror', e => errors.push('intro ' + name + ': ' + e.message));
     ip.on('console', m => { if (m.type() === 'error') errors.push('intro ' + name + ': ' + m.text()); });
     await ip.goto(FILE);
+    await ip.evaluate(() => { window.__seq = []; let last = ''; setInterval(() => { const st = window.__crease.game.state; if (st !== last) { window.__seq.push(st); last = st; } }, 16); });
     await ip.waitForTimeout(800);
     let s1 = await ip.evaluate(() => ({ st: window.__crease.game.state, boot: !document.getElementById('boot').classList.contains('hidden'), menuHidden: document.getElementById('menu').classList.contains('hidden') }));
     ok(`[${name}] boot gate shows on load`, s1.st === 'boot' && s1.boot && s1.menuHidden, JSON.stringify(s1));
@@ -164,22 +224,40 @@ const checkFn = () => {
     ok(`[${name}] tap boots: status lines + bar run`, s1.st === 'boot' && /table|Calibrating|Syncing/.test(s1.stat), JSON.stringify(s1));
     await ip.screenshot({ path: `${OUT}/boot-${name}-1.png` });
     await ip.waitForTimeout(1400);
-    s1 = await ip.evaluate(() => ({ st: window.__crease.game.state, boot: !document.getElementById('boot').classList.contains('hidden') }));
-    ok(`[${name}] boot hands off to the intro cutscene`, s1.st === 'intro' && !s1.boot, JSON.stringify(s1));
-    await ip.waitForTimeout(8000);
+    s1 = await ip.evaluate(() => ({ st: window.__crease.game.state, boot: !document.getElementById('boot').classList.contains('hidden'), studio: !document.getElementById('studio').classList.contains('hidden') }));
+    ok(`[${name}] boot hands off to the prodbyKCTW studio splash`, s1.st === 'studio' && !s1.boot && s1.studio, JSON.stringify(s1));
+    await ip.waitForTimeout(700);
+    const vid = await ip.evaluate(() => { const v = document.getElementById('stVid'); return { kind: v.dataset.kind, t: +v.currentTime.toFixed(2), w: v.videoWidth, h: v.videoHeight, paused: v.paused, err: v.error && v.error.code }; });
+    ok(`[${name}] his prodbyKCTW logo video is playing in the splash`, vid.w === 600 && vid.h === 600 && vid.t > 0.2 && !vid.err, JSON.stringify(vid));
+    for (const [ms, tag] of [[300, 'a'], [700, 'b'], [700, 'c']]) { await ip.waitForTimeout(ms); await ip.screenshot({ path: `${OUT}/studio-${name}-${tag}.png`, scale: 'css' }); }
+    await ip.waitForFunction(() => window.__crease.game.state !== 'studio', null, { timeout: 10000 });
+    await ip.waitForTimeout(200);
+    s1 = await ip.evaluate(() => ({ seq: window.__seq.join('>'), studio: !document.getElementById('studio').classList.contains('hidden') }));
+    ok(`[${name}] studio splash hands off to the intro cutscene`, /studio>intro/.test(s1.seq) && !s1.studio, JSON.stringify(s1));
+    const mu = await ip.evaluate(async () => { const c = window.__crease; let beats = 0; for (let i = 0; i < 30; i++) { await new Promise(r => setTimeout(r, 50)); if (c.game.beat > 0.5) beats++; } return { on: c.music.on, audio: c.audio() && c.audio().state, beats }; });
+    ok(`[${name}] synthwave loop is running and pulsing the visuals`, mu.on && mu.audio === 'running' && mu.beats > 0, JSON.stringify(mu));
+    await ip.waitForFunction(() => window.__crease.game.mode === 'demo', null, { timeout: 15000 }).catch(() => {});
     s1 = await ip.evaluate(() => ({ st: window.__crease.game.state, mode: window.__crease.game.mode, menu: !document.getElementById('menu').classList.contains('hidden') }));
     ok(`[${name}] intro ends on its own into the menu`, s1.mode === 'demo' && s1.menu, JSON.stringify(s1));
-    // replay, then tap to skip
+    // replay, tap to skip the splash, tap to skip the cutscene
     await ip.tap('#bIntro');
-    await ip.waitForTimeout(800);
+    await ip.waitForTimeout(600);
     s1 = await ip.evaluate(() => window.__crease.game.state);
-    ok(`[${name}] Intro button replays the cutscene`, s1 === 'intro', s1);
+    ok(`[${name}] Intro button replays the studio splash`, s1 === 'studio', s1);
+    await ip.touchscreen.tap(vp.width / 2, vp.height / 2);
+    await ip.waitForTimeout(500);
+    s1 = await ip.evaluate(() => window.__crease.game.state);
+    ok(`[${name}] tap skips the splash into the cutscene`, s1 === 'intro', s1);
+    await ip.waitForFunction(() => window.__crease.game.introT > 0.4, null, { timeout: 5000 });
     await ip.touchscreen.tap(vp.width / 2, vp.height / 2);
     await ip.waitForTimeout(300);
-    s1 = await ip.evaluate(() => ({ st: window.__crease.game.state, menu: !document.getElementById('menu').classList.contains('hidden') }));
-    ok(`[${name}] tap skips straight to the menu`, s1.st !== 'intro' && s1.menu, JSON.stringify(s1));
+    await ip.waitForTimeout(500);
+    s1 = await ip.evaluate(() => ({ st: window.__crease.game.state, mode: window.__crease.game.mode, menu: !document.getElementById('menu').classList.contains('hidden') }));
+    ok(`[${name}] tap skips straight to the menu (and doesn't click through into a game)`, s1.mode === 'demo' && s1.menu, JSON.stringify(s1));
     // fold mid-intro
     await ip.tap('#bIntro');
+    await ip.waitForTimeout(300);
+    await ip.touchscreen.tap(vp.width / 2, vp.height / 2);
     await ip.waitForTimeout(2500);
     await ip.setViewportSize(name === 'closed' ? OPEN : CLOSED);
     await ip.waitForTimeout(600);
@@ -194,4 +272,4 @@ const checkFn = () => {
   const fails = results.filter(r => r[0] === 'FAIL').length;
   console.log(`\n${results.length - fails}/${results.length} passed`);
   process.exit(fails ? 1 : 0);
-})().catch(e => { console.error(e); process.exit(2); });
+})().catch(e => { for (const r of results) console.log(r.join('  ')); console.error(e); process.exit(2); });
