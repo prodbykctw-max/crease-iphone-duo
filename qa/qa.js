@@ -1,6 +1,6 @@
 const { chromium } = require('playwright');
 const path = require('path');
-const FILE = 'file://' + path.resolve(__dirname, '..', 'index.html');
+const FILE = process.env.QA_URL || 'http://127.0.0.1:8765/index.html';
 const URL = FILE + '?nointro';
 const OUT = process.env.OUT || __dirname + '/shots';
 require('fs').mkdirSync(OUT, { recursive: true });
@@ -227,8 +227,8 @@ const checkFn = () => {
     s1 = await ip.evaluate(() => ({ st: window.__crease.game.state, boot: !document.getElementById('boot').classList.contains('hidden'), studio: !document.getElementById('studio').classList.contains('hidden') }));
     ok(`[${name}] boot hands off to the prodbyKCTW studio splash`, s1.st === 'studio' && !s1.boot && s1.studio, JSON.stringify(s1));
     await ip.waitForTimeout(700);
-    const vid = await ip.evaluate(() => { const v = document.getElementById('stVid'); return { kind: v.dataset.kind, t: +v.currentTime.toFixed(2), w: v.videoWidth, h: v.videoHeight, paused: v.paused, err: v.error && v.error.code }; });
-    ok(`[${name}] his prodbyKCTW logo video is playing in the splash`, vid.w === 600 && vid.h === 600 && vid.t > 0.2 && !vid.err, JSON.stringify(vid));
+    const vid = await ip.evaluate(() => { const v = document.getElementById('stLogo'); return { src: v.src.slice(0, 5), w: v.naturalWidth, h: v.naturalHeight, done: v.complete, op: getComputedStyle(v).opacity, html: document.documentElement.className }; });
+    ok(`[${name}] his transparent prodbyKCTW logo is showing on black`, vid.w === 440 && vid.h === 440 && vid.done && +vid.op > 0.5 && /splash-studio/.test(vid.html), JSON.stringify(vid));
     for (const [ms, tag] of [[300, 'a'], [700, 'b'], [700, 'c']]) { await ip.waitForTimeout(ms); await ip.screenshot({ path: `${OUT}/studio-${name}-${tag}.png`, scale: 'css' }); }
     await ip.waitForFunction(() => window.__crease.game.state !== 'studio', null, { timeout: 10000 });
     await ip.waitForTimeout(200);
