@@ -1,6 +1,7 @@
 const { chromium } = require('playwright');
 const path = require('path');
-const URL = 'file://' + path.resolve(__dirname, '..', 'index.html');
+const FILE = 'file://' + path.resolve(__dirname, '..', 'index.html');
+const URL = FILE + '?nointro';
 const OUT = process.env.OUT || __dirname + '/shots';
 require('fs').mkdirSync(OUT, { recursive: true });
 
@@ -120,7 +121,11 @@ const checkFn = () => {
   await page.tap('#bResume');
   await page.evaluate(() => { const c = window.__crease; c.game.score = [6, 3]; const p = c.game.pucks[0] || {}; });
   await page.evaluate(() => { const c = window.__crease; c.game.state = 'play'; const pk = c.game.pucks[0]; pk.u = 0.5; pk.v = 0.1; pk.vu = 0; pk.vv = -2; c.game.shields = [0, 0]; c.game.paddles[1].u = 0.1; c.game.paddles[1].tu = 0.1; });
-  await page.waitForTimeout(2200);
+  await page.waitForTimeout(1000);
+  const mid = await page.evaluate(() => ({ s: window.__crease.game.state, overHidden: document.getElementById('over').classList.contains('hidden') }));
+  ok('victory cutscene plays before the results card', mid.s === 'over' && mid.overHidden, JSON.stringify(mid));
+  await page.screenshot({ path: OUT + '/7a-victory-cutscene.png' });
+  await page.waitForTimeout(2800);
   st = await page.evaluate(() => ({ s: window.__crease.game.state, score: window.__crease.game.score, overVis: !document.getElementById('over').classList.contains('hidden'), title: document.getElementById('overTitle').textContent }));
   ok('win screen at 7', st.overVis && st.title === 'CYAN WINS', JSON.stringify(st));
   await page.screenshot({ path: OUT + '/7-closed-win.png' });
@@ -141,6 +146,47 @@ const checkFn = () => {
   // frame rate sanity (headless, software GL)
   const fps = await page.evaluate(() => new Promise(r => { let n = 0; const t0 = performance.now(); const f = () => { n++; if (performance.now() - t0 < 2000) requestAnimationFrame(f); else r(n / 2); }; requestAnimationFrame(f); }));
   ok('renders frames (headless CPU renderer at 3x, not device speed)', fps > 12, fps.toFixed(1) + ' fps headless');
+
+  // ---- intro cutscene ----
+  for (const [name, vp] of [['closed', CLOSED], ['open', OPEN]]) {
+    const ic = await browser.newContext({ viewport: vp, deviceScaleFactor: 3, isMobile: true, hasTouch: true });
+    const ip = await ic.newPage();
+    ip.on('pageerror', e => errors.push('intro ' + name + ': ' + e.message));
+    ip.on('console', m => { if (m.type() === 'error') errors.push('intro ' + name + ': ' + m.text()); });
+    await ip.goto(FILE);
+    await ip.waitForTimeout(800);
+    let s1 = await ip.evaluate(() => ({ st: window.__crease.game.state, boot: !document.getElementById('boot').classList.contains('hidden'), menuHidden: document.getElementById('menu').classList.contains('hidden') }));
+    ok(`[${name}] boot gate shows on load`, s1.st === 'boot' && s1.boot && s1.menuHidden, JSON.stringify(s1));
+    await ip.screenshot({ path: `${OUT}/boot-${name}-0.png` });
+    await ip.touchscreen.tap(vp.width / 2, vp.height * 0.8);
+    await ip.waitForTimeout(900);
+    s1 = await ip.evaluate(() => ({ st: window.__crease.game.state, stat: document.getElementById('bootStat').textContent, audio: 1 }));
+    ok(`[${name}] tap boots: status lines + bar run`, s1.st === 'boot' && /table|Calibrating|Syncing/.test(s1.stat), JSON.stringify(s1));
+    await ip.screenshot({ path: `${OUT}/boot-${name}-1.png` });
+    await ip.waitForTimeout(1400);
+    s1 = await ip.evaluate(() => ({ st: window.__crease.game.state, boot: !document.getElementById('boot').classList.contains('hidden') }));
+    ok(`[${name}] boot hands off to the intro cutscene`, s1.st === 'intro' && !s1.boot, JSON.stringify(s1));
+    await ip.waitForTimeout(8000);
+    s1 = await ip.evaluate(() => ({ st: window.__crease.game.state, mode: window.__crease.game.mode, menu: !document.getElementById('menu').classList.contains('hidden') }));
+    ok(`[${name}] intro ends on its own into the menu`, s1.mode === 'demo' && s1.menu, JSON.stringify(s1));
+    // replay, then tap to skip
+    await ip.tap('#bIntro');
+    await ip.waitForTimeout(800);
+    s1 = await ip.evaluate(() => window.__crease.game.state);
+    ok(`[${name}] Intro button replays the cutscene`, s1 === 'intro', s1);
+    await ip.touchscreen.tap(vp.width / 2, vp.height / 2);
+    await ip.waitForTimeout(300);
+    s1 = await ip.evaluate(() => ({ st: window.__crease.game.state, menu: !document.getElementById('menu').classList.contains('hidden') }));
+    ok(`[${name}] tap skips straight to the menu`, s1.st !== 'intro' && s1.menu, JSON.stringify(s1));
+    // fold mid-intro
+    await ip.tap('#bIntro');
+    await ip.waitForTimeout(2500);
+    await ip.setViewportSize(name === 'closed' ? OPEN : CLOSED);
+    await ip.waitForTimeout(600);
+    s1 = await ip.evaluate(() => ({ st: window.__crease.game.state, land: window.__crease.view.land }));
+    ok(`[${name}] folding mid-intro keeps the intro running`, s1.st === 'intro', JSON.stringify(s1));
+    await ic.close();
+  }
 
   ok('no console/page errors', errors.length === 0, errors.join(' | '));
   await browser.close();
