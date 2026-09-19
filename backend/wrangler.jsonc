@@ -1,0 +1,14 @@
+{
+  "name": "crease-metrics",
+  "main": "worker.mjs",
+  "compatibility_date": "2026-09-19",
+  "workers_dev": true,
+  "vars": { "ALLOWED_ORIGINS": "https://prodbykctw-max.github.io" },
+  "d1_databases": [{
+    "binding": "DB",
+    "database_name": "crease-metrics",
+    "database_id": "REPLACE_WITH_CREATED_D1_DATABASE_ID",
+    "migrations_dir": "migrations"
+  }]
+}
+
