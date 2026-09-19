@@ -8,8 +8,12 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="CREASE">
 <meta name="theme-color" content="#07020f">
-<meta name="description" content="CREASE — neon air hockey built for the iPhone Duo fold. Pocket table closed, head-to-head on the hinge open.">
-<title>CREASE</title>
+<meta name="description" content="CREASE — turn your screen into a two-player air hockey table. Play free against a friend or the CPU. Designed with foldable screens in mind.">
+<title>CREASE — Free Two-Player Air Hockey</title>
+<meta property="og:title" content="CREASE — One screen. Two players. First to 7.">
+<meta property="og:description" content="Challenge a friend to neon air hockey. Play free in your browser.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://prodbykctw-max.github.io/crease-iphone-duo/">
 <style>
 :root{
   --bg:#07020f; --panel:rgba(20,4,40,.9); --sun:linear-gradient(180deg,#ffd23f,#ff7a2f 45%,#ff2a8a); --p1:#2de2e6; --p2:#ff2a8a; --ink:#f5eaff; --dim:#a391c9; --line:rgba(190,120,255,.28);
@@ -54,7 +58,7 @@ h2{margin:0 0 6px;font-size:clamp(30px,8vmin,48px);font-weight:900;font-style:it
 .seg{display:inline-flex;margin:14px auto 4px;border:1px solid var(--line);border-radius:12px;overflow:hidden}
 .seg button{border:0;background:transparent;color:var(--dim);font-family:inherit;font-weight:700;font-size:14px;padding:10px 16px;min-height:40px;cursor:pointer}
 .seg button.on{background:rgba(255,255,255,.12);color:var(--ink)}
-.row{display:flex;justify-content:center;gap:18px;margin-top:8px}
+.row{flex-wrap:wrap;display:flex;justify-content:center;gap:18px;margin-top:8px}
 .link{background:none;border:0;color:var(--dim);font-family:inherit;font-weight:600;font-size:14px;padding:10px 4px;min-height:40px;cursor:pointer;text-decoration:underline;text-underline-offset:3px}
 .how{text-align:left;font-size:14px;line-height:1.5;color:var(--ink);margin:4px 0 14px;padding-left:18px}
 .how li{margin:6px 0}
@@ -100,6 +104,9 @@ h2{margin:0 0 6px;font-size:clamp(30px,8vmin,48px);font-weight:900;font-style:it
 @media (orientation:landscape) and (max-height:760px){
   #how .card{max-width:760px} .how{font-size:13px;line-height:1.36;margin:2px 0 10px;columns:2;column-gap:26px} .how li{margin:0 0 6px;break-inside:avoid} #how h2{font-size:26px;margin-bottom:2px}
 }
+.creator{display:block;margin-top:12px;color:var(--ink);font-size:13px;line-height:1.5;text-underline-offset:3px}
+.share-status{font-size:13px;color:var(--p1);margin:8px 0;line-height:1.4}
+.share-url{box-sizing:border-box;width:100%;padding:12px;background:#12002a;color:#fff;border:1px solid var(--line);border-radius:8px;user-select:text;-webkit-user-select:text}
 </style>
 </head>
 <body>
@@ -124,7 +131,8 @@ h2{margin:0 0 6px;font-size:clamp(30px,8vmin,48px);font-weight:900;font-style:it
 <div id="menu" class="overlay hidden">
   <div class="card">
     <h1>CREASE</h1>
-    <p class="tag">Dark vaporwave air hockey, built for the fold.</p>
+    <p class="tag">One screen. Two players. First to 7.</p>
+    <p id="challengeHint" class="share-status hidden">Challenge accepted? Choose your match below.</p>
     <p id="screenHint" class="hint"></p>
     <div class="btns">
       <button id="bSolo" class="btn p1"><span>SOLO vs CPU</span><small id="soloSub">one thumb</small></button>
@@ -135,9 +143,13 @@ h2{margin:0 0 6px;font-size:clamp(30px,8vmin,48px);font-weight:900;font-style:it
     </div>
     <div class="row">
       <button id="bHow" class="link">How to play</button>
+      <button id="bShareMenu" class="link">Challenge a friend</button>
       <button id="bIntro" class="link">Intro</button>
       <button id="bSound" class="link">Sound: On</button>
     </div>
+  <p id="menuShareStatus" class="share-status" role="status"></p>
+    <input id="menuShareUrl" class="share-url hidden" readonly aria-label="Challenge link — select and copy">
+    <a class="creator" data-inquiry href="https://www.instagram.com/prodbykctw/" target="_blank" rel="noopener noreferrer">Built by KCTW · Want a custom game? DM me</a>
   </div>
 </div>
 
@@ -146,9 +158,9 @@ h2{margin:0 0 6px;font-size:clamp(30px,8vmin,48px);font-weight:900;font-style:it
     <h2>HOW TO PLAY</h2>
     <ul class="how">
       <li>Drag your paddle. Stay on your side of the <b>crease</b> (the glowing center line). First to <b>7</b> wins.</li>
-      <li><b>Closed</b> (outer screen): pocket table, made for solo.</li>
-      <li><b>Open</b> (inner screen): full table. The hinge <i>is</i> the center line, so each player holds one half.</li>
-      <li>Fold or unfold mid-match. The table resizes and the match keeps going.</li>
+      <li><b>Portrait:</b> pocket table, ideal for solo.</li>
+      <li><b>Landscape:</b> wide table, with one player on each side.</li>
+      <li>Rotate or resize mid-match to adapt the table. Designed with foldables in mind; physical iPhone Duo testing is still pending.</li>
       <li><b>SMASH:</b> flick your paddle hard into the puck. It goes white-hot and faster.</li>
       <li><b>BUMP:</b> the gold bumpers on the crease kick the puck. Score off one for a <b>BANK SHOT</b>.</li>
       <li>Power-ups spawn on the crease. Knock the puck through one to take it:<br>
@@ -156,6 +168,7 @@ h2{margin:0 0 6px;font-size:clamp(30px,8vmin,48px);font-weight:900;font-style:it
         <span class="chip" style="background:#7cff6b"></span><b>MULTI</b> puck ·
         <span class="chip" style="background:#a78bfa"></span><b>WALL</b> over your goal</li>
       <li>Tip: Share → <b>Add to Home Screen</b> for true full-screen.</li>
+      <li>Visit preferences and game totals stay in this browser. When enabled, basic anonymous game events help improve CREASE. No names or contact details are requested.</li>
     </ul>
     <button id="bHowClose" class="btn plain"><span>GOT IT</span></button>
   </div>
@@ -180,12 +193,18 @@ h2{margin:0 0 6px;font-size:clamp(30px,8vmin,48px);font-weight:900;font-style:it
     <div class="btns">
       <button id="bAgain" class="btn p1"><span>REMATCH</span></button>
       <button id="bMenu" class="btn plain"><span>MENU</span></button>
+      <button id="bShareResult" class="btn p2"><span>CHALLENGE A FRIEND</span></button>
     </div>
+    <p id="resultShareStatus" class="share-status" role="status"></p>
+    <input id="resultShareUrl" class="share-url hidden" readonly aria-label="Challenge link — select and copy">
+    <a class="creator" data-inquiry href="https://www.instagram.com/prodbykctw/" target="_blank" rel="noopener noreferrer">Built by KCTW · Custom game inquiries</a>
   </div>
 </div>
 
 <button id="bPause" class="hidden" aria-label="Pause">II</button>
 
+<script src="analytics-config.js"></script>
+<script src="analytics.js"></script>
 <script>
 (() => {
 'use strict';
@@ -194,6 +213,28 @@ const ctx = cv.getContext('2d', { alpha: false });
 const $ = id => document.getElementById(id);
 const clamp = (x, a, b) => x < a ? a : x > b ? b : x;
 const rand = (a, b) => a + Math.random() * (b - a);
+
+// Local totals are for this browser only. An optional host adapter can listen for
+// crease:metric to connect an audience-wide analytics service; none is loaded here.
+const storage = {
+  get(key) { try { return localStorage.getItem(key); } catch (_) { return null; } },
+  set(key, value) { try { localStorage.setItem(key, value); } catch (_) {} },
+};
+let totals;
+try { totals = JSON.parse(storage.get('crease.metrics.v1') || '{}'); } catch (_) {}
+if (!totals || typeof totals !== 'object' || Array.isArray(totals)) totals = {};
+function track(name, props = {}) {
+  const old = Number(totals[name]);
+  totals[name] = (Number.isFinite(old) && old >= 0 ? old : 0) + 1;
+  storage.set('crease.metrics.v1', JSON.stringify(totals));
+  window.dispatchEvent(new CustomEvent('crease:metric', { detail: { name, props } }));
+}
+let matchTracked = false;
+const challenged = new URLSearchParams(location.search).get('challenge') === '1';
+$('challengeHint').classList.toggle('hidden', !challenged);
+const requestedSource = new URLSearchParams(location.search).get('src');
+const source = ['instagram', 'tiktok', 'youtube', 'creator', 'store'].includes(requestedSource) ? requestedSource : 'direct';
+track('visit', { source: challenged ? 'challenge' : source });
 
 // ---------- config ----------
 const COL = { p1: '#2de2e6', p2: '#ff2a8a', puck: '#ffffff', BIG: '#ffd23f', MULTI: '#7cff6b', WALL: '#b26bff', gold: '#ffd23f', orange: '#ff7a2f', purple: '#b026ff', ink: '#0b0120' };
@@ -1237,7 +1278,7 @@ function drawGame(sx, sy) {
     else msg = game.timer > 0.3 ? 'READY' : 'GO';
     size = msg.length > 2 ? 0.13 : 0.24;
   } else if (game.state === 'fold') {
-    msg = view.land ? 'OPEN · FULL TABLE' : 'CLOSED · POCKET TABLE'; size = 0.075;
+    msg = view.land ? 'LANDSCAPE · FULL TABLE' : 'PORTRAIT · POCKET TABLE'; size = 0.075;
   } else if (game.state === 'over') {
     if (game.mode !== 'demo') drawVictory();
   } else if (game.msgT > 0 && game.mode !== 'demo') {
@@ -1390,7 +1431,7 @@ function boot() {
   const b = $('boot'); b.classList.add('booting');
   const steps = [
     [0, 'Detecting screen...'],
-    [380, () => view.land ? 'Open · full table' : 'Closed · pocket table'],
+    [380, () => view.land ? 'Landscape · full table' : 'Portrait · pocket table'],
     [760, 'Calibrating puck...'],
     [1140, 'Syncing the crease...'],
     [1480, 'Ready'],
@@ -1792,8 +1833,8 @@ function placePause() {
 function updateHint() {
   const land = view.land;
   $('screenHint').textContent = land
-    ? 'Open table detected. Pass it across: one player per half, the hinge is the center line.'
-    : 'Pocket table detected. Great for solo. Unfold any time for the full table.';
+    ? 'Wide table. Play head-to-head with one player on each side.'
+    : 'Pocket table. Play solo, or turn sideways for a wider two-player match.';
   $('bSolo').classList.toggle('rec', !land);
   $('bDuo').classList.toggle('rec', land);
   $('soloSub').textContent = land ? 'full table' : 'recommended here';
@@ -1802,7 +1843,7 @@ function updateHint() {
 
 // ---------- UI ----------
 function show(id, on) { $(id).classList.toggle('hidden', !on); }
-function start(mode) { unlockAudio(); booted = true; music.start(); show('menu', false); show('over', false); show('pauseM', false); newMatch(mode); }
+function start(mode, reason = 'new') { matchTracked = false; track('match_start', { mode, difficulty: game.diff, reason }); if (reason === 'rematch') track('rematch', { mode }); storage.set('crease.visited.v1', '1'); unlockAudio(); booted = true; music.start(); show('menu', false); show('over', false); show('pauseM', false); newMatch(mode); }
 function toMenu() { show('pauseM', false); show('over', false); show('menu', true); newMatch('demo'); }
 function pause() {
   if (game.mode === 'demo' || game.mode === 'intro' || game.state === 'paused' || game.state === 'over') return;
@@ -1816,6 +1857,8 @@ function pause() {
   show('pauseM', true);
 }
 function showOver() {
+  if (!matchTracked) { track('match_complete', { mode: game.mode, difficulty: game.diff, winner: game.winner }); matchTracked = true; }
+  $('resultShareStatus').textContent = ''; $('resultShareUrl').classList.add('hidden');
   const w = game.winner;
   $('overTitle').textContent = winText(w);
   $('overTitle').style.color = w === 1 ? COL.p1 : COL.p2;
@@ -1823,6 +1866,37 @@ function showOver() {
   $('overScore').textContent = `${who[0]} ${game.score[0]} – ${game.score[1]} ${who[1]}`;
   $('bPause').classList.add('hidden');
   show('over', true);
+}
+async function shareChallenge(result) {
+  const prefix = result ? 'result' : 'menu';
+  const status = $(prefix + 'ShareStatus'), input = $(prefix + 'ShareUrl');
+  const url = new URL(location.pathname, location.origin);
+  url.searchParams.set('challenge', '1');
+  const score = result ? $('overScore').textContent + '. ' : '';
+  const text = score + 'Challenge me at CREASE: one screen, two players, first to 7. Play free!';
+  status.textContent = ''; input.classList.add('hidden');
+  track('share_attempt', { from: prefix });
+  if (navigator.share) {
+    try {
+      await navigator.share({ title: 'CREASE — Challenge a friend', text, url: url.href });
+      track('share_handoff', { method: 'native', from: prefix });
+      status.textContent = 'Challenge handed to your share app.';
+      return;
+    } catch (err) { if (err.name === 'AbortError') return; }
+  }
+  try {
+    await navigator.clipboard.writeText(text + ' ' + url.href);
+    track('share_copy', { from: prefix });
+    status.textContent = 'Challenge copied. Paste it into a message!';
+  } catch (_) {
+    input.value = url.href; input.classList.remove('hidden'); input.focus(); input.select();
+    status.textContent = 'Select and copy this link to send your challenge.';
+  }
+}
+$('bShareMenu').onclick = () => shareChallenge(false);
+$('bShareResult').onclick = () => shareChallenge(true);
+for (const link of document.querySelectorAll('[data-inquiry]')) {
+  link.addEventListener('click', () => track('inquiry_click'));
 }
 $('bSolo').onclick = () => start('solo');
 $('bDuo').onclick = () => start('duo');
@@ -1832,9 +1906,9 @@ $('bHowClose').onclick = () => show('how', false);
 $('bSound').onclick = () => { muted = !muted; $('bSound').textContent = 'Sound: ' + (muted ? 'Off' : 'On'); unlockAudio(); booted = true; music.start(); };
 $('bPause').onclick = pause;
 $('bResume').onclick = () => { show('pauseM', false); unlockAudio(); game.state = game.resume; };
-$('bRestart').onclick = () => start(game.mode);
+$('bRestart').onclick = () => start(game.mode, 'restart');
 $('bQuit').onclick = toMenu;
-$('bAgain').onclick = () => start(game.mode);
+$('bAgain').onclick = () => start(game.mode, 'rematch');
 $('bMenu').onclick = toMenu;
 for (const b of $('diff').querySelectorAll('button')) {
   b.onclick = () => {
@@ -1858,7 +1932,7 @@ if (window.visualViewport) window.visualViewport.addEventListener('resize', onRe
 // ---------- boot ----------
 layout();
 newMatch('demo');
-if (/[?&]nointro\b/.test(location.search)) show('menu', true); else showBoot();
+if (/[?&]nointro\b/.test(location.search) || challenged || storage.get('crease.visited.v1') === '1') show('menu', true); else showBoot();
 requestAnimationFrame(t => { last = t; requestAnimationFrame(frame); });
 
 // test hooks (harmless in production)
@@ -1871,3 +1945,4 @@ window.__crease = {
 </script>
 </body>
 </html>
+
