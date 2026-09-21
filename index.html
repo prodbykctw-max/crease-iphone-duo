@@ -339,7 +339,7 @@ function toScreen(u, v) {
 
 // ---------- state ----------
 const game = {
-  bumpers: [], pops: [], board: null, hitstop: 0, beat: 0,
+  bumpers: [], pops: [], board: null, hitstop: 0, beat: 0, surges: [], stageFlash: 0, railHits: [],
   introT: 0, introFx: 0, rings: [], shake: 0, flashW: 0, overT: 0, confT: 0,
   state: 'play', resume: 'play', mode: 'demo', diff: 'normal',
   score: [0, 0], pucks: [], paddles: [], pups: [], parts: [], shields: [0, 0],
@@ -456,16 +456,40 @@ function noise(t, d, vol, type, freq, dest) {
 const sfx = {
   ok: () => ac && !muted && game.mode !== 'demo',
   hit(p, k) { if (!this.ok()) return; tone(p === 1 ? 520 + k * 300 : 400 + k * 250, 0.06, 'triangle', 0.08 + k * 0.1); if (k > 0.4) noise(ac.currentTime, 0.05, 0.08 * k, 'highpass', 3000, out()); },
-  smash() {
+  smash() {                                           // impact + electric sizzle + tail
     if (!this.ok()) return; const t = ac.currentTime;
     tone(1400, 0.25, 'sawtooth', 0.09, 0.2); tone(90, 0.35, 'sine', 0.3, 0.4);
     noise(t, 0.3, 0.3, 'bandpass', 1800, out());
+    noise(t + 0.02, 0.35, 0.16, 'highpass', 6000, out());
+    tone(2400, 0.3, 'square', 0.03, 0.25);
   },
-  bump() { if (!this.ok()) return; tone(880, 0.09, 'square', 0.06, 1.6); tone(1320, 0.12, 'sine', 0.05, 1.3); },
+  bump() {                                            // pinball bumper: chime + thump + sizzle
+    if (!this.ok()) return; const t = ac.currentTime;
+    tone(1046, 0.16, 'square', 0.07, 1.5); tone(1568, 0.22, 'sine', 0.05, 1.4); tone(2093, 0.12, 'triangle', 0.03);
+    tone(120, 0.18, 'sine', 0.22, 0.5);
+    noise(t, 0.12, 0.1, 'highpass', 5200, out());
+  },
+  rail(k) {                                           // rail ping: harder hits ring higher and longer
+    if (!this.ok()) return; const t = ac.currentTime;
+    tone(420 + k * 520, 0.05 + k * 0.1, 'square', 0.03 + k * 0.06, 0.7);
+    tone(1900 + k * 900, 0.04 + k * 0.06, 'triangle', 0.02 + k * 0.04);
+    noise(t, 0.05 + k * 0.05, 0.05 + k * 0.1, 'highpass', 4200, out());
+  },
+  spark(k = 1) { if (!this.ok()) return; noise(ac.currentTime, 0.18 * k, 0.12 * k, 'bandpass', 5200, out()); },
+  siren(w) {                                          // goal siren sweep
+    if (!this.ok() || !ac) return; const t = ac.currentTime, o = ac.createOscillator(), g = ac.createGain();
+    o.type = 'sawtooth'; o.frequency.setValueAtTime(w === 1 ? 520 : 420, t);
+    o.frequency.linearRampToValueAtTime(w === 1 ? 900 : 760, t + 0.35);
+    o.frequency.linearRampToValueAtTime(w === 1 ? 560 : 460, t + 0.8);
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.07, t + 0.1); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.9);
+    o.connect(g); g.connect(out()); o.start(t); o.stop(t + 0.95);
+  },
   goal(w) {
     if (!this.ok()) return; const t = ac.currentTime;
     tone(w === 1 ? 330 : 262, 0.5, 'sawtooth', 0.1, 2.5); tone(60, 0.5, 'sine', 0.35, 0.5);
     noise(t, 0.6, 0.2, 'lowpass', 900, out());
+    this.siren(w);
+    for (let i = 0; i < 5; i++) setTimeout(() => this.spark(0.5), 60 * i);   // crackle after the net
   },
 };
 
@@ -538,6 +562,15 @@ function burst(u, v, col, n, spd) {
     game.parts.push({ u, v, vu: Math.cos(a) * sp, vv: Math.sin(a) * sp, life: rand(0.35, 0.8), max: 0.8, col, sz: rand(0.006, 0.014) });
   }
 }
+// Sparks fly off an impact: hot streaks in a cone around the bounce direction, white at birth.
+function sparks(u, v, nu, nv, col, n, power = 1) {
+  const base = Math.atan2(nv, nu);
+  for (let i = 0; i < n && game.parts.length < 300; i++) {
+    const a = base + rand(-0.9, 0.9), sp = rand(0.6, 2.4) * power;
+    game.parts.push({ u, v, vu: Math.cos(a) * sp, vv: Math.sin(a) * sp, life: rand(0.18, 0.42), max: 0.42,
+      col: i % 3 ? col : '#ffffff', sz: rand(0.003, 0.007), streak: 0.7 + power * 0.5 });
+  }
+}
 function toast(msg, t = 1.1) { game.msg = msg; game.msgT = t; }
 
 // ---------- physics ----------
@@ -579,8 +612,8 @@ function physics(dt, puckLive) {
     for (const b of game.bumpers) hitBumper(pk, b);
 
     // side rails
-    if (pk.u < pk.r) { pk.u = pk.r; if (pk.vu < 0) { pk.vu = -pk.vu * CFG.rest; railFx(pk); } }
-    else if (pk.u > 1 - pk.r) { pk.u = 1 - pk.r; if (pk.vu > 0) { pk.vu = -pk.vu * CFG.rest; railFx(pk); } }
+    if (pk.u < pk.r) { pk.u = pk.r; if (pk.vu < 0) { pk.vu = -pk.vu * CFG.rest; railFx(pk, 1, 0); } }
+    else if (pk.u > 1 - pk.r) { pk.u = 1 - pk.r; if (pk.vu > 0) { pk.vu = -pk.vu * CFG.rest; railFx(pk, -1, 0); } }
 
     const inMouth = Math.abs(pk.u - 0.5) < gw;
     // P2 end (v = 0) — P1 scores here
@@ -590,7 +623,7 @@ function physics(dt, puckLive) {
         post(pk, 0.5 - gw, 0); post(pk, 0.5 + gw, 0);
         if (pk.v < 0) pk.u = clamp(pk.u, 0.5 - gw + pk.r * 0.6, 0.5 + gw - pk.r * 0.6);
         if (pk.v < -pk.r * 0.5) { scored(1, pk); continue; }
-      } else { pk.v = pk.r; if (pk.vv < 0) { pk.vv = -pk.vv * CFG.rest; railFx(pk); } }
+      } else { pk.v = pk.r; if (pk.vv < 0) { pk.vv = -pk.vv * CFG.rest; railFx(pk, 0, 1); } }
     }
     // P1 end (v = L) — P2 scores here
     if (pk.v > L - pk.r) {
@@ -599,7 +632,7 @@ function physics(dt, puckLive) {
         post(pk, 0.5 - gw, L); post(pk, 0.5 + gw, L);
         if (pk.v > L) pk.u = clamp(pk.u, 0.5 - gw + pk.r * 0.6, 0.5 + gw - pk.r * 0.6);
         if (pk.v > L + pk.r * 0.5) { scored(2, pk); continue; }
-      } else { pk.v = L - pk.r; if (pk.vv > 0) { pk.vv = -pk.vv * CFG.rest; railFx(pk); } }
+      } else { pk.v = L - pk.r; if (pk.vv > 0) { pk.vv = -pk.vv * CFG.rest; railFx(pk, 0, -1); } }
     }
 
     const sp = Math.hypot(pk.vu, pk.vv), cap = pk.smashT > 0 ? CFG.smashSpd : CFG.maxSpd;
@@ -653,7 +686,9 @@ function hitPaddle(pk, pd) {
       pk.smashT = 0.7;
       pk.vu *= 1.3; pk.vv *= 1.3;
       juice({ stop: 0.085, shake: 0.4, flash: 0.18 });
+      surge(pk.u, pk.v, '#ffffff', 1.5);
       burst(pk.u, pk.v, '#ffffff', 18, 2.2); burst(pk.u, pk.v, col, 18, 1.8);
+      sparks(pk.u, pk.v, nu, nv, COL.gold, 16, 2.2); sparks(pk.u, pk.v, -nu, -nv, '#ffffff', 8, 1.4);
       game.rings.push({ u: pk.u, v: pk.v, age: 0, life: 0.45, col, max: 0.2 });
       addPop('SMASH!', pk.u, pk.v, col, pd.p, 0.1, true);
       sfx.smash(); buzz(22);
@@ -661,6 +696,8 @@ function hitPaddle(pk, pd) {
       const k = Math.min(1, j / 3);
       if (k > 0.08) {
         burst(pk.u, pk.v, col, 4 + Math.round(k * 10), 0.4 + k);
+        surge(pk.u, pk.v, col, 0.35 + k);
+        sparks(pk.u, pk.v, nu, nv, col, 4 + Math.round(k * 8), 0.5 + k);
         sfx.hit(pd.p, k);
         if (k > 0.45) { juice({ stop: 0.03, shake: 0.1 }); buzz(8); }
       }
@@ -673,7 +710,7 @@ function post(pk, pu, pv) {
   const nu = du / d, nv = dv / d;
   pk.u = pu + nu * pk.r; pk.v = pv + nv * pk.r;
   const vn = pk.vu * nu + pk.vv * nv;
-  if (vn < 0) { pk.vu -= (1 + CFG.rest) * vn * nu; pk.vv -= (1 + CFG.rest) * vn * nv; railFx(pk); }
+  if (vn < 0) { pk.vu -= (1 + CFG.rest) * vn * nu; pk.vv -= (1 + CFG.rest) * vn * nv; railFx(pk, nu, nv); }
 }
 function placeBumpers() {
   const L = view.L, old = game.bumpers;
@@ -693,10 +730,18 @@ function hitBumper(pk, b) {
   pk.bumped = true;
   b.flash = 1; b.pv += 9;
   burst(b.u + nu * b.r, b.v + nv * b.r, COL.gold, 10, 1.3); burst(b.u + nu * b.r, b.v + nv * b.r, COL.purple, 8, 1);
+  sparks(b.u + nu * b.r, b.v + nv * b.r, nu, nv, COL.gold, 12, 1.6);
   game.rings.push({ u: b.u, v: b.v, age: 0, life: 0.35, col: COL.gold, max: 0.12 });
   addPop('BUMP', b.u, b.v - nv * 0.02, COL.gold, pk.v >= view.L / 2 ? 1 : 2, 0.06);
   juice({ stop: 0.025, shake: 0.12 });
+  surge(b.u, b.v, COL.gold, 1.1);
   sfx.bump();
+}
+// Light racing out through the grid from wherever the puck struck — the Tron/pinball reaction.
+function surge(u, v, col, power = 1) {
+  if (game.surges.length > 5) game.surges.shift();
+  game.surges.push({ u, v, t: 0, life: 0.55 + power * 0.35, col, power });
+  game.stageFlash = Math.min(1.2, game.stageFlash + power * 0.45);
 }
 function juice({ stop = 0, shake = 0, flash = 0 }) {
   game.hitstop = Math.max(game.hitstop, stop);
@@ -717,9 +762,15 @@ function boardScore(i) {
   b.chunk = sc; b.delay = 0.22; b.flash = 1; b.shake = 0.18;
   b.pv += 14; b.numV += 22;
 }
-function railFx(pk) {
-  const now = game.t;
-  if (now - lastWallSnd > 0.05 && Math.hypot(pk.vu, pk.vv) > 0.35) { lastWallSnd = now; tone(260, 0.04, 'square', 0.04); }
+function railFx(pk, nu = 0, nv = 0) {
+  const now = game.t, sp = Math.hypot(pk.vu, pk.vv);
+  if (sp < 0.3) return;
+  const k = Math.min(1, sp / 3);
+  game.railHits.push({ u: pk.u, v: pk.v, t: 0, k, col: pk.smashT > 0 ? COL.gold : ST().grid });
+  if (game.railHits.length > 6) game.railHits.shift();
+  sparks(pk.u, pk.v, nu, nv, ST().horizon, 3 + Math.round(k * 7), 0.6 + k);
+  surge(pk.u, pk.v, ST().grid, 0.3 + k * 0.5);
+  if (now - lastWallSnd > 0.04) { lastWallSnd = now; sfx.rail(k); }
 }
 
 function grant(pu, who) {
@@ -757,6 +808,7 @@ function scored(scorer, pk) {
   addPop(label, 0.5, scorer === 1 ? L * 0.62 : L * 0.38, col, scorer, label === 'GOAL' ? 0.13 : 0.095, true);
   boardScore(scorer - 1);
   juice({ stop: 0.12, shake: 0.3, flash: 0.12 });
+  surge(0.5, gv, col, 2);
   sfx.goal(scorer);
   buzz(30);
   const alive = game.pucks.filter(p => !p.dead).length;
@@ -824,7 +876,7 @@ function update(dt, raw = dt) {
   game.crease = Math.max(0, game.crease - dt * 1.8);
   game.flash[0] = Math.max(0, game.flash[0] - dt * 1.5);
   game.flash[1] = Math.max(0, game.flash[1] - dt * 1.5);
-  for (const p of game.parts) { p.u += p.vu * dt; p.v += p.vv * dt; p.vu *= 0.94; p.vv *= 0.94; p.life -= dt; }
+  for (const p of game.parts) { p.u += p.vu * dt; p.v += p.vv * dt; const dr = p.streak ? 0.9 : 0.94; p.vu *= dr; p.vv *= dr; p.life -= dt; }
   game.parts = game.parts.filter(p => p.life > 0);
 
   game.shake = Math.max(0, game.shake - dt * 2.2);
@@ -835,6 +887,11 @@ function update(dt, raw = dt) {
   for (const p of game.pops) p.t += dt;
   game.pops = game.pops.filter(p => p.t < p.life);
   game.beat = Math.max(0, game.beat - dt * 3.2);
+  game.stageFlash = Math.max(0, game.stageFlash - dt * 2.2);
+  for (const sg of game.surges) sg.t += dt;
+  game.surges = game.surges.filter(sg => sg.t < sg.life);
+  for (const rh of game.railHits) rh.t += dt;
+  game.railHits = game.railHits.filter(rh => rh.t < 0.5);
   music.tick();
   for (const b of game.bumpers) {
     b.flash = Math.max(0, b.flash - dt * 5);
@@ -1287,6 +1344,20 @@ function sceneFx(t, H, half) {
     g.addColorStop(0, hexA('#ffd23f', 0.35 + 0.15 * Math.sin(t * 2))); g.addColorStop(1, hexA('#ff2f2f', 0));
     ctx.globalAlpha = 1; ctx.fillStyle = g; ctx.fillRect(0, 0, 1, H);
   }
+  if (game.stageFlash > 0.02) {                               // the whole stage answers a big hit
+    const f = Math.min(1, game.stageFlash);
+    ctx.globalAlpha = f * 0.3; ctx.fillStyle = hexA(ST().horizon, 1);
+    ctx.fillRect(-0.1, H * 0.55, 1.2, H * 0.5);
+    ctx.globalAlpha = f * 0.5; ctx.strokeStyle = '#ffffff'; ctx.lineWidth = (1 + f * 3) * px;
+    ctx.beginPath(); ctx.moveTo(-0.1, H); ctx.lineTo(1.1, H); ctx.stroke();
+    ctx.globalAlpha = f * 0.45;                                // windows light up across the skyline
+    for (let i = 0; i < 26; i++) {
+      const R3 = srand(900 + i + half * 13), u = -0.05 + R3() * 1.1, v = H * (0.25 + R3() * 0.7);
+      ctx.fillStyle = i % 2 ? ST().win[0] : ST().win[1];
+      ctx.fillRect(u, v, 2 * px, 2 * px);
+    }
+    ctx.globalAlpha = 1;
+  }
   ctx.globalAlpha = 1; ctx.restore();
 }
 
@@ -1585,7 +1656,25 @@ function drawGame(sx, sy) {
   }
 
   // particles
-  for (const p of game.parts) glowCircle(p.u, p.v, p.sz, p.col, Math.max(0, p.life / p.max));
+  for (const p of game.parts) {
+    const a = Math.max(0, p.life / p.max);
+    if (p.streak) {
+      ctx.globalAlpha = a; ctx.strokeStyle = p.col; ctx.lineWidth = p.sz * (1 + p.streak);
+      ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.moveTo(p.u, p.v); ctx.lineTo(p.u - p.vu * 0.035 * p.streak, p.v - p.vv * 0.035 * p.streak); ctx.stroke();
+      ctx.globalAlpha = 1;
+    } else glowCircle(p.u, p.v, p.sz, p.col, a);
+  }
+  for (const rh of game.railHits) {                          // rails flare where the puck struck
+    const a = 1 - rh.t / 0.5;
+    ctx.globalAlpha = a * (0.5 + rh.k * 0.5); ctx.strokeStyle = rh.col; ctx.lineCap = 'round';
+    ctx.lineWidth = (4 + rh.k * 8) * px * (1 + (1 - a));
+    const spread = 0.06 + (1 - a) * 0.16;
+    ctx.beginPath();
+    if (rh.u < 0.12 || rh.u > 0.88) { const x = rh.u < 0.5 ? 0 : 1; ctx.moveTo(x, rh.v - spread); ctx.lineTo(x, rh.v + spread); }
+    else { const y = rh.v < L / 2 ? 0 : L; ctx.moveTo(rh.u - spread, y); ctx.lineTo(rh.u + spread, y); }
+    ctx.stroke(); ctx.globalAlpha = 1;
+  }
   drawRaceBars();
   for (const p of game.pops) drawPop(p);
   fieldTf();
@@ -1949,7 +2038,15 @@ function drawIntro(sx, sy) {
     const tint = intro.pk.last === 1 ? COL.p1 : intro.pk.last === 2 ? COL.p2 : '#ffffff';
     drawPuck(intro.pk, tint, 1 + 2.5 * (1 - k), k);
   }
-  for (const p of game.parts) glowCircle(p.u, p.v, p.sz, p.col, Math.max(0, p.life / p.max));
+  for (const p of game.parts) {
+    const a = Math.max(0, p.life / p.max);
+    if (p.streak) {
+      ctx.globalAlpha = a; ctx.strokeStyle = p.col; ctx.lineWidth = p.sz * (1 + p.streak);
+      ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.moveTo(p.u, p.v); ctx.lineTo(p.u - p.vu * 0.035 * p.streak, p.v - p.vv * 0.035 * p.streak); ctx.stroke();
+      ctx.globalAlpha = 1;
+    } else glowCircle(p.u, p.v, p.sz, p.col, a);
+  }
 
   // title card
   const dim = seg(T, 4.9, 5.4);
@@ -2042,138 +2139,51 @@ function drawVictory() {
 // The floor's horizontal lines scroll from the horizon toward each player, so the stage breathes.
 // Perspective: a line's distance from the horizon goes as f², f cycling 0→1, which is why they
 // spread out as they come at you. Verticals are painted once into the background.
-// The floor is a road we're driving down. Lines sit at world depths and are projected with real
-// perspective (screen distance ∝ 1/depth), so they crawl out of the horizon, stretch apart and sweep
-// past the player. Depths recycle, so the trip never ends and the scenery never gets closer.
-const ROAD = { N: 16, DZ: 1, Z0: 1, SPEED: 0.75, POLES: 5 };
-const roadV = (z, hz, L) => hz + (L - hz) * (ROAD.Z0 / z);      // depth → screen position
+// The digital floor: horizontal lines drifting toward each player (the motion he approved), which
+// light up when the puck hits something — surges race outward through the grid like current.
 function drawFloorGrid(t) {
-  const L = view.L, px = 1 / view.s, hz = L / 2 + HORIZON;
-  const st = ST(), col = st.grid, beat = game.beat * 0.3;
-  const span = ROAD.N * ROAD.DZ;
+  const L = view.L, px = 1 / view.s, hz0 = L / 2 + HORIZON, N = 11, SPEED = 0.11;
+  const col = ST().grid, beat = game.beat * 0.35;
   ctx.save(); fieldTf(); rr(ctx, 0, 0, 1, L, 0.06); ctx.clip();
   for (const half of [0, 1]) {
     ctx.save();
     if (half === 1) { ctx.translate(1, L); ctx.rotate(Math.PI); }
-    // sun / horizon reflection pooled on the road, shimmering
-    const rg = ctx.createLinearGradient(0, hz, 0, L);
-    rg.addColorStop(0, hexA(st.sun[1], 0.22 + 0.05 * Math.sin(t * 2))); rg.addColorStop(0.45, hexA(st.sun[0], 0.05)); rg.addColorStop(1, hexA(st.sun[0], 0));
-    ctx.fillStyle = rg; ctx.fillRect(0.28, hz, 0.44, L - hz);
-    // cross lines rushing toward the player
-    for (let i = 0; i < ROAD.N; i++) {
-      let z = ROAD.Z0 + ((i * ROAD.DZ - t * ROAD.SPEED) % span + span) % span;
-      const v = roadV(z, hz, L), k = ROAD.Z0 / z;                 // k: 1 at the player, →0 at the horizon
-      if (v > L + 0.02) continue;
-      ctx.globalAlpha = Math.min(1, k * 3.4) * (0.26 + k * 0.6) + beat * k;
-      ctx.strokeStyle = col; ctx.lineWidth = (0.7 + k * 2.6) * px;
+    // surge origins, mapped into this half's frame
+    const src = game.surges.map(sg => ({
+      u: half ? 1 - sg.u : sg.u, v: half ? L - sg.v : sg.v,
+      r: (sg.t / sg.life) * (0.55 + sg.power * 0.45), a: 1 - sg.t / sg.life, col: sg.col, power: sg.power,
+    }));
+    for (let i = 0; i < N; i++) {
+      const f = ((i / N + t * SPEED) % 1 + 1) % 1;
+      const v = hz0 + (L - hz0) * f * f;
+      const fade = Math.min(1, f * 6);                        // fade in at the horizon
+      ctx.globalAlpha = (0.22 + f * 0.5 + beat) * fade;
+      ctx.strokeStyle = col; ctx.lineWidth = (1 + f * 1.6) * px;
       ctx.beginPath(); ctx.moveTo(-0.05, v); ctx.lineTo(1.05, v); ctx.stroke();
+      // lit segment where a surge ring crosses this line
+      for (const sg of src) {
+        const dv = v - sg.v, inner = sg.r - 0.035, outer = sg.r;
+        if (Math.abs(dv) > outer) continue;
+        const x1 = Math.sqrt(Math.max(0, outer * outer - dv * dv));
+        const x0 = inner > Math.abs(dv) ? Math.sqrt(inner * inner - dv * dv) : 0;
+        ctx.globalAlpha = Math.min(0.9, sg.a * (0.5 + sg.power * 0.4)) * fade;
+        ctx.strokeStyle = sg.col; ctx.lineWidth = (1.4 + sg.power * 1.5) * px;
+        ctx.beginPath(); ctx.moveTo(sg.u + x0, v); ctx.lineTo(sg.u + x1, v);
+        ctx.moveTo(sg.u - x1, v); ctx.lineTo(sg.u - x0, v); ctx.stroke();
+      }
     }
-    // dashed lane markers down the middle of the road
-    ctx.globalAlpha = 0.34;
-    for (let i = 0; i < 8; i++) {
-      let z = ROAD.Z0 + ((i * 2 - t * ROAD.SPEED) % (16) + 16) % 16;
-      const v0 = roadV(z, hz, L), v1 = roadV(z + 0.9, hz, L), k = ROAD.Z0 / z;
-      if (v0 > L) continue;
-      ctx.strokeStyle = hexA(st.horizon, Math.min(1, k * 2.5));
-      ctx.lineWidth = (0.6 + k * 2.2) * px;
-      ctx.beginPath(); ctx.moveTo(0.5, v1); ctx.lineTo(0.5, v0); ctx.stroke();
-    }
-    ctx.globalAlpha = 1;
-    drawRoadside(t, hz, L, px, half);
     ctx.restore();
   }
+  // the floor lights under each puck, and glows brighter the faster it moves
+  for (const pk of game.pucks) {
+    const sp = Math.min(1, Math.hypot(pk.vu, pk.vv) / 3);
+    const tint = pk.smashT > 0 ? COL.gold : pk.last === 1 ? COL.p1 : pk.last === 2 ? COL.p2 : ST().grid;
+    const g = ctx.createRadialGradient(pk.u, pk.v, 0, pk.u, pk.v, 0.12 + sp * 0.06);
+    g.addColorStop(0, hexA(tint, 0.22 + sp * 0.2)); g.addColorStop(1, hexA(tint, 0));
+    ctx.globalAlpha = 1; ctx.fillStyle = g;
+    ctx.beginPath(); ctx.arc(pk.u, pk.v, 0.12 + sp * 0.06, 0, Math.PI * 2); ctx.fill();
+  }
   ctx.globalAlpha = 1; ctx.restore();
-}
-// Roadside objects at fixed world offsets: they swell and sweep outward as they pass — the strongest
-// "we're moving" cue. One shape per stage.
-function drawRoadside(t, hz, L, px, half) {
-  const st = ST(), kind = SCENES[stageIx].fx, span = ROAD.POLES * 2.4;
-  if (perf.detail < 0.5) return;
-  for (const side of [-1, 1]) {
-    for (let i = 0; i < ROAD.POLES; i++) {
-      let z = ROAD.Z0 + ((i * 2.4 - t * ROAD.SPEED + side * 1.2) % span + span) % span;
-      const k = ROAD.Z0 / z, v = roadV(z, hz, L);
-      if (v > L + 0.05 || k < 0.06) continue;
-      const u = 0.5 + side * 0.62 * k, h = 0.34 * k;
-      const near = Math.max(0, Math.min(1, (k - 0.42) / 0.22));      // fade out as they sweep past
-      ctx.globalAlpha = Math.min(0.85, k * 3.2) * (1 - near);
-      if (ctx.globalAlpha < 0.02) continue;
-      roadsideShape(kind, u, v, h, px, st, side, t);
-    }
-  }
-  ctx.globalAlpha = 1;
-}
-function roadsideShape(kind, u, v, h, px, st, side, t) {
-  const lw = Math.max(0.8 * px, h * 0.08);
-  switch (kind) {
-    case 'cars': {                                    // street lamp
-      ctx.strokeStyle = '#120024'; ctx.lineWidth = lw;
-      ctx.beginPath(); ctx.moveTo(u, v); ctx.lineTo(u, v - h); ctx.lineTo(u - side * h * 0.22, v - h); ctx.stroke();
-      const g = ctx.createRadialGradient(u - side * h * 0.22, v - h, 0, u - side * h * 0.22, v - h, h * 0.22);
-      g.addColorStop(0, hexA(st.win[0], 0.75)); g.addColorStop(1, hexA(st.win[0], 0));
-      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(u - side * h * 0.22, v - h, h * 0.22, 0, Math.PI * 2); ctx.fill();
-      break;
-    }
-    case 'bubbles': {                                  // toxic barrel
-      ctx.fillStyle = '#0b2412'; ctx.strokeStyle = hexA(st.grid, 0.8); ctx.lineWidth = lw * 0.6;
-      ctx.fillRect(u - h * 0.16, v - h * 0.42, h * 0.32, h * 0.42);
-      ctx.strokeRect(u - h * 0.16, v - h * 0.42, h * 0.32, h * 0.42);
-      ctx.fillStyle = hexA(st.grid, 0.75); ctx.fillRect(u - h * 0.16, v - h * 0.3, h * 0.32, h * 0.06);
-      break;
-    }
-    case 'snow': {                                     // ice shard
-      ctx.fillStyle = '#0d2b47'; ctx.strokeStyle = hexA('#bfe9ff', 0.85); ctx.lineWidth = lw * 0.5;
-      ctx.beginPath(); ctx.moveTo(u - h * 0.16, v); ctx.lineTo(u, v - h * 0.8); ctx.lineTo(u + h * 0.16, v); ctx.closePath();
-      ctx.fill(); ctx.stroke();
-      break;
-    }
-    case 'embers': {                                   // lava rock with glow
-      const g = ctx.createRadialGradient(u, v - h * 0.2, 0, u, v - h * 0.2, h * 0.5);
-      g.addColorStop(0, hexA('#ff7a2f', 0.8)); g.addColorStop(1, hexA('#ff2f2f', 0));
-      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(u, v - h * 0.2, h * 0.5, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = '#1b0505'; ctx.beginPath();
-      ctx.moveTo(u - h * 0.2, v); ctx.lineTo(u - h * 0.08, v - h * 0.34); ctx.lineTo(u + h * 0.14, v - h * 0.28); ctx.lineTo(u + h * 0.2, v); ctx.closePath(); ctx.fill();
-      break;
-    }
-    case 'warp': {                                     // floating crystal
-      ctx.strokeStyle = hexA('#e6c8ff', 0.85); ctx.fillStyle = hexA('#2a0a5e', 0.8); ctx.lineWidth = lw * 0.5;
-      const y = v - h * (0.5 + 0.12 * Math.sin(t * 2 + u * 9));
-      ctx.beginPath(); ctx.moveTo(u, y - h * 0.3); ctx.lineTo(u + h * 0.18, y); ctx.lineTo(u, y + h * 0.3); ctx.lineTo(u - h * 0.18, y); ctx.closePath();
-      ctx.fill(); ctx.stroke();
-      break;
-    }
-    case 'gulls': {                                    // roadside palm
-      ctx.strokeStyle = '#04141a'; ctx.lineWidth = lw;
-      ctx.beginPath(); ctx.moveTo(u, v); ctx.quadraticCurveTo(u - side * h * 0.12, v - h * 0.5, u + side * h * 0.06, v - h); ctx.stroke();
-      ctx.strokeStyle = hexA(st.grid, 0.8); ctx.lineWidth = lw * 0.7;
-      for (const a of [-2.4, -1.9, -1.2, -0.7]) {
-        ctx.beginPath(); ctx.moveTo(u + side * h * 0.06, v - h);
-        ctx.quadraticCurveTo(u + Math.cos(a) * h * 0.3, v - h - Math.sin(-a) * h * 0.2, u + Math.cos(a) * h * 0.42, v - h * 0.78); ctx.stroke();
-      }
-      break;
-    }
-    case 'sand': {                                     // cactus
-      ctx.strokeStyle = '#231504'; ctx.lineCap = 'round'; ctx.lineWidth = h * 0.16;
-      ctx.beginPath(); ctx.moveTo(u, v); ctx.lineTo(u, v - h * 0.6); ctx.stroke();
-      ctx.lineWidth = h * 0.11;
-      ctx.beginPath(); ctx.moveTo(u, v - h * 0.36); ctx.lineTo(u + side * h * 0.2, v - h * 0.36); ctx.lineTo(u + side * h * 0.2, v - h * 0.52); ctx.stroke();
-      break;
-    }
-    case 'glitch': {                                   // wire pylon
-      ctx.strokeStyle = hexA('#ffffff', 0.7); ctx.lineWidth = lw * 0.5;
-      ctx.strokeRect(u - h * 0.12, v - h * 0.7, h * 0.24, h * 0.7);
-      ctx.beginPath(); ctx.moveTo(u - h * 0.12, v - h * 0.7); ctx.lineTo(u + h * 0.12, v); ctx.moveTo(u + h * 0.12, v - h * 0.7); ctx.lineTo(u - h * 0.12, v); ctx.stroke();
-      break;
-    }
-    case 'petals': {                                   // stone lantern
-      ctx.fillStyle = '#2a0512'; ctx.fillRect(u - h * 0.07, v - h * 0.45, h * 0.14, h * 0.45);
-      const g = ctx.createRadialGradient(u, v - h * 0.52, 0, u, v - h * 0.52, h * 0.22);
-      g.addColorStop(0, hexA('#ffd9ea', 0.9)); g.addColorStop(1, hexA('#ff9ec4', 0));
-      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(u, v - h * 0.52, h * 0.3, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = '#2a0512'; ctx.fillRect(u - h * 0.16, v - h * 0.66, h * 0.32, h * 0.05);
-      break;
-    }
-  }
 }
 function beatGlow(sx, sy) {
   const a = game.beat * 0.4 + 0.04;
@@ -2187,6 +2197,8 @@ function drawBumpers() {
   for (const b of game.bumpers) {
     const r = b.r * (1 + b.punch * 0.35), f = b.flash;
     glowCircle(b.u, b.v, r * 2.1, COL.purple, 0.16 + f * 0.3 + game.beat * 0.08);
+    if (f > 0.05) { ctx.globalAlpha = f * 0.5; ctx.strokeStyle = COL.gold; ctx.lineWidth = 3 * px;
+      ctx.beginPath(); ctx.arc(b.u, b.v, r * (1.4 + (1 - f) * 2.2), 0, Math.PI * 2); ctx.stroke(); ctx.globalAlpha = 1; }
     ctx.fillStyle = '#12002a';
     ctx.beginPath(); ctx.arc(b.u, b.v, r, 0, Math.PI * 2); ctx.fill();
     ctx.lineWidth = Math.max(3 * px, r * 0.22); ctx.strokeStyle = f > 0.3 ? '#ffffff' : COL.gold;
