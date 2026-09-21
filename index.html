@@ -1187,10 +1187,11 @@ const SCENES = [
       c.beginPath(); c.moveTo(tu - th * 0.42, H - th - th * 0.05); c.lineTo(tu + th * 0.42, H - th - th * 0.05); c.stroke(); },
   },
 ];
-const sceneLayers = { key: '', far: null, mid: null, near: null };
+const sceneLayers = { key: '', far: null, mid: null, near: null, deep: null };
 function buildScene() {
   const s = view.s, dpr = view.dpr, H = HORIZON;
-  const w = Math.round((1 + 2 * SCENE_PAD) * s * dpr), h = Math.round((H + 0.02) * s * dpr);
+  const SS = 1.25;                                                // supersample: keeps edges crisp when layers scale
+  const w = Math.round((1 + 2 * SCENE_PAD) * s * dpr * SS), h = Math.round((H + 0.02) * s * dpr * SS);
   const key = `${stageIx}|${w}x${h}`;
   if (key === sceneLayers.key) return;
   sceneLayers.key = key;
@@ -1198,28 +1199,86 @@ function buildScene() {
   for (const which of ['far', 'mid', 'near']) {
     const cv2 = document.createElement('canvas'); cv2.width = w; cv2.height = h;
     const c = cv2.getContext('2d');
-    c.setTransform(s * dpr, 0, 0, s * dpr, SCENE_PAD * s * dpr, 0);   // field units, v=0 at the sky top
+    c.setTransform(s * dpr * SS, 0, 0, s * dpr * SS, SCENE_PAD * s * dpr * SS, 0);   // field units, v=0 at the sky top
+    c.imageSmoothingQuality = 'high';
     try { sc[which](c, H, px); } catch (_) {}
     sceneLayers[which] = cv2;
   }
+  // Bake the two deepest ranges into a single image: they barely move relative to each other, so
+  // there's no reason to redraw both every frame.
+  const deep = document.createElement('canvas'); deep.width = w; deep.height = h;
+  const dc = deep.getContext('2d');
+  dc.imageSmoothingQuality = 'high';
+  const unit = s * dpr * SS;
+  for (const [scale, lift, hazeAmt, alpha] of [[0.52, -0.30 * H, 0.5, 0.6], [0.74, -0.17 * H, 0.3, 1]]) {
+    dc.save();
+    dc.setTransform(unit, 0, 0, unit, SCENE_PAD * unit, 0);
+    dc.translate(0.5, H + lift); dc.scale(scale, scale); dc.translate(-0.5, -H);
+    dc.globalAlpha = alpha;
+    dc.setTransform(1, 0, 0, 1, 0, 0);
+    dc.save();
+    dc.translate(SCENE_PAD * unit + (0.5 * unit), (H + lift) * unit);
+    dc.scale(scale, scale);
+    dc.translate(-0.5 * unit, -H * unit);
+    dc.globalAlpha = alpha;
+    dc.drawImage(sceneLayers.far, 0, 0);
+    dc.restore();
+    dc.globalAlpha = 1;
+    const hz = dc.createLinearGradient(0, 0, 0, H * unit);
+    hz.addColorStop(0, hexA('#000000', 0.5 * hazeAmt));
+    hz.addColorStop(0.6, hexA('#000000', 0.34 * hazeAmt));
+    hz.addColorStop(1, hexA(ST().horizon, 0.12 * hazeAmt));
+    dc.fillStyle = hz; dc.fillRect(0, 0, w, h);
+    dc.restore();
+  }
+  sceneLayers.deep = deep;
 }
 // live scenery: parallax drift + per-stage effects, drawn for each player's half
 function drawScenery(t) {
   if (!sceneLayers.far) return;
+  ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
   const L = view.L, s = view.s, dpr = view.dpr, H = HORIZON, sc = SCENES[stageIx];
   ctx.save(); fieldTf(); rr(ctx, 0, 0, 1, L, 0.06); ctx.clip();
   for (const half of [0, 1]) {
     ctx.save();
     if (half === 1) { ctx.translate(1, L); ctx.rotate(Math.PI); }
     ctx.translate(0, L / 2);                                   // v = 0 at the crease
-    const drift = [0.010, 0.022, 0.038], speed = [0.05, 0.08, 0.13];
-    ['far', 'mid', 'near'].forEach((k, i) => {
-      const dx = Math.sin(t * speed[i] * Math.PI * 2 + half * 1.7) * drift[i];
-      ctx.save(); ctx.translate(dx, 0);
-      ctx.scale(1 / (s * dpr), 1 / (s * dpr));
-      ctx.drawImage(sceneLayers[k], -SCENE_PAD * s * dpr, 0);
+    // Depth in the background only. Four passes of the same world at different distances:
+    // deeper ones sit smaller and higher, drift less and wash out into haze. The view also leans
+    // with the puck, so the far world swings behind the near one instead of sliding flat.
+    const lean = game.pucks.length ? (game.pucks[0].u - 0.5) * (half ? -1 : 1) : 0;
+    //          layer   scale  lift     drift  swayspeed  haze  leanPull
+    const PASSES = perf.detail < 0.7
+      ? [['mid', 0.88, -0.06 * H, 0.020, 0.080, 0.14, 0.022], ['near', 1.00, 0, 0.042, 0.130, 0, 0.042]]
+      : [
+        ['deep', 1.00, 0, 0.005, 0.035, 0, 0.006],               // the two far ranges, prepainted together
+        ['mid',  0.88, -0.06 * H, 0.020, 0.080, 0.14, 0.022],
+        ['near', 1.00, 0, 0.042, 0.130, 0, 0.042],
+      ];
+    for (const [k, sc2, lift, dr, sp2, hazeAmt, pull] of PASSES) {
+      const dx = Math.sin(t * sp2 * Math.PI * 2 + half * 1.7) * dr - lean * pull;
+      ctx.save();
+      ctx.translate(0.5 + dx, H + lift);                          // keep the horizon anchored, shrink upward
+      ctx.scale(sc2, sc2);
+      ctx.translate(-0.5, -H);
+      ctx.scale(1 / (s * dpr * 1.25), 1 / (s * dpr * 1.25));
+      ctx.globalAlpha = hazeAmt > 0.4 ? 0.6 : 1;
+      ctx.drawImage(sceneLayers[k], -SCENE_PAD * s * dpr * 1.25, 0);
       ctx.restore();
-    });
+      if (hazeAmt > 0) {                                          // distance recedes into darkness, not milk
+        const hz = ctx.createLinearGradient(0, 0, 0, H);
+        hz.addColorStop(0, hexA('#000000', 0.5 * hazeAmt));
+        hz.addColorStop(0.6, hexA('#000000', 0.34 * hazeAmt));
+        hz.addColorStop(1, hexA(ST().horizon, 0.12 * hazeAmt));
+        ctx.globalAlpha = 1; ctx.fillStyle = hz; ctx.fillRect(-0.25, 0, 1.5, H);
+      }
+    }
+    ctx.globalAlpha = 1;
+    const sky = ctx.createLinearGradient(0, 0, 0, H);
+    sky.addColorStop(0, hexA('#000000', 0.55));                   // deep space above
+    sky.addColorStop(0.45, hexA('#000000', 0.12));
+    sky.addColorStop(1, hexA(ST().horizon, 0.1));                 // light pooling far away
+    ctx.fillStyle = sky; ctx.fillRect(-0.25, 0, 1.5, H);
     sceneFx(t, H, half);
     ctx.restore();
   }
