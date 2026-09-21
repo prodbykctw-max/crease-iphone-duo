@@ -116,6 +116,25 @@ h2{margin:0 0 6px;font-size:clamp(30px,8vmin,48px);font-weight:900;font-style:it
 .creator{display:block;margin-top:12px;color:var(--ink);font-size:13px;line-height:1.5;text-underline-offset:3px}
 .share-status{font-size:13px;color:var(--p1);margin:8px 0;line-height:1.4}
 .share-url{box-sizing:border-box;width:100%;padding:12px;background:#12002a;color:#fff;border:1px solid var(--line);border-radius:8px;user-select:text;-webkit-user-select:text}
+.dots button{width:10px;height:10px;padding:0;border:1px solid #8c79a4;border-radius:50%;background:transparent;cursor:pointer}
+.dots button.on{background:var(--p1);border-color:var(--p1);box-shadow:0 0 9px var(--p1)}
+button:focus-visible{outline:2px solid var(--p1);outline-offset:4px}
+#arenas{z-index:8;background:rgba(3,3,9,.96);backdrop-filter:none}
+.arena-shell{width:min(1040px,100%);max-height:92dvh;overflow:auto;border:1px solid #343344;border-radius:20px;background:#080810;padding:20px;touch-action:pan-y}
+.arena-heading{display:flex;align-items:center;justify-content:space-between;gap:16px}
+.arena-heading h2{font-size:24px;font-style:normal;letter-spacing:.08em;text-shadow:none;margin:0}
+.arena-heading button{min-height:44px}
+#arenaPreview{display:block;width:100%;aspect-ratio:2.4;background:#030309;border-radius:10px;margin:16px 0 12px}
+.arena-copy{display:flex;justify-content:space-between;align-items:center;gap:16px;margin-bottom:16px}
+.arena-copy h3{margin:0 0 4px;font-size:17px}
+.arena-copy p{margin:0;color:#aba8bd;font-size:13px;line-height:1.5}
+.arena-copy .btn{flex:0 0 160px;min-height:46px;font-size:13px}
+.arena-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px}
+.arena-tile{padding:0 0 10px;text-align:left;border:1px solid #30303f;border-radius:10px;background:#101019;color:#eae7f4;overflow:hidden;cursor:pointer;font:inherit}
+.arena-tile[aria-pressed=true]{border-color:var(--p1);box-shadow:0 0 0 1px var(--p1)}
+.arena-tile img{display:block;width:100%;aspect-ratio:2.7;object-fit:cover;margin-bottom:8px;pointer-events:none}
+.arena-tile strong{display:block;padding:0 10px;font-size:10px;letter-spacing:.08em}
+@media(max-width:650px){.arena-shell{padding:14px}.arena-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.arena-copy{align-items:stretch;flex-direction:column}.arena-copy .btn{flex:auto}.arena-heading h2{font-size:20px}}
 </style>
 </head>
 <body>
@@ -159,12 +178,22 @@ h2{margin:0 0 6px;font-size:clamp(30px,8vmin,48px);font-weight:900;font-style:it
       <button id="bHow" class="link">How to play</button>
       <button id="bShareMenu" class="link">Challenge a friend</button>
       <button id="bIntro" class="link">Intro</button>
+      <button id="bArenas" class="link">Explore arenas</button>
       <button id="bSound" class="link">Sound: On</button>
     </div>
   <p id="menuShareStatus" class="share-status" role="status"></p>
     <input id="menuShareUrl" class="share-url hidden" readonly aria-label="Challenge link — select and copy">
     <a class="creator" data-inquiry href="https://www.instagram.com/prodbykctw/" target="_blank" rel="noopener noreferrer">Built by KCTW · Want a custom game? DM me</a>
   </div>
+</div>
+
+<div id="arenas" class="overlay hidden" role="dialog" aria-modal="true" aria-labelledby="arenaTitle">
+  <section class="arena-shell">
+    <div class="arena-heading"><h2 id="arenaTitle">CHOOSE YOUR WORLD</h2><button id="bArenaClose" class="link">Close</button></div>
+    <canvas id="arenaPreview" aria-label="Animated preview of the selected arena"></canvas>
+    <div class="arena-copy"><div><h3 id="arenaWorld"></h3><p id="arenaDescription"></p><p id="arenaStatus" role="status"></p></div><button id="bArenaUse" class="btn p1">USE THIS ARENA</button></div>
+    <div id="arenaGrid" class="arena-grid"></div>
+  </section>
 </div>
 
 <div id="how" class="overlay hidden">
@@ -219,6 +248,7 @@ h2{margin:0 0 6px;font-size:clamp(30px,8vmin,48px);font-weight:900;font-style:it
 
 <script src="analytics-config.js"></script>
 <script src="analytics.js"></script>
+<script src="assets/arena-engine.js"></script>
 <script>
 (() => {
 'use strict';
@@ -252,7 +282,7 @@ track('visit', { source: challenged ? 'challenge' : source });
 
 // ---------- config ----------
 
-// ---------- stages: nine looks, same table ----------
+// ---------- ten worlds, same table ----------
 const STAGES = [
   { name: 'MIDNIGHT',  base: ['#0a0118', '#1b0536'], grid: '#ff2a8a', horizon: '#ff7ad9', sun: ['#ff2a8a', '#ff7a2f', '#ffd23f'], mtn: ['#2a0b4d', '#0c0220'], wire: '#c04dff', win: ['#2de2e6', '#ff2a8a'], rail: '#b026ff', p1: '#2de2e6', p2: '#ff2a8a' },
   { name: 'TOXIC',     base: ['#04120a', '#0a2a12'], grid: '#39ff88', horizon: '#b6ff3b', sun: ['#39ff88', '#b6ff3b', '#f5ff8a'], mtn: ['#0b3a1e', '#04140a'], wire: '#7dff5a', win: ['#b6ff3b', '#39ffd0'], rail: '#39ff88', p1: '#39ffd0', p2: '#d8ff2a' },
@@ -263,6 +293,7 @@ const STAGES = [
   { name: 'GOLD RUSH', base: ['#140c02', '#2b1806'], grid: '#ffb020', horizon: '#ffe2a0', sun: ['#ff8a1f', '#ffc23f', '#fff0b0'], mtn: ['#3f2607', '#150c02'], wire: '#ffcf6b', win: ['#fff0b0', '#ff8a1f'], rail: '#ffb020', p1: '#ffe9a8', p2: '#ff6f2f' },
   { name: 'VOID',      base: ['#050505', '#151515'], grid: '#cfcfcf', horizon: '#ffffff', sun: ['#3a3a3a', '#8a8a8a', '#e2e2e2'], mtn: ['#1f1f1f', '#080808'], wire: '#bcbcbc', win: ['#ffffff', '#8a8a8a'], rail: '#d8d8d8', p1: '#ffffff', p2: '#ff3131' },
   { name: 'SAKURA',    base: ['#16060f', '#31102a'], grid: '#ff9ec4', horizon: '#ffd9ea', sun: ['#ff7aa8', '#ffb0c8', '#fff0f5'], mtn: ['#4a1b3a', '#150610'], wire: '#ffc0dd', win: ['#fff0f5', '#ff9ec4'], rail: '#ff9ec4', p1: '#7fd8ff', p2: '#ff6fa8' },
+  { name: 'PRODBY KCTW', base: ['#02090c', '#041a20'], grid: '#34edb0', horizon: '#71caff', sun: ['#12ad69', '#26aaff', '#b7f5e7'], mtn: ['#073c38', '#021214'], wire: '#42c2ff', win: ['#7dffbe', '#46baff'], rail: '#35bfef', p1: '#55d9ff', p2: '#51f4a0' },
 ];
 let stageIx = 0;
 const ST = () => STAGES[stageIx];
@@ -273,6 +304,9 @@ function setStage(i, rebuild = true) {
   try { localStorage.setItem('crease.stage', String(stageIx)); } catch (_) {}
   const lab = $('stageName'); if (lab) lab.textContent = (stageIx + 1) + '. ' + ST().name;
   const dots = $('stageDots'); if (dots) for (const d of dots.children) d.classList.toggle('on', +d.dataset.i === stageIx);
+  if (dots) for (const d of dots.children) d.setAttribute('aria-pressed', String(+d.dataset.i === stageIx));
+  if (window.CreaseArenas) window.CreaseArenas.select(stageIx);
+  updateArenaSelection();
   document.documentElement.style.setProperty('--p1', ST().p1);
   document.documentElement.style.setProperty('--p2', ST().p2);
   if (rebuild) { sceneLayers.key = ''; buildBg(); }
@@ -1005,7 +1039,7 @@ function rr(c, x, y, w, h, r) {
 function srand(seed) { return () => { seed = (seed * 16807) % 2147483647; return (seed - 1) / 2147483646; }; }
 let glow = document.createElement('canvas'), glowc = glow.getContext('2d');
 let crt = document.createElement('canvas'), crtc = crt.getContext('2d');
-const SUN_R = 0.15, HORIZON = 0.2;
+const SUN_R = 0.15, HORIZON = 0.32;
 
 // Everything for ONE half (P1's, v from L/2 to L), in field units. P2's half is the same drawing
 // rotated 180° around the table center, so each player sees their own sunset facing them.
@@ -1187,6 +1221,7 @@ const SCENES = [
       c.beginPath(); c.moveTo(tu - th * 0.42, H - th - th * 0.05); c.lineTo(tu + th * 0.42, H - th - th * 0.05); c.stroke(); },
   },
 ];
+SCENES.push({fx:'studio',far:()=>{},mid:()=>{},near:()=>{}});
 const sceneLayers = { key: '', far: null, mid: null, near: null, deep: null };
 function buildScene() {
   const s = view.s, dpr = view.dpr, H = HORIZON;
@@ -1238,11 +1273,17 @@ function drawScenery(t) {
   if (!sceneLayers.far) return;
   ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
   const L = view.L, s = view.s, dpr = view.dpr, H = HORIZON, sc = SCENES[stageIx];
+  const arenas = window.CreaseArenas;
+  const focal = arenas?.ready ? arenas.prepare(t, game.beat, perf.detail) : null;
   ctx.save(); fieldTf(); rr(ctx, 0, 0, 1, L, 0.06); ctx.clip();
   for (const half of [0, 1]) {
     ctx.save();
     if (half === 1) { ctx.translate(1, L); ctx.rotate(Math.PI); }
     ctx.translate(0, L / 2);                                   // v = 0 at the crease
+    const arenaLean = game.pucks.length ? (game.pucks[0].u - .5) * (half ? -1 : 1) : 0;
+    if (arenas?.draw(ctx,{H,t,half,lean:arenaLean,beat:game.beat,flash:game.stageFlash,detail:perf.detail,focal})) {
+      ctx.restore(); continue;
+    }
     // Depth in the background only. Four passes of the same world at different distances:
     // deeper ones sit smaller and higher, drift less and wash out into haze. The view also leans
     // with the puck, so the far world swings behind the near one instead of sliding flat.
@@ -1480,7 +1521,7 @@ function paintTable(c, bright) {
     base.addColorStop(0, ST().base[0]); base.addColorStop(0.5, ST().base[1]); base.addColorStop(1, ST().base[0]);
     c.fillStyle = base; c.fillRect(0, 0, 1, L);
   }
-  paintSun(c, bright);
+  if (!window.CreaseArenas) paintSun(c, bright);
   paintHalf(c, bright);
   c.save(); c.translate(1, L); c.rotate(Math.PI); paintHalf(c, bright); c.restore();
   c.restore();
@@ -2400,6 +2441,58 @@ function updateHint() {
 }
 
 // ---------- UI ----------
+let arenaRaf = 0, arenaLastFrame = -Infinity;
+function updateArenaSelection() {
+  const world = window.CreaseArenas?.worlds[stageIx]; if (!world) return;
+  $('arenaWorld').textContent = ST().name + ' / ' + world.title;
+  $('arenaDescription').textContent = world.description;
+  for (const tile of $('arenaGrid').children) tile.setAttribute('aria-pressed', String(+tile.dataset.i === stageIx));
+}
+function renderArenaPreview(now) {
+  if ($('arenas').classList.contains('hidden')) { arenaRaf = 0; return; }
+  arenaRaf = requestAnimationFrame(renderArenaPreview);
+  if (now - arenaLastFrame < 1000 / 30) return;
+  arenaLastFrame = now;
+  const canvas = $('arenaPreview'), c = canvas.getContext('2d');
+  const w = Math.min(1800, Math.round(canvas.clientWidth * Math.min(devicePixelRatio || 1, 2))), h = Math.round(w / 2.4);
+  if (!w) return;
+  if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; }
+  c.setTransform(w,0,0,w,0,0); c.fillStyle = '#030309'; c.fillRect(0,0,1,h/w);
+  const engine = window.CreaseArenas, t = game.t;
+  const focal = engine.ready ? engine.prepare(t,game.beat,perf.detail) : null;
+  engine.draw(c,{H:HORIZON,t,half:0,lean:0,beat:game.beat,flash:game.stageFlash,detail:perf.detail,focal});
+  c.lineWidth = 1/w; c.strokeStyle = ST().grid; c.globalAlpha = .5;
+  for (let i=-10;i<=10;i++) { c.beginPath(); c.moveTo(.5+i*.026,HORIZON); c.lineTo(.5+i*.19,h/w); c.stroke(); }
+  const motion = matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : t*.14;
+  for (let i=0;i<9;i++) { const f=((i/9+motion)%1);const y=HORIZON+(h/w-HORIZON)*f*f;c.beginPath();c.moveTo(0,y);c.lineTo(1,y);c.stroke(); }
+  c.globalAlpha=1;
+  const status = engine.ready ? '' : 'Loading arena artwork…';
+  if ($('arenaStatus').textContent !== status) $('arenaStatus').textContent=status;
+}
+function closeArenaGallery() {
+  show('arenas',false); $('menu').inert=false;
+  cancelAnimationFrame(arenaRaf); arenaRaf=0; $('bArenas').focus();
+}
+$('bArenas').onclick = () => {
+  if (!$('arenaGrid').children.length) window.CreaseArenas.worlds.forEach((world,i)=>{
+    const tile=document.createElement('button');tile.className='arena-tile';tile.dataset.i=i;
+    tile.setAttribute('aria-label',STAGES[i].name);tile.setAttribute('aria-pressed','false');
+    const img=document.createElement('img');img.src=`assets/arenas/${world.id}-thumb.webp`;img.alt='';img.loading='lazy';
+    const name=document.createElement('strong');name.textContent=STAGES[i].name;
+    tile.append(img,name);tile.onclick=()=>setStage(i);$('arenaGrid').append(tile);
+  });
+  updateArenaSelection();show('arenas',true);$('menu').inert=true;$('bArenaClose').focus();
+  if (!arenaRaf) arenaRaf=requestAnimationFrame(renderArenaPreview);
+};
+$('bArenaClose').onclick=closeArenaGallery;$('bArenaUse').onclick=closeArenaGallery;
+$('arenas').addEventListener('keydown',e=>{
+  if (e.key==='Escape') {e.stopPropagation();closeArenaGallery();}
+  if(e.key==='Tab'){
+    const buttons=[...$('arenas').querySelectorAll('button')],first=buttons[0],last=buttons.at(-1);
+    if(e.shiftKey&&document.activeElement===first){e.preventDefault();last.focus();}
+    else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus();}
+  }
+});
 function show(id, on) { $(id).classList.toggle('hidden', !on); }
 function start(mode, reason = 'new') { matchTracked = false; track('match_start', { mode, difficulty: game.diff, reason }); if (reason === 'rematch') track('rematch', { mode }); storage.set('crease.visited.v1', '1'); unlockAudio(); booted = true; music.start(); show('menu', false); show('over', false); show('pauseM', false); newMatch(mode); }
 function toMenu() { show('pauseM', false); show('over', false); show('menu', true); newMatch('demo'); }
@@ -2464,8 +2557,8 @@ $('bIntro').onclick = () => { unlockAudio(); booted = true; playStudio(); };
 {
   const dots = $('stageDots');
   STAGES.forEach((st, i) => {
-    const d = document.createElement('i');
-    d.dataset.i = i; d.title = st.name;
+    const d = document.createElement('button');
+    d.dataset.i = i; d.title = st.name; d.setAttribute('aria-label', st.name); d.setAttribute('aria-pressed','false');
     d.onclick = () => { setStage(i); tone(520 + i * 40, 0.05, 'triangle', 0.05); };
     dots.appendChild(d);
   });
@@ -2517,4 +2610,3 @@ window.__crease = {
 </script>
 </body>
 </html>
-
