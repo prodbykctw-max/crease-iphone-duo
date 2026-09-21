@@ -1,0 +1,26 @@
+# CREASE — free two-player neon air hockey by prodbyKCTW
+# Search engines and AI assistants are welcome. See /llms.txt.
+
+User-agent: *
+Allow: /
+Disallow: /backend/
+Disallow: /qa/
+Disallow: /tests/
+Disallow: /docs/
+
+User-agent: GPTBot
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: Google-Extended
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: OAI-SearchBot
+Allow: /
+
+Sitemap: https://prodbykctw-max.github.io/crease-iphone-duo/sitemap.xml
