@@ -737,7 +737,7 @@ function hitBumper(pk, b) {
   surge(b.u, b.v, COL.gold, 1.1);
   sfx.bump();
 }
-// Light racing out through the grid from wherever the puck struck — the Tron/pinball reaction.
+// Light racing out through the grid from wherever the puck struck.
 function surge(u, v, col, power = 1) {
   if (game.surges.length > 5) game.surges.shift();
   game.surges.push({ u, v, t: 0, life: 0.55 + power * 0.35, col, power });
@@ -2139,8 +2139,8 @@ function drawVictory() {
 // The floor's horizontal lines scroll from the horizon toward each player, so the stage breathes.
 // Perspective: a line's distance from the horizon goes as f², f cycling 0→1, which is why they
 // spread out as they come at you. Verticals are painted once into the background.
-// The digital floor: horizontal lines drifting toward each player (the motion he approved), which
-// light up when the puck hits something — surges race outward through the grid like current.
+// The floor grid: unchanged motion — horizontal lines drifting toward each player.
+// Hits make the existing lines light up; nothing is added to the grid itself.
 function drawFloorGrid(t) {
   const L = view.L, px = 1 / view.s, hz0 = L / 2 + HORIZON, N = 11, SPEED = 0.11;
   const col = ST().grid, beat = game.beat * 0.35;
