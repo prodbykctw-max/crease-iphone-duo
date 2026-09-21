@@ -206,6 +206,50 @@ const checkFn = () => {
     await fc.close();
   }
 
+  // ---- stages ----
+  {
+    const sc = await browser.newContext({ viewport: CLOSED, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
+    const sp = await sc.newPage();
+    sp.on('pageerror', e => errors.push('stage: ' + e.message));
+    sp.on('console', m => { if (m.type() === 'error') errors.push('stage: ' + m.text()); });
+    await sp.goto(URL);
+    await sp.waitForTimeout(600);
+    await sp.evaluate(() => window.__crease.start('solo'));
+    await sp.waitForTimeout(1800);
+    const names = await sp.evaluate(() => window.__crease.STAGES.map(s => s.name));
+    ok('nine stages defined with unique names', names.length === 9 && new Set(names).size === 9, names.join(','));
+    const sigs = [];
+    for (let i = 0; i < 9; i++) {
+      const sig = await sp.evaluate(async i => {
+        const c = window.__crease; c.setStage(i);
+        await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+        const cv = document.getElementById('cv'), g = cv.getContext('2d');
+        const d = g.getImageData(0, 0, cv.width, Math.min(cv.height, 400)).data;
+        let h = 0; for (let j = 0; j < d.length; j += 131) h = (h * 31 + d[j]) >>> 0;
+        return { h, p1: c.game.paddles[0] && getComputedStyle(document.documentElement).getPropertyValue('--p1').trim(), name: c.STAGES[i].name };
+      }, i);
+      sigs.push(sig);
+    }
+    ok('each stage repaints the table differently', new Set(sigs.map(s => s.h)).size === 9, sigs.map(s => s.name + ':' + s.h).join(' '));
+    // the floor lines scroll
+    const move = await sp.evaluate(async () => {
+      const cv = document.getElementById('cv'), g = cv.getContext('2d');
+      const grab = () => { const d = g.getImageData(0, Math.round(cv.height * 0.72), cv.width, 8).data; let h = 0; for (let j = 0; j < d.length; j += 53) h = (h * 33 + d[j]) >>> 0; return h; };
+      const hs = []; for (let i = 0; i < 6; i++) { hs.push(grab()); await new Promise(r => setTimeout(r, 320)); }
+      return new Set(hs).size;
+    });
+    ok('vaporwave floor lines are moving', move >= 3, 'distinct samples: ' + move);
+    // choice sticks across a reload
+    await sp.evaluate(() => window.__crease.setStage(6));
+    await sp.waitForTimeout(200);
+    await sp.reload();
+    await sp.waitForTimeout(900);
+    const kept = await sp.evaluate(() => ({ ix: window.__crease.stage(), label: document.getElementById('stageName').textContent }));
+    ok('stage choice is remembered after reload', kept.ix === 6 && /GOLD/.test(kept.label), JSON.stringify(kept));
+    await sp.evaluate(() => window.__crease.setStage(0));
+    await sc.close();
+  }
+
   // ---- intro cutscene ----
   for (const [name, vp] of [['closed', CLOSED], ['open', OPEN]]) {
     const ic = await browser.newContext({ viewport: vp, deviceScaleFactor: 3, isMobile: true, hasTouch: true });

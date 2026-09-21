@@ -55,6 +55,15 @@ h2{margin:0 0 6px;font-size:clamp(30px,8vmin,48px);font-weight:900;font-style:it
 .btn.rec span,.btn.rec small{color:#12002a}
 .btn span{display:block}
 .btn:active{transform:scale(.97)}
+.stagepick{display:flex;align-items:center;justify-content:center;gap:10px;margin:14px auto 2px;max-width:330px}
+.stagemid{flex:1;min-width:0}
+#stageName{display:block;font-size:12px;font-weight:800;letter-spacing:.22em;color:var(--ink);padding-left:.22em}
+.dots{display:flex;gap:6px;justify-content:center;margin-top:7px}
+.dots i{width:9px;height:9px;border-radius:50%;border:1px solid var(--line);cursor:pointer;display:block}
+.dots i.on{background:var(--p2);border-color:var(--p2);box-shadow:0 0 8px var(--p2)}
+.arrow{width:38px;height:38px;flex:none;border-radius:50%;border:1px solid var(--line);background:transparent;color:var(--ink);
+  font-family:inherit;font-size:20px;line-height:1;cursor:pointer}
+.arrow:active{transform:scale(.94)}
 .seg{display:inline-flex;margin:14px auto 4px;border:1px solid var(--line);border-radius:12px;overflow:hidden}
 .seg button{border:0;background:transparent;color:var(--dim);font-family:inherit;font-weight:700;font-size:14px;padding:10px 16px;min-height:40px;cursor:pointer}
 .seg button.on{background:rgba(255,255,255,.12);color:var(--ink)}
@@ -75,7 +84,7 @@ h2{margin:0 0 6px;font-size:clamp(30px,8vmin,48px);font-weight:900;font-style:it
 .bootbox{position:relative;width:100%;max-width:520px;text-align:center;font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace}
 .bl{font-size:11px;letter-spacing:.32em;margin:14px 0 0;text-transform:uppercase;padding-left:.32em}
 .bl.dim{color:#5c6389}
-.markc{display:block;margin:0 auto;width:min(86vw,500px);aspect-ratio:500/150}
+.markc{display:block;margin:0 auto;max-width:none}
 .bl.build{font-size:9px;letter-spacing:.2em;margin-top:26px;opacity:.7}
 .bl.grn{color:#5dffb1;text-shadow:0 0 8px rgba(93,255,177,.45);min-height:16px;margin-top:12px}
 .bar{height:2px;width:min(78%,360px);margin:12px auto 0;background:rgba(255,255,255,.08);overflow:hidden}
@@ -137,6 +146,11 @@ h2{margin:0 0 6px;font-size:clamp(30px,8vmin,48px);font-weight:900;font-style:it
     <div class="btns">
       <button id="bSolo" class="btn p1"><span>SOLO vs CPU</span><small id="soloSub">one thumb</small></button>
       <button id="bDuo" class="btn p2"><span>2 PLAYERS</span><small id="duoSub">one per half</small></button>
+    </div>
+    <div class="stagepick">
+      <button id="stagePrev" class="arrow" aria-label="Previous stage">‹</button>
+      <div class="stagemid"><span id="stageName">1. MIDNIGHT</span><div id="stageDots" class="dots"></div></div>
+      <button id="stageNext" class="arrow" aria-label="Next stage">›</button>
     </div>
     <div class="seg" id="diff" role="group" aria-label="CPU difficulty">
       <button data-d="easy">Easy</button><button data-d="normal" class="on">Normal</button><button data-d="hard">Hard</button>
@@ -237,6 +251,32 @@ const source = ['instagram', 'tiktok', 'youtube', 'creator', 'store'].includes(r
 track('visit', { source: challenged ? 'challenge' : source });
 
 // ---------- config ----------
+
+// ---------- stages: nine looks, same table ----------
+const STAGES = [
+  { name: 'MIDNIGHT',  base: ['#0a0118', '#1b0536'], grid: '#ff2a8a', horizon: '#ff7ad9', sun: ['#ff2a8a', '#ff7a2f', '#ffd23f'], mtn: ['#2a0b4d', '#0c0220'], wire: '#c04dff', win: ['#2de2e6', '#ff2a8a'], rail: '#b026ff', p1: '#2de2e6', p2: '#ff2a8a' },
+  { name: 'TOXIC',     base: ['#04120a', '#0a2a12'], grid: '#39ff88', horizon: '#b6ff3b', sun: ['#39ff88', '#b6ff3b', '#f5ff8a'], mtn: ['#0b3a1e', '#04140a'], wire: '#7dff5a', win: ['#b6ff3b', '#39ffd0'], rail: '#39ff88', p1: '#39ffd0', p2: '#d8ff2a' },
+  { name: 'ICE',       base: ['#04101c', '#0b2440'], grid: '#6fd8ff', horizon: '#d7f3ff', sun: ['#6fd8ff', '#bfe9ff', '#ffffff'], mtn: ['#123a5e', '#04121f'], wire: '#9fe8ff', win: ['#ffffff', '#7fd4ff'], rail: '#5ab8ff', p1: '#a8f0ff', p2: '#ff6bd6' },
+  { name: 'INFERNO',   base: ['#16030a', '#33060c'], grid: '#ff3b2f', horizon: '#ff9152', sun: ['#ff2f2f', '#ff7a2f', '#ffc46b'], mtn: ['#4a0d12', '#170307'], wire: '#ff6b4a', win: ['#ffd23f', '#ff3b2f'], rail: '#ff5a2f', p1: '#ffb02f', p2: '#ff2f5f' },
+  { name: 'ULTRAVIOLET', base: ['#0b0320', '#1d0740'], grid: '#a06bff', horizon: '#d6a8ff', sun: ['#7a2fff', '#b06bff', '#e6c8ff'], mtn: ['#2a0f5e', '#0a0322'], wire: '#c9a0ff', win: ['#e0c8ff', '#7a2fff'], rail: '#8a4dff', p1: '#7de3ff', p2: '#c56bff' },
+  { name: 'MIAMI',     base: ['#04141a', '#072a33'], grid: '#ff5ea8', horizon: '#ffd0e6', sun: ['#ff5ea8', '#ff9f6b', '#ffe6a8'], mtn: ['#0b3a46', '#04141a'], wire: '#5ff0e0', win: ['#5ff0e0', '#ff5ea8'], rail: '#ff7ac0', p1: '#46f0d8', p2: '#ff5e8a' },
+  { name: 'GOLD RUSH', base: ['#140c02', '#2b1806'], grid: '#ffb020', horizon: '#ffe2a0', sun: ['#ff8a1f', '#ffc23f', '#fff0b0'], mtn: ['#3f2607', '#150c02'], wire: '#ffcf6b', win: ['#fff0b0', '#ff8a1f'], rail: '#ffb020', p1: '#ffe9a8', p2: '#ff6f2f' },
+  { name: 'VOID',      base: ['#050505', '#151515'], grid: '#cfcfcf', horizon: '#ffffff', sun: ['#6e6e6e', '#c8c8c8', '#ffffff'], mtn: ['#1f1f1f', '#080808'], wire: '#bcbcbc', win: ['#ffffff', '#8a8a8a'], rail: '#d8d8d8', p1: '#ffffff', p2: '#ff3131' },
+  { name: 'SAKURA',    base: ['#16060f', '#31102a'], grid: '#ff9ec4', horizon: '#ffd9ea', sun: ['#ff7aa8', '#ffb0c8', '#fff0f5'], mtn: ['#4a1b3a', '#150610'], wire: '#ffc0dd', win: ['#fff0f5', '#ff9ec4'], rail: '#ff9ec4', p1: '#7fd8ff', p2: '#ff6fa8' },
+];
+let stageIx = 0;
+const ST = () => STAGES[stageIx];
+const hexA = (hex, a) => { const n = parseInt(hex.slice(1), 16); return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`; };
+function setStage(i, rebuild = true) {
+  stageIx = ((i % STAGES.length) + STAGES.length) % STAGES.length;
+  COL.p1 = ST().p1; COL.p2 = ST().p2;
+  try { localStorage.setItem('crease.stage', String(stageIx)); } catch (_) {}
+  const lab = $('stageName'); if (lab) lab.textContent = (stageIx + 1) + '. ' + ST().name;
+  const dots = $('stageDots'); if (dots) for (const d of dots.children) d.classList.toggle('on', +d.dataset.i === stageIx);
+  document.documentElement.style.setProperty('--p1', ST().p1);
+  document.documentElement.style.setProperty('--p2', ST().p2);
+  if (rebuild) buildBg();
+}
 const COL = { p1: '#2de2e6', p2: '#ff2a8a', puck: '#ffffff', BIG: '#ffd23f', MULTI: '#7cff6b', WALL: '#b26bff', gold: '#ffd23f', orange: '#ff7a2f', purple: '#b026ff', ink: '#0b0120' };
 const CFG = { padR: 0.075, puckR: 0.042, goalW: 0.38, maxSpd: 3.4, smashSpd: 4.8, smashNeed: 2.1, bumpR: 0.05, bumpKick: 1.9, fric: 0.28, rest: 0.9, padRest: 0.95, win: 7, maxPucks: 3 };
 const DIFF = {
@@ -908,7 +948,7 @@ function paintHalf(c, bright) {
     for (let i = 0; i < 38; i++) {
       const u = rnd(), v = L / 2 + 0.006 + rnd() * (HORIZON - 0.02), a = 0.25 + rnd() * 0.6, r = (0.6 + rnd() * 1.1) * px;
       if (Math.hypot(u - 0.5, v - L / 2) < SUN_R + 0.01) continue;
-      c.globalAlpha = a; c.fillStyle = rnd() < 0.2 ? '#ffd6f5' : '#ffffff';
+      c.globalAlpha = a; c.fillStyle = rnd() < 0.2 ? ST().horizon : '#ffffff';
       c.beginPath(); c.arc(u, v, r, 0, Math.PI * 2); c.fill();
     }
     c.globalAlpha = 1;
@@ -923,19 +963,19 @@ function paintHalf(c, bright) {
   }
   if (!bright) {
     const mg = c.createLinearGradient(0, L / 2, 0, hz);
-    mg.addColorStop(0, '#2a0b4d'); mg.addColorStop(1, '#0c0220');
+    mg.addColorStop(0, ST().mtn[0]); mg.addColorStop(1, ST().mtn[1]);
     c.fillStyle = mg;
     c.beginPath(); c.moveTo(-0.05, hz);
     for (const [u, v] of peaks) c.lineTo(u, v);
     c.lineTo(1.05, hz); c.closePath(); c.fill();
     // wire mesh
-    c.strokeStyle = 'rgba(176,38,255,.28)'; c.lineWidth = 1 * px;
+    c.strokeStyle = hexA(ST().wire, 0.28); c.lineWidth = 1 * px;
     for (let i = 0; i < peaks.length - 1; i++) {
       const [u, v] = peaks[i], [u2] = peaks[i + 1];
       c.beginPath(); c.moveTo(u, v); c.lineTo((u + u2) / 2, hz); c.stroke();
     }
   }
-  c.strokeStyle = bright ? '#ff7ad9' : '#c04dff'; c.lineWidth = (bright ? 2 : 1.5) * px;
+  c.strokeStyle = bright ? ST().horizon : ST().wire; c.lineWidth = (bright ? 2 : 1.5) * px;
   c.beginPath(); c.moveTo(-0.05, hz);
   for (const [u, v] of peaks) c.lineTo(u, v);
   c.lineTo(1.05, hz); c.stroke();
@@ -950,7 +990,7 @@ function paintHalf(c, bright) {
         c.fillRect(u, hz - h, w, h + 0.002);
         for (let wy = hz - h + 0.005; wy < hz - 0.003; wy += 0.006)
           for (let wx = u + 0.003; wx < u + w - 0.002; wx += 0.005)
-            if (R3() < 0.28) { c.fillStyle = R3() < 0.5 ? 'rgba(45,226,230,.9)' : 'rgba(255,42,138,.9)'; c.fillRect(wx, wy, 1.4 * px, 1.4 * px); }
+            if (R3() < 0.28) { c.fillStyle = hexA(R3() < 0.5 ? ST().win[0] : ST().win[1], 0.9); c.fillRect(wx, wy, 1.4 * px, 1.4 * px); }
         u += w + 0.002;
       }
     }
@@ -967,10 +1007,10 @@ function paintHalf(c, bright) {
         const cx = tu + Math.cos(a) * len * 0.55, cy = top - Math.sin(a) * len * 0.95 - 0.004;
         c.strokeStyle = '#05000c'; c.lineWidth = 0.0055;
         c.beginPath(); c.moveTo(tu, top); c.quadraticCurveTo(cx, cy, ex, ey); c.stroke();
-        c.strokeStyle = 'rgba(255,42,138,.55)'; c.lineWidth = 0.7 * px;
+        c.strokeStyle = hexA(ST().grid, 0.55); c.lineWidth = 0.7 * px;
         c.beginPath(); c.moveTo(tu, top); c.quadraticCurveTo(cx, cy - 0.0025, ex, ey - 0.002); c.stroke();
       }
-      c.strokeStyle = 'rgba(255,42,138,.5)'; c.lineWidth = 0.8 * px;
+      c.strokeStyle = hexA(ST().grid, 0.5); c.lineWidth = 0.8 * px;
       c.beginPath(); c.moveTo(bu + dir * 0.004, base); c.quadraticCurveTo(bu - dir * 0.01, (base + top) / 2, tu + dir * 0.004, top); c.stroke();
     }
   }
@@ -978,18 +1018,12 @@ function paintHalf(c, bright) {
   // perspective grid floor from the horizon to this player's goal
   if (!bright) {
     const fg = c.createLinearGradient(0, hz, 0, L);
-    fg.addColorStop(0, 'rgba(255,42,138,.55)'); fg.addColorStop(0.08, 'rgba(120,20,120,.35)');
-    fg.addColorStop(0.35, 'rgba(20,4,40,.9)'); fg.addColorStop(1, '#0a0118');
+    fg.addColorStop(0, hexA(ST().grid, 0.55)); fg.addColorStop(0.08, hexA(ST().mtn[0], 0.55));
+    fg.addColorStop(0.35, hexA(ST().base[0], 0.9)); fg.addColorStop(1, ST().base[0]);
     c.fillStyle = fg; c.fillRect(-0.05, hz, 1.1, L - hz + 0.05);
   }
-  const gcol = bright ? '#ffffff' : '#ff2a8a';
-  const N = 11;
-  for (let i = 1; i <= N; i++) {
-    const t = i / N, v = hz + (L - hz) * t * t;
-    c.globalAlpha = (bright ? 0.7 : 0.25) + t * (bright ? 0.3 : 0.45);
-    c.strokeStyle = gcol; c.lineWidth = (1 + t * 1.2) * px;
-    c.beginPath(); c.moveTo(-0.05, v); c.lineTo(1.05, v); c.stroke();
-  }
+  // NOTE: the horizontal floor lines are NOT painted here — they scroll, and are drawn live by drawFloorGrid()
+  const gcol = bright ? '#ffffff' : ST().grid;
   for (let k = -14; k <= 14; k++) {
     c.globalAlpha = bright ? 0.6 : 0.4;
     c.strokeStyle = gcol; c.lineWidth = 1 * px;
@@ -997,7 +1031,7 @@ function paintHalf(c, bright) {
   }
   c.globalAlpha = 1;
   // horizon line
-  c.strokeStyle = bright ? '#ffffff' : '#ff7ad9'; c.lineWidth = (bright ? 3 : 2) * px;
+  c.strokeStyle = bright ? '#ffffff' : ST().horizon; c.lineWidth = (bright ? 3 : 2) * px;
   c.beginPath(); c.moveTo(-0.05, hz); c.lineTo(1.05, hz); c.stroke();
 }
 
@@ -1005,8 +1039,8 @@ function paintHalf(c, bright) {
 function paintSun(c, bright) {
   const L = view.L, cx = 0.5, cy = L / 2, R = SUN_R;
   const halo = c.createRadialGradient(cx, cy, R * 0.6, cx, cy, R * 2.4);
-  halo.addColorStop(0, bright ? 'rgba(255,190,120,.9)' : 'rgba(255,42,138,.45)');
-  halo.addColorStop(1, 'rgba(255,42,138,0)');
+  halo.addColorStop(0, bright ? 'rgba(255,225,190,.9)' : hexA(ST().sun[0], 0.45));
+  halo.addColorStop(1, hexA(ST().sun[0], 0));
   c.fillStyle = halo; c.fillRect(cx - R * 2.5, cy - R * 2.5, R * 5, R * 5);
   c.save();
   c.beginPath();
@@ -1018,8 +1052,9 @@ function paintSun(c, bright) {
   }
   c.clip('evenodd');
   const g = c.createLinearGradient(0, cy - R, 0, cy + R);
-  g.addColorStop(0, '#ff2a8a'); g.addColorStop(0.3, '#ff7a2f'); g.addColorStop(0.5, '#ffd23f');
-  g.addColorStop(0.7, '#ff7a2f'); g.addColorStop(1, '#ff2a8a');
+  const sun = ST().sun;
+  g.addColorStop(0, sun[0]); g.addColorStop(0.3, sun[1]); g.addColorStop(0.5, sun[2]);
+  g.addColorStop(0.7, sun[1]); g.addColorStop(1, sun[0]);
   c.globalAlpha = bright ? 0.9 : 1;
   c.fillStyle = g; c.beginPath(); c.arc(cx, cy, R, 0, Math.PI * 2); c.fill();
   c.restore(); c.globalAlpha = 1;
@@ -1031,7 +1066,7 @@ function paintTable(c, bright) {
   rr(c, 0, 0, 1, L, 0.06); c.clip();
   if (!bright) {
     const base = c.createLinearGradient(0, 0, 0, L);
-    base.addColorStop(0, '#0a0118'); base.addColorStop(0.5, '#1b0536'); base.addColorStop(1, '#0a0118');
+    base.addColorStop(0, ST().base[0]); base.addColorStop(0.5, ST().base[1]); base.addColorStop(1, ST().base[0]);
     c.fillStyle = base; c.fillRect(0, 0, 1, L);
   }
   paintSun(c, bright);
@@ -1047,7 +1082,7 @@ function buildBg() {
   const c = bgc;
   c.setTransform(1, 0, 0, 1, 0, 0);
   const og = c.createRadialGradient(W / 2, Hh / 2, 0, W / 2, Hh / 2, Math.hypot(W, Hh) / 2);
-  og.addColorStop(0, '#1d0638'); og.addColorStop(1, '#030007');
+  og.addColorStop(0, ST().base[1]); og.addColorStop(1, '#030007');
   c.fillStyle = og; c.fillRect(0, 0, W, Hh);
   const rs = srand(3);
   for (let i = 0; i < 90; i++) { c.globalAlpha = 0.15 + rs() * 0.4; c.fillStyle = '#fff'; c.fillRect(rs() * W, rs() * Hh, view.dpr, view.dpr); }
@@ -1055,22 +1090,22 @@ function buildBg() {
   fieldTf(c);
   const px = 1 / s, gw = CFG.goalW / 2;
   // goal pockets
-  c.fillStyle = 'rgba(255,42,138,.35)'; rr(c, 0.5 - gw, -0.05, gw * 2, 0.08, 0.02); c.fill();
-  c.fillStyle = 'rgba(45,226,230,.35)'; rr(c, 0.5 - gw, L - 0.03, gw * 2, 0.08, 0.02); c.fill();
+  c.fillStyle = hexA(COL.p2, 0.35); rr(c, 0.5 - gw, -0.05, gw * 2, 0.08, 0.02); c.fill();
+  c.fillStyle = hexA(COL.p1, 0.35); rr(c, 0.5 - gw, L - 0.03, gw * 2, 0.08, 0.02); c.fill();
   paintTable(c, false);
   // goal creases (arcs)
   c.lineWidth = 2 * px;
-  c.strokeStyle = 'rgba(255,42,138,.6)'; c.beginPath(); c.arc(0.5, 0, 0.22, 0, Math.PI); c.stroke();
-  c.strokeStyle = 'rgba(45,226,230,.6)'; c.beginPath(); c.arc(0.5, L, 0.22, Math.PI, Math.PI * 2); c.stroke();
+  c.strokeStyle = hexA(COL.p2, 0.6); c.beginPath(); c.arc(0.5, 0, 0.22, 0, Math.PI); c.stroke();
+  c.strokeStyle = hexA(COL.p1, 0.6); c.beginPath(); c.arc(0.5, L, 0.22, Math.PI, Math.PI * 2); c.stroke();
   // neon tube rails: wide soft glow + bright core, cyan on P1's half, pink on P2's
-  for (const [col, a, w] of [['#b026ff', 0.18, 14], ['#b026ff', 0.35, 6]]) {
+  for (const [col, a, w] of [[ST().rail, 0.18, 14], [ST().rail, 0.35, 6]]) {
     c.globalAlpha = a; c.strokeStyle = col; c.lineWidth = w * px; rr(c, 0, 0, 1, L, 0.06); c.stroke();
   }
   c.globalAlpha = 1;
   c.save(); c.beginPath(); c.rect(-1, L / 2, 3, L); c.clip();
-  c.strokeStyle = '#8ff7fa'; c.lineWidth = 2.5 * px; rr(c, 0, 0, 1, L, 0.06); c.stroke(); c.restore();
+  c.strokeStyle = COL.p1; c.lineWidth = 2.5 * px; rr(c, 0, 0, 1, L, 0.06); c.stroke(); c.restore();
   c.save(); c.beginPath(); c.rect(-1, -1, 3, L / 2 + 1); c.clip();
-  c.strokeStyle = '#ff8fc4'; c.lineWidth = 2.5 * px; rr(c, 0, 0, 1, L, 0.06); c.stroke(); c.restore();
+  c.strokeStyle = COL.p2; c.lineWidth = 2.5 * px; rr(c, 0, 0, 1, L, 0.06); c.stroke(); c.restore();
   // goal mouths
   c.lineWidth = 6 * px; c.lineCap = 'round';
   c.strokeStyle = COL.p2; c.beginPath(); c.moveTo(0.5 - gw, 0); c.lineTo(0.5 + gw, 0); c.stroke();
@@ -1203,6 +1238,7 @@ function drawGame(sx, sy) {
   ctx.fillStyle = '#05060f'; if (sx || sy) ctx.fillRect(0, 0, cv.width, cv.height);
   ctx.drawImage(bg, sx * view.dpr, sy * view.dpr);
   beatGlow(sx, sy);
+  drawFloorGrid(game.t);
   fieldTf();
 
   const duo = game.mode === 'duo';
@@ -1344,77 +1380,106 @@ function endStudio() {
 $('studio').addEventListener('pointerdown', e => { e.preventDefault(); unlockAudio(); endStudio(); });
 
 // ---------- boot gate ----------
-// Boot title drawn on a canvas: the CSS text-clip + clip-path version didn't animate in iPhone Safari.
-const BUILD = '2026.09.16-d';
+// Boot title: a frame-exact canvas replica of the original CSS effect (holographic gradient sweep,
+// cyan/pink glitch slices, white glow). iPhone Safari won't run the CSS version (text-clip + clip-path
+// on pseudo-elements), so the same math is drawn here and looks identical on every browser.
+const BUILD = '2026.09.21-a';
 $('buildTag').textContent = 'build ' + BUILD;
-const bootMark = { raf: 0, text: null, cyan: null, pink: null, w: 0, h: 0, font: 0, xs: [] };
-const HOLO = ['#ffd23f', '#ffffff', '#2de2e6', '#b026ff', '#ff2a8a', '#ffffff'];
-function lerpHex(a, b, k) {
-  const pa = parseInt(a.slice(1), 16), pb = parseInt(b.slice(1), 16);
-  const c = i => Math.round(((pa >> i) & 255) + (((pb >> i) & 255) - ((pa >> i) & 255)) * k);
-  return `rgb(${c(16)},${c(8)},${c(0)})`;
-}
-function holoAt(x) { x = ((x % 1) + 1) % 1; const f = x * HOLO.length, i = Math.floor(f); return lerpHex(HOLO[i], HOLO[(i + 1) % HOLO.length], f - i); }
+const HOLO_STOPS = [[0, '#ffd23f'], [0.18, '#ffffff'], [0.34, '#2de2e6'], [0.50, '#b026ff'], [0.66, '#ff2a8a'], [0.80, '#ffffff'], [1, '#ffd23f']];
+// CSS: gl1 2.6s steps(1): 88% A, 91% B, 94% C → hidden at 100%;  gl2 3.1s steps(1): 80% A, 83% B → hidden at 100%
+const GL1 = [[0.88, 0.18, 0.58, -5], [0.91, 0.62, 0.12, 4], [0.94, 0.40, 0.44, -2]];
+const GL2 = [[0.80, 0.70, 0.06, 5], [0.83, 0.08, 0.76, -4]];
+const bootMark = { raf: 0, t0: 0, key: '', dpr: 1, F: 0, W: 0, H: 0, M: 0, text: null, cyan: null, pink: null, tile: null, layer: null, sub: null, grad: null };
+const mkCanvas = (w, h) => { const o = document.createElement('canvas'); o.width = Math.max(1, Math.round(w)); o.height = Math.max(1, Math.round(h)); return o; };
+function glitchSlice(table, f) { let cur = null; for (const k of table) if (f >= k[0]) cur = k; return cur; }
 function bootMarkSetup() {
-  const c = $('bootMark'), dpr = Math.min(window.devicePixelRatio || 1, 3);
-  const w = Math.round(c.clientWidth * dpr), h = Math.round(c.clientHeight * dpr);
-  if (!w || !h) return false;
-  if (w === bootMark.w && h === bootMark.h) return true;
-  c.width = w; c.height = h; bootMark.w = w; bootMark.h = h;
-  const font = Math.round(h * 0.62);
-  bootMark.font = font;
-  const mk = () => { const o = document.createElement('canvas'); o.width = w; o.height = h; return o; };
-  const t = mk(), g = t.getContext('2d');
-  g.font = `900 ${font}px -apple-system, "SF Pro Rounded", system-ui, sans-serif`;
-  g.textBaseline = 'middle';
-  const gap = font * 0.16, letters = [...'CREASE'];
-  const ws = letters.map(ch => g.measureText(ch).width), total = ws.reduce((a, b) => a + b, 0) + gap * (letters.length - 1);
-  let x = (w - total) / 2; bootMark.xs = [];
-  for (let i = 0; i < letters.length; i++) { bootMark.xs.push([x, ws[i]]); g.fillStyle = '#fff'; g.fillText(letters[i], x, h / 2); x += ws[i] + gap; }
-  bootMark.text = t;
-  for (const [key, col] of [['cyan', 'rgba(45,226,230,.8)'], ['pink', 'rgba(255,42,138,.8)']]) {
-    const o = mk(), og = o.getContext('2d');
-    og.drawImage(t, 0, 0); og.globalCompositeOperation = 'source-in'; og.fillStyle = col; og.fillRect(0, 0, w, h);
-    bootMark[key] = o;
+  const dpr = Math.min(window.devicePixelRatio || 1, 3);
+  const vmin = Math.min(window.innerWidth, window.innerHeight);
+  const F = Math.max(46, Math.min(96, vmin * 0.14));                 // font-size: clamp(46px, 14vmin, 96px)
+  const key = F + '|' + dpr;
+  if (key === bootMark.key) return true;
+  bootMark.key = key; bootMark.dpr = dpr; bootMark.F = F;
+  const font = `900 ${F}px -apple-system, "SF Pro Rounded", system-ui, sans-serif`;
+  const probe = mkCanvas(1, 1).getContext('2d'); probe.font = font;
+  const letters = [...'CREASE'], ls = 0.14 * F, padL = 0.24 * F, padR = 0.1 * F;   // letter-spacing .14em, padding 0 .1em 0 .24em
+  const adv = letters.map(ch => probe.measureText(ch).width);
+  const W = padL + adv.reduce((a, b) => a + b + ls, 0) + padR, H = 1.1 * F;         // line-height 1.1
+  const M = Math.ceil(F * 0.45);                                                      // room for the glow outside the box
+  bootMark.W = W; bootMark.H = H; bootMark.M = M;
+  const c = $('bootMark');
+  c.width = Math.round((W + 2 * M) * dpr); c.height = Math.round((H + 2 * M) * dpr);
+  c.style.width = (W + 2 * M) + 'px'; c.style.height = (H + 2 * M) + 'px';
+  c.style.margin = `${-M}px auto`; c.style.aspectRatio = 'auto';
+  // glyph mask (white text) in device pixels, box origin at (0,0)
+  const m = probe.measureText('CREASE');
+  const asc = m.fontBoundingBoxAscent || F * 0.93, desc = m.fontBoundingBoxDescent || F * 0.24;
+  const base = (H - (asc + desc)) / 2 + asc;
+  const text = mkCanvas(W * dpr, H * dpr), tg = text.getContext('2d');
+  tg.scale(dpr, dpr); tg.font = font; tg.textBaseline = 'alphabetic'; tg.fillStyle = '#fff';
+  let x = padL;
+  for (let i = 0; i < letters.length; i++) { tg.fillText(letters[i], x, base); x += adv[i] + ls; }
+  bootMark.text = text;
+  for (const [k, col] of [['cyan', 'rgba(45,226,230,.7)'], ['pink', 'rgba(255,42,138,.7)']]) {
+    const o = mkCanvas(text.width, text.height), og = o.getContext('2d');
+    og.drawImage(text, 0, 0); og.globalCompositeOperation = 'source-in'; og.fillStyle = col; og.fillRect(0, 0, o.width, o.height);
+    bootMark[k] = o;
   }
+  // background tile: linear-gradient(100deg, …) sized 300% × 100% of the box
+  const tw = 3 * W * dpr, th = H * dpr, tile = mkCanvas(tw, th), gg = tile.getContext('2d');
+  const A = 100 * Math.PI / 180, dx = Math.sin(A), dy = -Math.cos(A);
+  const len = Math.abs(tw * dx) + Math.abs(th * dy), cx = tw / 2, cy = th / 2;
+  const grad = gg.createLinearGradient(cx - dx * len / 2, cy - dy * len / 2, cx + dx * len / 2, cy + dy * len / 2);
+  for (const [o, col] of HOLO_STOPS) grad.addColorStop(o, col);
+  gg.fillStyle = grad; gg.fillRect(0, 0, tw, th);
+  bootMark.tile = tile;
+  bootMark.grad = mkCanvas(text.width, text.height);
+  bootMark.sub = mkCanvas(text.width, text.height);
+  bootMark.layer = mkCanvas(c.width, c.height);
   return true;
+}
+// gradient-filled text at time t (background-position animates 0% → 300% over 5s, tiles repeat)
+function holoText(t) {
+  const g = bootMark.grad, gc = g.getContext('2d'), tw = bootMark.tile.width;
+  gc.globalCompositeOperation = 'source-over'; gc.clearRect(0, 0, g.width, g.height);
+  const off = -2 * bootMark.W * bootMark.dpr * 3 * ((t % 5) / 5);
+  let x = ((off % tw) + tw) % tw - tw;
+  for (; x < g.width; x += tw) gc.drawImage(bootMark.tile, x, 0);
+  gc.globalCompositeOperation = 'destination-in'; gc.drawImage(bootMark.text, 0, 0);
+  return g;
+}
+function bootMarkRender(t) {
+  if (!bootMarkSetup()) return;
+  const { dpr, M, H } = bootMark, c = $('bootMark'), ctx2 = c.getContext('2d');
+  const L = bootMark.layer, lc = L.getContext('2d'), mx = M * dpr;
+  lc.setTransform(1, 0, 0, 1, 0, 0); lc.clearRect(0, 0, L.width, L.height);
+  const holo = holoText(t);
+  lc.drawImage(holo, mx, mx);
+  // ::before (cyan shadow −3px) and ::after (pink shadow +3px), opacity .85, clipped + shifted during bursts
+  const pseudos = [[glitchSlice(GL1, (t % 2.6) / 2.6), bootMark.cyan, -3], [glitchSlice(GL2, (t % 3.1) / 3.1), bootMark.pink, 3]];
+  for (const [sl, shadow, sx] of pseudos) {
+    if (!sl) continue;
+    const [, top, bottom, tx] = sl;
+    const S = bootMark.sub, sc = S.getContext('2d');
+    sc.clearRect(0, 0, S.width, S.height);
+    sc.drawImage(shadow, sx * dpr, 0);
+    sc.drawImage(holo, 0, 0);
+    const y0 = top * H * dpr, y1 = (1 - bottom) * H * dpr;
+    lc.save(); lc.globalAlpha = 0.85;
+    lc.beginPath(); lc.rect(mx + tx * dpr, mx + y0, S.width, y1 - y0); lc.clip();
+    lc.drawImage(S, mx + tx * dpr, mx);
+    lc.restore();
+  }
+  // filter: drop-shadow(0 0 14px rgba(255,255,255,.28)) drop-shadow(0 0 2px rgba(255,255,255,.6))
+  ctx2.setTransform(1, 0, 0, 1, 0, 0); ctx2.clearRect(0, 0, c.width, c.height);
+  ctx2.save(); ctx2.shadowColor = 'rgba(255,255,255,.28)'; ctx2.shadowBlur = 14 * dpr; ctx2.drawImage(L, 0, 0); ctx2.restore();
+  ctx2.save(); ctx2.shadowColor = 'rgba(255,255,255,.6)'; ctx2.shadowBlur = 2 * dpr; ctx2.drawImage(L, 0, 0); ctx2.restore();
 }
 function bootMarkFrame(now) {
   if ($('boot').classList.contains('hidden')) { bootMark.raf = 0; return; }
   bootMark.raf = requestAnimationFrame(bootMarkFrame);
-  if (!bootMarkSetup()) return;
-  const t = now / 1000, { w, h } = bootMark, c = $('bootMark').getContext('2d');
-  c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, w, h);
-  // holographic colour sweep, masked to the letters
-  const grad = c.createLinearGradient(0, 0, w, 0);
-  for (let k = 0; k <= 10; k++) grad.addColorStop(k / 10, holoAt(k / 10 * 0.9 - t * 0.2));
-  const layer = document.createElement('canvas'); layer.width = w; layer.height = h;
-  const lg = layer.getContext('2d');
-  lg.fillStyle = grad; lg.fillRect(0, 0, w, h);
-  lg.globalCompositeOperation = 'destination-in'; lg.drawImage(bootMark.text, 0, 0);
-  // glow
-  c.save(); c.shadowColor = 'rgba(255,255,255,.45)'; c.shadowBlur = h * 0.14; c.drawImage(layer, 0, 0); c.restore();
-  c.drawImage(layer, 0, 0);
-  // glitch bursts: offset slices with cyan / pink split (same rhythm as the original: 2.6s and 3.1s cycles)
-  const p1 = (t % 2.6) / 2.6, p2 = (t % 3.1) / 3.1;
-  const burst = (p1 > 0.86 && p1 < 0.94) || (p2 > 0.78 && p2 < 0.83);
-  if (burst) {
-    const step = Math.floor(t * 30);
-    for (let i = 0; i < 3; i++) {
-      const r = Math.abs(Math.sin(step * 12.9898 + i * 78.233)) % 1;
-      const y = Math.floor(r * h * 0.8), sh = Math.max(2, Math.floor(h * (0.08 + r * 0.14)));
-      const dx = (r - 0.5) * h * 0.12;
-      c.drawImage(bootMark.cyan, 0, y, w, sh, dx - h * 0.03, y, w, sh);
-      c.drawImage(bootMark.pink, 0, y, w, sh, -dx + h * 0.03, y, w, sh);
-      c.drawImage(layer, 0, y, w, sh, dx, y, w, sh);
-    }
-  } else {
-    c.globalAlpha = 0.28;
-    c.drawImage(bootMark.cyan, -h * 0.012, 0); c.drawImage(bootMark.pink, h * 0.012, 0);
-    c.globalAlpha = 1;
-  }
+  bootMarkRender((now - bootMark.t0) / 1000);
 }
-function startBootMark() { if (!bootMark.raf) bootMark.raf = requestAnimationFrame(bootMarkFrame); }
+function startBootMark() { if (!bootMark.raf) { bootMark.t0 = performance.now(); bootMark.raf = requestAnimationFrame(bootMarkFrame); } }
 
 let booting = false;
 function showBoot() {
@@ -1572,6 +1637,7 @@ function drawIntro(sx, sy) {
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.drawImage(bg, sx * dpr, sy * dpr);
     beatGlow(sx, sy);
+    drawFloorGrid(game.t);
     fieldTf();
     const shade = 1 - seg(T, 0.8, 2.0);
     if (shade > 0) { ctx.fillStyle = `rgba(5,6,15,${shade * 0.85})`; ctx.fillRect(-0.3, -0.3, 1.6, L + 0.6); }
@@ -1688,6 +1754,29 @@ function drawVictory() {
 
 
 // ---------- vaporwave FX drawing ----------
+
+// The floor's horizontal lines scroll from the horizon toward each player, so the stage breathes.
+// Perspective: a line's distance from the horizon goes as f², f cycling 0→1, which is why they
+// spread out as they come at you. Verticals are painted once into the background.
+function drawFloorGrid(t) {
+  const L = view.L, px = 1 / view.s, hz0 = L / 2 + HORIZON, N = 11, SPEED = 0.11;
+  const col = ST().grid, beat = game.beat * 0.35;
+  ctx.save(); fieldTf(); rr(ctx, 0, 0, 1, L, 0.06); ctx.clip();
+  for (const half of [0, 1]) {
+    ctx.save();
+    if (half === 1) { ctx.translate(1, L); ctx.rotate(Math.PI); }
+    for (let i = 0; i < N; i++) {
+      const f = ((i / N + t * SPEED) % 1 + 1) % 1;
+      const v = hz0 + (L - hz0) * f * f;
+      const fade = Math.min(1, f * 6);                        // fade in at the horizon
+      ctx.globalAlpha = (0.22 + f * 0.5 + beat) * fade;
+      ctx.strokeStyle = col; ctx.lineWidth = (1 + f * 1.6) * px;
+      ctx.beginPath(); ctx.moveTo(-0.05, v); ctx.lineTo(1.05, v); ctx.stroke();
+    }
+    ctx.restore();
+  }
+  ctx.globalAlpha = 1; ctx.restore();
+}
 function beatGlow(sx, sy) {
   const a = game.beat * 0.4 + 0.04;
   ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -1902,6 +1991,18 @@ $('bSolo').onclick = () => start('solo');
 $('bDuo').onclick = () => start('duo');
 $('bHow').onclick = () => show('how', true);
 $('bIntro').onclick = () => { unlockAudio(); booted = true; playStudio(); };
+// stage picker
+{
+  const dots = $('stageDots');
+  STAGES.forEach((st, i) => {
+    const d = document.createElement('i');
+    d.dataset.i = i; d.title = st.name;
+    d.onclick = () => { setStage(i); tone(520 + i * 40, 0.05, 'triangle', 0.05); };
+    dots.appendChild(d);
+  });
+  $('stagePrev').onclick = () => { setStage(stageIx - 1); tone(440, 0.05, 'triangle', 0.05); };
+  $('stageNext').onclick = () => { setStage(stageIx + 1); tone(660, 0.05, 'triangle', 0.05); };
+}
 $('bHowClose').onclick = () => show('how', false);
 $('bSound').onclick = () => { muted = !muted; $('bSound').textContent = 'Sound: ' + (muted ? 'Off' : 'On'); unlockAudio(); booted = true; music.start(); };
 $('bPause').onclick = pause;
@@ -1930,6 +2031,8 @@ window.addEventListener('orientationchange', onResize);
 if (window.visualViewport) window.visualViewport.addEventListener('resize', onResize);
 
 // ---------- boot ----------
+try { const sv = +localStorage.getItem('crease.stage'); if (Number.isFinite(sv) && sv >= 0 && sv < STAGES.length) stageIx = sv; } catch (_) {}
+setStage(stageIx, false);
 layout();
 newMatch('demo');
 if (/[?&]nointro\b/.test(location.search) || challenged || storage.get('crease.visited.v1') === '1') show('menu', true); else showBoot();
@@ -1937,7 +2040,7 @@ requestAnimationFrame(t => { last = t; requestAnimationFrame(frame); });
 
 // test hooks (harmless in production)
 window.__crease = {
-  game, view, layout, newMatch, start, pause, playIntro, endIntro, showBoot, playStudio, endStudio, music, audio: () => ac,
+  game, view, layout, newMatch, start, pause, playIntro, endIntro, showBoot, playStudio, endStudio, bootMarkRender, setStage, STAGES, stage: () => stageIx, music, audio: () => ac,
   sim(seconds, step = 1 / 60) { for (let t = 0; t < seconds; t += step) update(step); },
   toScreen, toField,
 };
