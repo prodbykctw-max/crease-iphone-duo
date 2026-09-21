@@ -919,8 +919,19 @@ function antiStall(dt) {
   }
 }
 
+const perf = { avg: 16, detail: 1, hold: 0 };
+function perfTick(ms) {
+  perf.avg += (ms - perf.avg) * 0.05;
+  perf.hold -= 1;
+  if (perf.hold > 0) return;
+  const fps = 1000 / perf.avg;
+  if (fps < 30 && perf.detail > 0.35) { perf.detail = 0.35; perf.hold = 180; }
+  else if (fps < 45 && perf.detail > 0.65) { perf.detail = 0.65; perf.hold = 180; }
+  else if (fps > 56 && perf.detail < 1) { perf.detail = Math.min(1, perf.detail + 0.35); perf.hold = 300; }
+}
 function frame(now) {
   const raw = Math.max(0, (now - last) / 1000);
+  perfTick(raw * 1000);
   last = now;
   update(Math.min(0.05, raw), raw);
   draw();
@@ -963,9 +974,15 @@ function buildings(c, seed, baseV, hMax, px, opts = {}) {
     c.fillStyle = opts.fill || '#05010c';
     c.fillRect(u, baseV - h, w, h + 0.01);
     if (opts.edge) { c.strokeStyle = opts.edge; c.lineWidth = 1 * px; c.strokeRect(u, baseV - h, w, h); }
-    if (opts.win !== false) for (let wy = baseV - h + 0.006; wy < baseV - 0.004; wy += 0.008)
-      for (let wx = u + 0.004; wx < u + w - 0.003; wx += 0.006)
-        if (R() < 0.3) { c.fillStyle = hexA(R() < 0.5 ? ST().win[0] : ST().win[1], 0.85); c.fillRect(wx, wy, 1.6 * px, 1.6 * px); }
+    if (opts.win !== false) for (let wy = baseV - h + 0.005; wy < baseV - 0.003; wy += 0.0062)
+      for (let wx = u + 0.003; wx < u + w - 0.002; wx += 0.005)
+        if (R() < 0.34) { c.fillStyle = hexA(R() < 0.5 ? ST().win[0] : ST().win[1], 0.85); c.fillRect(wx, wy, 1.5 * px, 1.5 * px); }
+    if (opts.win !== false && R() < 0.45) {                    // roof antenna with a lamp
+      const au = u + w / 2, ah = h * (0.15 + R() * 0.3);
+      c.strokeStyle = hexA(ST().wire, 0.6); c.lineWidth = 1 * px;
+      c.beginPath(); c.moveTo(au, baseV - h); c.lineTo(au, baseV - h - ah); c.stroke();
+      c.fillStyle = hexA(ST().p2, 0.9); c.beginPath(); c.arc(au, baseV - h - ah, 1.6 * px, 0, Math.PI * 2); c.fill();
+    }
     u += w + 0.004 + R() * 0.012;
   }
 }
@@ -1152,12 +1169,13 @@ function drawScenery(t) {
   ctx.restore();
 }
 function sceneFx(t, H, half) {
-  const px = 1 / view.s, kind = SCENES[stageIx].fx, R = srand(5 + half * 97);
+  const px = 1 / view.s, kind = SCENES[stageIx].fx, R = srand(5 + half * 97), D = perf.detail;
+  const cnt = n => Math.max(2, Math.round(n * D));
   const wrap = x => ((x % 1.3) + 1.3) % 1.3 - 0.15;
   ctx.save();
   if (kind === 'snow' || kind === 'petals') {
     const petal = kind === 'petals';
-    for (let i = 0; i < 26; i++) {
+    for (let i = 0, n = cnt(26); i < n; i++) {
       const sp = 0.02 + R() * 0.05, ph = R();
       const v = ((t * sp + ph) % 1) * H, u = wrap(R() * 1.3 + Math.sin(t * 0.6 + i) * 0.02);
       ctx.globalAlpha = 0.5 + 0.4 * Math.sin(i + t);
@@ -1167,7 +1185,7 @@ function sceneFx(t, H, half) {
     }
   } else if (kind === 'embers' || kind === 'bubbles') {
     const up = kind === 'embers';
-    for (let i = 0; i < 22; i++) {
+    for (let i = 0, n = cnt(22); i < n; i++) {
       const sp = 0.03 + R() * 0.06, ph = R();
       const f = (t * sp + ph) % 1, v = up ? H * (1 - f) : H * (1 - f * 0.7);
       const u = wrap(R() * 1.3 + Math.sin(t * 1.4 + i * 2) * 0.012);
@@ -1185,13 +1203,13 @@ function sceneFx(t, H, half) {
         ctx.beginPath(); ctx.moveTo(u - 3 * px, v); ctx.quadraticCurveTo(u, v - 2.2 * px, u + 3 * px, v); ctx.stroke(); }
     }
   } else if (kind === 'sand') {
-    for (let i = 0; i < 16; i++) {
+    for (let i = 0, n = cnt(16); i < n; i++) {
       const sp = 0.08 + R() * 0.1, u = wrap(R() * 1.3 + t * sp), v = H * (0.75 + R() * 0.25);
       ctx.globalAlpha = 0.35; ctx.strokeStyle = ST().horizon; ctx.lineWidth = 1 * px;
       ctx.beginPath(); ctx.moveTo(u, v); ctx.lineTo(u + 0.03, v); ctx.stroke();
     }
   } else if (kind === 'warp') {
-    for (let i = 0; i < 14; i++) {
+    for (let i = 0, n = cnt(14); i < n; i++) {
       const sp = 0.12 + R() * 0.2, f = (t * sp + R()) % 1;
       const u = wrap(R() * 1.3), v = H * f;
       ctx.globalAlpha = f * 0.8; ctx.strokeStyle = '#e6c8ff'; ctx.lineWidth = 1.2 * px;
@@ -1214,8 +1232,33 @@ function sceneFx(t, H, half) {
       ctx.beginPath(); pts.forEach(([x, y], k) => k ? ctx.lineTo(x + off, y - off * 0.6) : ctx.moveTo(x + off, y - off * 0.6)); ctx.closePath(); ctx.stroke();
     }
   }
+  // fine detail everywhere: twinkling lights and a drifting fog band on the horizon
+  {
+    const R2 = srand(1201 + half * 31);
+    for (let i = 0, n = cnt(18); i < n; i++) {
+      const u = -0.1 + R2() * 1.2, v = H * (0.12 + R2() * 0.8), ph = R2() * 6.3;
+      const tw = Math.sin(t * (1.2 + R2() * 2) + ph);
+      if (tw < 0.55) continue;
+      ctx.globalAlpha = (tw - 0.55) * 1.6;
+      ctx.fillStyle = i % 3 ? ST().win[0] : ST().win[1];
+      ctx.fillRect(u, v, 1.6 * px, 1.6 * px);
+    }
+    for (let i = 0; i < 3; i++) {                            // slow beacons
+      const u = 0.12 + i * 0.36, blink = Math.sin(t * 1.6 + i * 2.1);
+      if (blink > 0.9) { ctx.globalAlpha = (blink - 0.9) * 8; ctx.fillStyle = ST().p2;
+        ctx.beginPath(); ctx.arc(u, H * (0.3 + 0.12 * i), 2.4 * px, 0, Math.PI * 2); ctx.fill(); }
+    }
+    for (let i = 0; i < (D > 0.7 ? 3 : 0); i++) {            // fog rolling along the horizon
+      const off = ((t * (0.012 + i * 0.006) + i * 0.4) % 1.4) - 0.2;
+      const g = ctx.createLinearGradient(0, H * (0.82 + i * 0.04), 0, H);
+      g.addColorStop(0, hexA(ST().horizon, 0)); g.addColorStop(1, hexA(ST().horizon, 0.12));
+      ctx.globalAlpha = 0.7; ctx.fillStyle = g;
+      ctx.fillRect(off - 0.3, H * (0.82 + i * 0.04), 0.9, H * 0.2);
+    }
+    ctx.globalAlpha = 1;
+  }
   if (stageIx === 2) {                                        // ICE: aurora ribbons
-    for (let r2 = 0; r2 < 3; r2++) {
+    for (let r2 = 0; r2 < (D > 0.5 ? 3 : 1); r2++) {
       ctx.globalAlpha = 0.16 + 0.08 * Math.sin(t * 0.7 + r2);
       ctx.strokeStyle = ['#7ef9ff', '#b9a7ff', '#a8ffe0'][r2]; ctx.lineWidth = H * 0.12;
       ctx.beginPath();
@@ -1227,7 +1270,7 @@ function sceneFx(t, H, half) {
     }
   }
   if (stageIx === 5) {                                        // MIAMI: water shimmer
-    for (let i = 0; i < 9; i++) {
+    for (let i = 0, n = cnt(9); i < n; i++) {
       const v = H * (0.66 + i * 0.035);
       ctx.globalAlpha = 0.25 + 0.15 * Math.sin(t * 1.5 + i);
       ctx.strokeStyle = '#8ffff0'; ctx.lineWidth = 1.2 * px;
@@ -1999,24 +2042,138 @@ function drawVictory() {
 // The floor's horizontal lines scroll from the horizon toward each player, so the stage breathes.
 // Perspective: a line's distance from the horizon goes as f², f cycling 0→1, which is why they
 // spread out as they come at you. Verticals are painted once into the background.
+// The floor is a road we're driving down. Lines sit at world depths and are projected with real
+// perspective (screen distance ∝ 1/depth), so they crawl out of the horizon, stretch apart and sweep
+// past the player. Depths recycle, so the trip never ends and the scenery never gets closer.
+const ROAD = { N: 16, DZ: 1, Z0: 1, SPEED: 0.75, POLES: 5 };
+const roadV = (z, hz, L) => hz + (L - hz) * (ROAD.Z0 / z);      // depth → screen position
 function drawFloorGrid(t) {
-  const L = view.L, px = 1 / view.s, hz0 = L / 2 + HORIZON, N = 11, SPEED = 0.11;
-  const col = ST().grid, beat = game.beat * 0.35;
+  const L = view.L, px = 1 / view.s, hz = L / 2 + HORIZON;
+  const st = ST(), col = st.grid, beat = game.beat * 0.3;
+  const span = ROAD.N * ROAD.DZ;
   ctx.save(); fieldTf(); rr(ctx, 0, 0, 1, L, 0.06); ctx.clip();
   for (const half of [0, 1]) {
     ctx.save();
     if (half === 1) { ctx.translate(1, L); ctx.rotate(Math.PI); }
-    for (let i = 0; i < N; i++) {
-      const f = ((i / N + t * SPEED) % 1 + 1) % 1;
-      const v = hz0 + (L - hz0) * f * f;
-      const fade = Math.min(1, f * 6);                        // fade in at the horizon
-      ctx.globalAlpha = (0.22 + f * 0.5 + beat) * fade;
-      ctx.strokeStyle = col; ctx.lineWidth = (1 + f * 1.6) * px;
+    // sun / horizon reflection pooled on the road, shimmering
+    const rg = ctx.createLinearGradient(0, hz, 0, L);
+    rg.addColorStop(0, hexA(st.sun[1], 0.22 + 0.05 * Math.sin(t * 2))); rg.addColorStop(0.45, hexA(st.sun[0], 0.05)); rg.addColorStop(1, hexA(st.sun[0], 0));
+    ctx.fillStyle = rg; ctx.fillRect(0.28, hz, 0.44, L - hz);
+    // cross lines rushing toward the player
+    for (let i = 0; i < ROAD.N; i++) {
+      let z = ROAD.Z0 + ((i * ROAD.DZ - t * ROAD.SPEED) % span + span) % span;
+      const v = roadV(z, hz, L), k = ROAD.Z0 / z;                 // k: 1 at the player, →0 at the horizon
+      if (v > L + 0.02) continue;
+      ctx.globalAlpha = Math.min(1, k * 3.4) * (0.26 + k * 0.6) + beat * k;
+      ctx.strokeStyle = col; ctx.lineWidth = (0.7 + k * 2.6) * px;
       ctx.beginPath(); ctx.moveTo(-0.05, v); ctx.lineTo(1.05, v); ctx.stroke();
     }
+    // dashed lane markers down the middle of the road
+    ctx.globalAlpha = 0.34;
+    for (let i = 0; i < 8; i++) {
+      let z = ROAD.Z0 + ((i * 2 - t * ROAD.SPEED) % (16) + 16) % 16;
+      const v0 = roadV(z, hz, L), v1 = roadV(z + 0.9, hz, L), k = ROAD.Z0 / z;
+      if (v0 > L) continue;
+      ctx.strokeStyle = hexA(st.horizon, Math.min(1, k * 2.5));
+      ctx.lineWidth = (0.6 + k * 2.2) * px;
+      ctx.beginPath(); ctx.moveTo(0.5, v1); ctx.lineTo(0.5, v0); ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+    drawRoadside(t, hz, L, px, half);
     ctx.restore();
   }
   ctx.globalAlpha = 1; ctx.restore();
+}
+// Roadside objects at fixed world offsets: they swell and sweep outward as they pass — the strongest
+// "we're moving" cue. One shape per stage.
+function drawRoadside(t, hz, L, px, half) {
+  const st = ST(), kind = SCENES[stageIx].fx, span = ROAD.POLES * 2.4;
+  if (perf.detail < 0.5) return;
+  for (const side of [-1, 1]) {
+    for (let i = 0; i < ROAD.POLES; i++) {
+      let z = ROAD.Z0 + ((i * 2.4 - t * ROAD.SPEED + side * 1.2) % span + span) % span;
+      const k = ROAD.Z0 / z, v = roadV(z, hz, L);
+      if (v > L + 0.05 || k < 0.06) continue;
+      const u = 0.5 + side * 0.62 * k, h = 0.34 * k;
+      const near = Math.max(0, Math.min(1, (k - 0.42) / 0.22));      // fade out as they sweep past
+      ctx.globalAlpha = Math.min(0.85, k * 3.2) * (1 - near);
+      if (ctx.globalAlpha < 0.02) continue;
+      roadsideShape(kind, u, v, h, px, st, side, t);
+    }
+  }
+  ctx.globalAlpha = 1;
+}
+function roadsideShape(kind, u, v, h, px, st, side, t) {
+  const lw = Math.max(0.8 * px, h * 0.08);
+  switch (kind) {
+    case 'cars': {                                    // street lamp
+      ctx.strokeStyle = '#120024'; ctx.lineWidth = lw;
+      ctx.beginPath(); ctx.moveTo(u, v); ctx.lineTo(u, v - h); ctx.lineTo(u - side * h * 0.22, v - h); ctx.stroke();
+      const g = ctx.createRadialGradient(u - side * h * 0.22, v - h, 0, u - side * h * 0.22, v - h, h * 0.22);
+      g.addColorStop(0, hexA(st.win[0], 0.75)); g.addColorStop(1, hexA(st.win[0], 0));
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(u - side * h * 0.22, v - h, h * 0.22, 0, Math.PI * 2); ctx.fill();
+      break;
+    }
+    case 'bubbles': {                                  // toxic barrel
+      ctx.fillStyle = '#0b2412'; ctx.strokeStyle = hexA(st.grid, 0.8); ctx.lineWidth = lw * 0.6;
+      ctx.fillRect(u - h * 0.16, v - h * 0.42, h * 0.32, h * 0.42);
+      ctx.strokeRect(u - h * 0.16, v - h * 0.42, h * 0.32, h * 0.42);
+      ctx.fillStyle = hexA(st.grid, 0.75); ctx.fillRect(u - h * 0.16, v - h * 0.3, h * 0.32, h * 0.06);
+      break;
+    }
+    case 'snow': {                                     // ice shard
+      ctx.fillStyle = '#0d2b47'; ctx.strokeStyle = hexA('#bfe9ff', 0.85); ctx.lineWidth = lw * 0.5;
+      ctx.beginPath(); ctx.moveTo(u - h * 0.16, v); ctx.lineTo(u, v - h * 0.8); ctx.lineTo(u + h * 0.16, v); ctx.closePath();
+      ctx.fill(); ctx.stroke();
+      break;
+    }
+    case 'embers': {                                   // lava rock with glow
+      const g = ctx.createRadialGradient(u, v - h * 0.2, 0, u, v - h * 0.2, h * 0.5);
+      g.addColorStop(0, hexA('#ff7a2f', 0.8)); g.addColorStop(1, hexA('#ff2f2f', 0));
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(u, v - h * 0.2, h * 0.5, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#1b0505'; ctx.beginPath();
+      ctx.moveTo(u - h * 0.2, v); ctx.lineTo(u - h * 0.08, v - h * 0.34); ctx.lineTo(u + h * 0.14, v - h * 0.28); ctx.lineTo(u + h * 0.2, v); ctx.closePath(); ctx.fill();
+      break;
+    }
+    case 'warp': {                                     // floating crystal
+      ctx.strokeStyle = hexA('#e6c8ff', 0.85); ctx.fillStyle = hexA('#2a0a5e', 0.8); ctx.lineWidth = lw * 0.5;
+      const y = v - h * (0.5 + 0.12 * Math.sin(t * 2 + u * 9));
+      ctx.beginPath(); ctx.moveTo(u, y - h * 0.3); ctx.lineTo(u + h * 0.18, y); ctx.lineTo(u, y + h * 0.3); ctx.lineTo(u - h * 0.18, y); ctx.closePath();
+      ctx.fill(); ctx.stroke();
+      break;
+    }
+    case 'gulls': {                                    // roadside palm
+      ctx.strokeStyle = '#04141a'; ctx.lineWidth = lw;
+      ctx.beginPath(); ctx.moveTo(u, v); ctx.quadraticCurveTo(u - side * h * 0.12, v - h * 0.5, u + side * h * 0.06, v - h); ctx.stroke();
+      ctx.strokeStyle = hexA(st.grid, 0.8); ctx.lineWidth = lw * 0.7;
+      for (const a of [-2.4, -1.9, -1.2, -0.7]) {
+        ctx.beginPath(); ctx.moveTo(u + side * h * 0.06, v - h);
+        ctx.quadraticCurveTo(u + Math.cos(a) * h * 0.3, v - h - Math.sin(-a) * h * 0.2, u + Math.cos(a) * h * 0.42, v - h * 0.78); ctx.stroke();
+      }
+      break;
+    }
+    case 'sand': {                                     // cactus
+      ctx.strokeStyle = '#231504'; ctx.lineCap = 'round'; ctx.lineWidth = h * 0.16;
+      ctx.beginPath(); ctx.moveTo(u, v); ctx.lineTo(u, v - h * 0.6); ctx.stroke();
+      ctx.lineWidth = h * 0.11;
+      ctx.beginPath(); ctx.moveTo(u, v - h * 0.36); ctx.lineTo(u + side * h * 0.2, v - h * 0.36); ctx.lineTo(u + side * h * 0.2, v - h * 0.52); ctx.stroke();
+      break;
+    }
+    case 'glitch': {                                   // wire pylon
+      ctx.strokeStyle = hexA('#ffffff', 0.7); ctx.lineWidth = lw * 0.5;
+      ctx.strokeRect(u - h * 0.12, v - h * 0.7, h * 0.24, h * 0.7);
+      ctx.beginPath(); ctx.moveTo(u - h * 0.12, v - h * 0.7); ctx.lineTo(u + h * 0.12, v); ctx.moveTo(u + h * 0.12, v - h * 0.7); ctx.lineTo(u - h * 0.12, v); ctx.stroke();
+      break;
+    }
+    case 'petals': {                                   // stone lantern
+      ctx.fillStyle = '#2a0512'; ctx.fillRect(u - h * 0.07, v - h * 0.45, h * 0.14, h * 0.45);
+      const g = ctx.createRadialGradient(u, v - h * 0.52, 0, u, v - h * 0.52, h * 0.22);
+      g.addColorStop(0, hexA('#ffd9ea', 0.9)); g.addColorStop(1, hexA('#ff9ec4', 0));
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(u, v - h * 0.52, h * 0.3, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#2a0512'; ctx.fillRect(u - h * 0.16, v - h * 0.66, h * 0.32, h * 0.05);
+      break;
+    }
+  }
 }
 function beatGlow(sx, sy) {
   const a = game.beat * 0.4 + 0.04;
@@ -2281,7 +2438,7 @@ requestAnimationFrame(t => { last = t; requestAnimationFrame(frame); });
 
 // test hooks (harmless in production)
 window.__crease = {
-  game, view, layout, newMatch, start, pause, playIntro, endIntro, showBoot, playStudio, endStudio, bootMarkRender, setStage, STAGES, stage: () => stageIx, music, audio: () => ac,
+  game, view, layout, newMatch, start, pause, playIntro, endIntro, showBoot, playStudio, endStudio, bootMarkRender, setStage, STAGES, stage: () => stageIx, perf, music, audio: () => ac,
   sim(seconds, step = 1 / 60) { for (let t = 0; t < seconds; t += step) update(step); },
   toScreen, toField,
 };

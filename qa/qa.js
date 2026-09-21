@@ -310,6 +310,10 @@ const checkFn = () => {
     await ic.close();
   }
 
+  {
+    const pf = await page.evaluate(() => ({ detail: window.__crease.perf.detail, fps: Math.round(1000 / window.__crease.perf.avg) }));
+    ok('quality guard reacts to frame rate', pf.detail > 0 && pf.detail <= 1, JSON.stringify(pf));
+  }
   ok('no console/page errors', errors.length === 0, errors.join(' | '));
   await browser.close();
   for (const r of results) console.log(r.join('  '));
