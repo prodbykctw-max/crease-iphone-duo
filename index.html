@@ -134,6 +134,21 @@ button:focus-visible{outline:2px solid var(--p1);outline-offset:4px}
 .arena-tile[aria-pressed=true]{border-color:var(--p1);box-shadow:0 0 0 1px var(--p1)}
 .arena-tile img{display:block;width:100%;aspect-ratio:2.7;object-fit:cover;margin-bottom:8px;pointer-events:none}
 .arena-tile strong{display:block;padding:0 10px;font-size:10px;letter-spacing:.08em}
+.arena-tile small{display:block;padding:5px 10px 0;color:#aaa3bf;font-size:10px;line-height:1.4}
+.btn:disabled{opacity:.48;cursor:not-allowed}
+#achievements{color:#f5eaff;background:#0b0914;border:1px solid #554467;border-radius:18px;width:min(780px,92vw);max-height:88dvh;padding:20px;overflow:auto;touch-action:pan-y}
+#achievements::backdrop{background:rgba(0,0,0,.82)}
+.achievement-tools{display:flex;gap:10px;margin:14px 0;flex-wrap:wrap}
+.achievement-tools input,.achievement-tools select{min-height:44px;background:#181124;color:#fff;border:1px solid #625271;border-radius:8px;padding:10px;font:inherit;flex:1}
+.achievement-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:10px}
+.achievement-item{padding:13px;background:#171122;border:1px solid #372c46;border-radius:10px}
+.achievement-item.earned{border-color:#38baa3}
+.achievement-item h3{font-size:14px;margin:0 0 7px}.achievement-item p{font-size:12px;color:#c2b5d4;margin:0 0 8px;line-height:1.5}
+.achievement-item progress{width:100%;accent-color:#34d9ca}
+#achievementToast{position:fixed;bottom:max(18px,env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);z-index:12;max-width:90vw;padding:12px 18px;border:1px solid #58ebc0;background:#0c1821;color:#fff;border-radius:12px;pointer-events:none;text-align:center;font-size:13px}
+.product-dialog{color:#f5eaff;background:#0b0914;border:1px solid #554467;border-radius:18px;width:min(780px,92vw);max-height:88dvh;padding:20px;overflow:auto;touch-action:pan-y}
+.product-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;margin:14px 0}.product-card{border:1px solid #372c46;border-radius:10px;background:#171122;padding:14px}.product-card.locked{opacity:.62}.product-card h3{margin:0 0 7px;font-size:15px}.product-card p{margin:0;color:#c2b5d4;font-size:12px;line-height:1.5}.product-card button{margin-top:10px;width:100%;min-height:42px}
+.leaderboard-list{margin:14px 0;padding:0;list-style:none}.leaderboard-list li{display:grid;grid-template-columns:32px 1fr auto;gap:10px;padding:12px 8px;border-bottom:1px solid #2b2337}.leaderboard-list small{color:#a99fba}
 @media(max-width:650px){.arena-shell{padding:14px}.arena-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.arena-copy{align-items:stretch;flex-direction:column}.arena-copy .btn{flex:auto}.arena-heading h2{font-size:20px}}
 </style>
 </head>
@@ -179,6 +194,9 @@ button:focus-visible{outline:2px solid var(--p1);outline-offset:4px}
       <button id="bShareMenu" class="link">Challenge a friend</button>
       <button id="bIntro" class="link">Intro</button>
       <button id="bArenas" class="link">Explore arenas</button>
+      <button id="bAchievements" class="link">Achievements · 1,989</button>
+      <button id="bLeaderboard" class="link">Leaderboard</button>
+      <button id="bPremium" class="link">Premium garage</button>
       <button id="bSound" class="link">Sound: On</button>
     </div>
   <p id="menuShareStatus" class="share-status" role="status"></p>
@@ -195,6 +213,18 @@ button:focus-visible{outline:2px solid var(--p1);outline-offset:4px}
     <div id="arenaGrid" class="arena-grid"></div>
   </section>
 </div>
+
+<dialog id="achievements" aria-labelledby="achievementTitle">
+  <div class="arena-heading"><h2 id="achievementTitle">ACHIEVEMENTS</h2><button id="bAchievementsClose" class="link">Close</button></div>
+  <p id="achievementTotal" role="status"></p>
+  <p class="hint">Saved on this browser. Tracks solo play and Player 1 in local two-player. Finish matches to claim achievements and unlock arenas.</p>
+  <div class="achievement-tools"><input id="achievementSearch" type="search" placeholder="Search achievements" aria-label="Search achievements"><select id="achievementFilter" aria-label="Achievement filter"><option value="all">All</option><option value="earned">Earned</option><option value="special">Special challenges</option><option value="locked">Not earned yet</option></select></div>
+  <div id="achievementList" class="achievement-list"></div>
+  <div class="row"><button id="achievementPrev" class="link">Previous</button><span id="achievementPage"></span><button id="achievementNext" class="link">Next</button></div>
+</dialog>
+<div id="achievementToast" class="hidden" role="status" aria-live="polite"></div>
+<dialog id="leaderboard" class="product-dialog" aria-labelledby="leaderboardTitle"><div class="arena-heading"><h2 id="leaderboardTitle">LEADERBOARD</h2><button id="bLeaderboardClose" class="link">Close</button></div><p class="hint">This browser’s local board is active now. A public board can be connected to your D1 endpoint after you choose the player identity and anti-cheat rules.</p><label class="field">Display name<input id="leaderboardName" maxlength="24" autocomplete="nickname" placeholder="Player 1"></label><button id="saveLeaderboardName" class="btn plain">SAVE NAME</button><ol id="leaderboardList" class="leaderboard-list"></ol></dialog>
+<dialog id="premium" class="product-dialog" aria-labelledby="premiumTitle"><div class="arena-heading"><h2 id="premiumTitle">PREMIUM GARAGE</h2><button id="bPremiumClose" class="link">Close</button></div><p id="premiumStatus" class="hint"></p><div id="premiumGrid" class="product-grid"></div><a id="premiumCheckout" class="btn p1" target="_blank" rel="noopener noreferrer">GET PREMIUM PASS</a></dialog>
 
 <div id="how" class="overlay hidden">
   <div class="card">
@@ -248,7 +278,9 @@ button:focus-visible{outline:2px solid var(--p1);outline-offset:4px}
 
 <script src="analytics-config.js"></script>
 <script src="analytics.js"></script>
-<script src="assets/arena-engine.js"></script>
+<script src="assets/arena-engine.js?v=shared-sun-1"></script>
+<script src="assets/progression.js?v=1989-1"></script>
+<script src="assets/monetization.js?v=pass-1"></script>
 <script>
 (() => {
 'use strict';
@@ -264,6 +296,16 @@ const storage = {
   get(key) { try { return localStorage.getItem(key); } catch (_) { return null; } },
   set(key, value) { try { localStorage.setItem(key, value); } catch (_) {} },
 };
+let achievementBatch=[],achievementTimer=0,achievementHide=0;
+const progress=window.CreaseProgression.create({getItem:key=>localStorage.getItem(key),setItem:(key,value)=>localStorage.setItem(key,value)},event=>{
+  achievementBatch.push(event);clearTimeout(achievementTimer);
+  achievementTimer=setTimeout(()=>{
+    const stages=achievementBatch.filter(e=>e.type==='stage'),earned=achievementBatch.filter(e=>e.type==='achievement');
+    $('achievementToast').textContent=[earned.length?`${earned.length} achievement${earned.length===1?'':'s'} earned · ${earned[0].item.name}`:'',stages.length?`Arena unlocked: ${stages.map(e=>e.name).join(', ')}`:''].filter(Boolean).join(' — ');
+    show('achievementToast',true);clearTimeout(achievementHide);achievementHide=setTimeout(()=>show('achievementToast',false),5500);
+    achievementBatch=[];refreshStageLock();
+  },150);
+});
 let totals;
 try { totals = JSON.parse(storage.get('crease.metrics.v1') || '{}'); } catch (_) {}
 if (!totals || typeof totals !== 'object' || Array.isArray(totals)) totals = {};
@@ -307,6 +349,7 @@ function setStage(i, rebuild = true) {
   if (dots) for (const d of dots.children) d.setAttribute('aria-pressed', String(+d.dataset.i === stageIx));
   if (window.CreaseArenas) window.CreaseArenas.select(stageIx);
   updateArenaSelection();
+  refreshStageLock();
   document.documentElement.style.setProperty('--p1', ST().p1);
   document.documentElement.style.setProperty('--p2', ST().p2);
   if (rebuild) { sceneLayers.key = ''; buildBg(); }
@@ -376,8 +419,8 @@ const game = {
   bumpers: [], pops: [], board: null, hitstop: 0, beat: 0, surges: [], stageFlash: 0, railHits: [],
   introT: 0, introFx: 0, rings: [], shake: 0, flashW: 0, overT: 0, confT: 0,
   state: 'play', resume: 'play', mode: 'demo', diff: 'normal',
-  score: [0, 0], pucks: [], paddles: [], pups: [], parts: [], shields: [0, 0],
-  timer: 0, pupT: 8, msg: '', msgT: 0, winner: 0, conceder: 0, t: 0, crease: 0, flash: [0, 0], overShown: false,
+score: [0, 0], pucks: [], paddles: [], pups: [], parts: [], shields: [0, 0],
+  timer: 0, pupT: 8, msg: '', msgT: 0, winner: 0, conceder: 0, t: 0, crease: 0, flash: [0, 0], overShown: false, fire: [0, 0], streak: [0, 0], roundPups: [[], []],
 };
 let muted = false;
 
@@ -396,8 +439,10 @@ function rescaleV(k) {
 }
 
 function newMatch(mode) {
+  if (mode !== 'demo' && !progress.canPlay(stageIx)) return false;
+  progress.begin({mode,stage:stageIx,difficulty:game.diff});
   game.mode = mode;
-  game.score = [0, 0]; game.shields = [0, 0]; game.pups = []; game.parts = [];
+  game.score = [0, 0]; game.shields = [0, 0]; game.pups = []; game.parts = []; game.fire=[0,0]; game.streak=[0,0]; game.roundPups=[[],[]];
   game.paddles = [mkPaddle(1, mode === 'demo' ? 'cpu' : 'human'), mkPaddle(2, mode === 'duo' ? 'human' : 'cpu')];
   game.winner = 0; game.overShown = false; game.pupT = rand(6, 9);
   game.pops = []; game.hitstop = 0; resetBoard();
@@ -411,6 +456,13 @@ function resetRound(servTo, cd = 0.9) {
   game.pucks = [mkPuck(0.5, v)];
   game.shields = [0, 0];
   for (const pd of game.paddles) { pd.u = pd.tu = 0.5; pd.v = pd.tv = pd.p === 1 ? L - 0.2 : 0.2; pd.vu = pd.vv = 0; pd.big = 0; pd.r = CFG.padR; }
+  if(CreaseProduct.extendRounds()){
+    for(const [who,list] of game.roundPups.entries())for(const type of list){
+      if(type==='BIG')game.paddles[who].big=8*1.6;
+      if(type==='WALL')game.shields[who]=6*1.6;
+    }
+    game.roundPups=[[],[]];
+  }
   game.state = 'countdown'; game.timer = cd;
 }
 
@@ -712,12 +764,15 @@ function hitPaddle(pk, pd) {
     const j = -(1 + CFG.padRest) * vn;
     pk.vu += j * nu; pk.vv += j * nv;
     pk.last = pd.p; pk.bumped = false;
+    pk.lastTouch = pd.p; pk.rallyHits = (pk.rallyHits || 0) + 1;
+    progress.event('hit',{player:pd.p,rally:pk.rallyHits});
     const col = pd.p === 1 ? COL.p1 : COL.p2;
     const push = Math.max(0, pd.vu * nu + pd.vv * nv);   // paddle speed driving into the puck
     pd.punch = Math.min(1, (pd.punch || 0) + 0.25 + Math.min(1, j / 3) * 0.5);
     if (push > CFG.smashNeed && j > 2.2 && pk.smashT < 0.45) {   // one SMASH per strike, not per contact frame
       // SMASH: flicked hard into the puck
       pk.smashT = 0.7;
+      progress.event('smash',{player:pd.p});
       pk.vu *= 1.3; pk.vv *= 1.3;
       juice({ stop: 0.085, shake: 0.4, flash: 0.18 });
       surge(pk.u, pk.v, '#ffffff', 1.5);
@@ -799,6 +854,7 @@ function boardScore(i) {
 function railFx(pk, nu = 0, nv = 0) {
   const now = game.t, sp = Math.hypot(pk.vu, pk.vv);
   if (sp < 0.3) return;
+  progress.event('rail',{player:pk.lastTouch});
   const k = Math.min(1, sp / 3);
   game.railHits.push({ u: pk.u, v: pk.v, t: 0, k, col: pk.smashT > 0 ? COL.gold : ST().grid });
   if (game.railHits.length > 6) game.railHits.shift();
@@ -808,18 +864,21 @@ function railFx(pk, nu = 0, nv = 0) {
 }
 
 function grant(pu, who) {
+  progress.event('power',{player:who,kind:pu.type});
   pu.dead = true;
   const col = COL[pu.type];
   burst(pu.u, pu.v, col, 22, 1.4);
   tone(660, 0.1, 'sine', 0.12, 2); setTimeout(() => tone(990, 0.12, 'sine', 0.1, 1.5), 70);
   const pd = game.paddles[who - 1];
-  if (pu.type === 'BIG') pd.big = 8;
-  else if (pu.type === 'WALL') game.shields[who - 1] = 6;
+  const duration=CreaseProduct.isPremium()?1.6:1;
+  if (pu.type === 'BIG') pd.big = 8*duration;
+  else if (pu.type === 'WALL') game.shields[who - 1] = 6*duration;
   else if (pu.type === 'MULTI' && game.pucks.length < CFG.maxPucks) {
     const dir = who === 1 ? -1 : 1;
     const np = mkPuck(pu.u, pu.v, rand(-0.6, 0.6), dir * 1.3); np.last = who;
     game.pucks.push(np);
   }
+  if(CreaseProduct.extendRounds())game.roundPups[who-1].push(pu.type);
   addPop(pu.type === 'BIG' ? 'BIG PADDLE' : pu.type === 'MULTI' ? 'MULTI PUCK' : 'GOAL WALL', pu.u, pu.v, col, who, 0.07);
 }
 function spawnPup() {
@@ -833,6 +892,11 @@ function scored(scorer, pk) {
   pk.dead = true;
   const L = view.L;
   game.score[scorer - 1]++;
+  const ownTouch=pk.lastTouch===scorer;
+  if(ownTouch){game.streak[scorer-1]++;if(game.streak[scorer-1]>=CreaseProduct.fireThreshold){game.fire[scorer-1]=7;addPop('FIRE MODE',.5,scorer===1?L*.58:L*.42,CreaseProduct.paddleStyle().trail,scorer,.1,true);toast('FIRE MODE · 3 GOALS IN A ROW',1.8);}}
+  else {game.streak[scorer-1]=0;game.fire[scorer-1]=0;}
+  game.streak[scorer===1?1:0]=0;game.fire[scorer===1?1:0]=0;
+  progress.goal({scorer,lastTouch:pk.lastTouch,smash:pk.lastTouch===scorer&&pk.smashT>0,bank:pk.lastTouch===scorer&&pk.bumped});
   game.flash[scorer - 1] = 1;
   const col = scorer === 1 ? COL.p1 : COL.p2, gv = scorer === 1 ? 0 : L;
   burst(0.5, gv, col, 40, 2); burst(0.5, gv, '#ffffff', 16, 1.4);
@@ -922,6 +986,7 @@ function update(dt, raw = dt) {
   game.pops = game.pops.filter(p => p.t < p.life);
   game.beat = Math.max(0, game.beat - dt * 3.2);
   game.stageFlash = Math.max(0, game.stageFlash - dt * 2.2);
+  game.fire[0]=Math.max(0,game.fire[0]-dt);game.fire[1]=Math.max(0,game.fire[1]-dt);
   for (const sg of game.surges) sg.t += dt;
   game.surges = game.surges.filter(sg => sg.t < sg.life);
   for (const rh of game.railHits) rh.t += dt;
@@ -971,6 +1036,7 @@ function update(dt, raw = dt) {
       if (game.timer <= 0) { game.state = 'play'; tone(880, 0.12, 'sine', 0.1); }
       break;
     case 'play':
+      progress.event('tick',{dt});
       game.pupT -= dt;
       if (game.pupT <= 0) spawnPup();
       antiStall(dt);
@@ -1323,6 +1389,7 @@ function drawScenery(t) {
     sceneFx(t, H, half);
     ctx.restore();
   }
+  arenas?.drawCenter(ctx,{L,focal,beat:game.beat});
   ctx.restore();
 }
 function sceneFx(t, H, half) {
@@ -1648,14 +1715,16 @@ function drawRings() {
 function drawPaddle(pd, glowA) {
   const px = 1 / view.s;
   const col = pd.p === 1 ? COL.p1 : COL.p2;
+  const style=CreaseProduct.paddleStyle();
   const ring = pd.big > 0 ? COL.BIG : col;
-  glowCircle(pd.u, pd.v, pd.r * 1.7, col, glowA);
+  glowCircle(pd.u, pd.v, pd.r * 1.7, style.trail, glowA+(game.fire[pd.p-1]>0?.18:0));
   ctx.fillStyle = '#0b0e22';
   ctx.beginPath(); ctx.arc(pd.u, pd.v, pd.r, 0, Math.PI * 2); ctx.fill();
-  ctx.lineWidth = Math.max(4 * px, pd.r * 0.2); ctx.strokeStyle = ring;
+  ctx.lineWidth = Math.max(4 * px, pd.r * 0.2); ctx.strokeStyle = pd.big > 0 ? COL.BIG : style.ring;
   ctx.beginPath(); ctx.arc(pd.u, pd.v, pd.r * 0.88, 0, Math.PI * 2); ctx.stroke();
-  ctx.fillStyle = col;
+  ctx.fillStyle = style.core;
   ctx.beginPath(); ctx.arc(pd.u, pd.v, pd.r * 0.42, 0, Math.PI * 2); ctx.fill();
+  if(game.fire[pd.p-1]>0){ctx.strokeStyle=style.trail;ctx.lineWidth=2*px;ctx.beginPath();ctx.arc(pd.u,pd.v,pd.r*1.25+Math.sin(game.t*12)*px,pd.v*.0,Math.PI*2);ctx.stroke();}
   ctx.fillStyle = 'rgba(255,255,255,.55)';
   ctx.beginPath(); ctx.arc(pd.u - pd.r * 0.12, pd.v - pd.r * 0.12, pd.r * 0.14, 0, Math.PI * 2); ctx.fill();
 }
@@ -1667,6 +1736,8 @@ function drawPuck(pk, tint, scale = 1, alpha = 1) {
     glowCircle(tr[i * 2], tr[i * 2 + 1], pk.r * (0.35 + 0.6 * a), tint, 0.18 * a * alpha);
   }
   const r = pk.r * scale;
+  const fire=pk.last&&game.fire[pk.last-1]>0;
+  if(fire){for(let i=0;i<5;i++){const a=game.t*7+i*1.25;glowCircle(pk.u+Math.cos(a)*r*(1.4+i*.28),pk.v+Math.sin(a)*r*(1.4+i*.28),r*(.22+.08*Math.sin(a)),i%2? '#ffb52e':'#ff4e24',.18);}}
   glowCircle(pk.u, pk.v, r * 1.8, tint, 0.14 * alpha);
   ctx.globalAlpha = alpha;
   ctx.fillStyle = COL.puck;
@@ -1694,6 +1765,7 @@ function drawGame(sx, sy) {
   drawScenery(game.t);
   drawFloorGrid(game.t);
   fieldTf();
+  drawDepthRails();
 
   const duo = game.mode === 'duo';
   drawScoreNums();
@@ -2243,7 +2315,7 @@ function drawVictory() {
 // Hits make the existing lines light up; nothing is added to the grid itself.
 function drawFloorGrid(t) {
   const L = view.L, px = 1 / view.s, hz0 = L / 2 + HORIZON, N = 11, SPEED = 0.11;
-  const col = ST().grid, beat = game.beat * 0.35;
+  const col = ST().grid, beat = game.beat * 0.35 + (game.fire[0]||game.fire[1]?0.22:0);
   ctx.save(); fieldTf(); rr(ctx, 0, 0, 1, L, 0.06); ctx.clip();
   for (const half of [0, 1]) {
     ctx.save();
@@ -2440,7 +2512,89 @@ function updateHint() {
   $('duoSub').textContent = land ? 'recommended here' : 'top vs bottom';
 }
 
+// Raised perimeter architecture, under play objects and outside the puck lane.
+function drawDepthRails(){
+  const L=view.L,px=1/view.s,reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
+  ctx.save();
+  for(const side of [0,1]){
+    ctx.save();if(side){ctx.translate(1,L);ctx.rotate(Math.PI);}
+    const shadow=ctx.createLinearGradient(0,0,.046,0);shadow.addColorStop(0,'rgba(0,0,0,.65)');shadow.addColorStop(1,'rgba(0,0,0,0)');
+    ctx.fillStyle=shadow;ctx.fillRect(0,.10,.046,L-.20);
+    for(let i=0;i<12;i++){
+      const v=.12+i*(L-.24)/12,h=(L-.24)/12*.72;
+      if(Math.abs(v-L/2)<.10)continue;
+      let charge=0;
+      for(const p of game.pucks){const u=side?1-p.u:p.u,pv=side?L-p.v:p.v;charge=Math.max(charge,Math.max(0,1-Math.hypot(u,pv-v-h/2)/.19));}
+      for(const hit of game.railHits){const u=side?1-hit.u:hit.u,hv=side?L-hit.v:hit.v;if(u<.09)charge=Math.max(charge,Math.max(0,1-Math.abs(hv-v)/.22)*(1-Math.min(1,hit.t*3)));}
+      if(reduced)charge=.15;
+      ctx.fillStyle='#070a13';ctx.fillRect(-.028,v,.026,h);
+      const bevel=ctx.createLinearGradient(-.028,0,.006,0);bevel.addColorStop(0,'#070911');bevel.addColorStop(.6,'#343a48');bevel.addColorStop(1,'#0b0e17');
+      ctx.fillStyle=bevel;ctx.beginPath();ctx.moveTo(-.028,v);ctx.lineTo(-.012,v-.013);ctx.lineTo(.006,v-.013);ctx.lineTo(-.002,v);ctx.closePath();ctx.fill();
+      ctx.fillStyle=hexA(ST().grid,.2+charge*.65);ctx.fillRect(-.018,v+.008,.005,h-.016);
+      ctx.strokeStyle=hexA(ST().horizon,.15+charge*.55);ctx.lineWidth=px;ctx.beginPath();ctx.moveTo(-.002,v);ctx.lineTo(-.002,v+h);ctx.stroke();
+      for(let j=1;j<4;j++){ctx.fillStyle='rgba(255,255,255,.08)';ctx.fillRect(-.026,v+h*j/4,.011,px*.6);}
+    }
+    ctx.restore();
+  }
+  // Contact shadows anchor paddles and bumpers above the luminous floor.
+  ctx.fillStyle='rgba(0,0,0,.38)';
+  for(const p of [...game.paddles,...game.bumpers]){ctx.beginPath();ctx.ellipse(p.u+.009,p.v+.014,p.r*1.10,p.r*.82,0,0,Math.PI*2);ctx.fill();}
+  ctx.restore();
+}
+
 // ---------- UI ----------
+function refreshStageLock(){
+  const playable=progress.canPlay(stageIx);
+  $('bSolo').disabled=$('bDuo').disabled=!playable;
+  $('bArenaUse').disabled=!playable;$('bArenaUse').textContent=playable?'USE THIS ARENA':'ARENA LOCKED';
+  if(!playable)$('screenHint').textContent='Locked · '+progress.requirement(stageIx);else updateHint();
+  for(const el of document.querySelectorAll('[data-lock]'))el.textContent=progress.canPlay(+el.dataset.lock)?'Unlocked':progress.requirement(+el.dataset.lock);
+}
+let achievementPage=0;
+function renderAchievements(){
+  const query=$('achievementSearch').value.trim().toLowerCase(),filter=$('achievementFilter').value,earned=progress.state.earned;
+  const rows=progress.catalog.filter(a=>(!query||(a.name+' '+a.description).toLowerCase().includes(query))&&(filter==='all'||filter==='special'&&a.category==='Special'||filter==='earned'&&earned[a.id]!==undefined||filter==='locked'&&earned[a.id]===undefined));
+  const pages=Math.max(1,Math.ceil(rows.length/36));achievementPage=Math.min(achievementPage,pages-1);
+  $('achievementTotal').textContent=`${Object.keys(earned).length.toLocaleString()} / 1,989 earned${progress.saved?'':' · Browser storage unavailable; progress may be lost when closed.'}`;
+  $('achievementPage').textContent=`${achievementPage+1} / ${pages}`;
+  $('achievementPrev').disabled=achievementPage===0;$('achievementNext').disabled=achievementPage===pages-1;
+  const list=$('achievementList');list.replaceChildren();
+  for(const a of rows.slice(achievementPage*36,(achievementPage+1)*36)){
+    const card=document.createElement('article');card.className='achievement-item'+(earned[a.id]!==undefined?' earned':'');
+    const name=document.createElement('h3');name.textContent=(earned[a.id]!==undefined?'✓ ':'')+a.name;
+    const desc=document.createElement('p');desc.textContent=a.description;
+    const meter=document.createElement('progress');meter.max=a.target;meter.value=Math.min(a.target,progress.progress(a));meter.setAttribute('aria-label',a.name);
+    const amount=document.createElement('p');amount.textContent=`${Math.min(a.target,progress.progress(a)).toLocaleString()} / ${a.target.toLocaleString()}`;
+    card.append(name,desc,meter,amount);list.append(card);
+  }
+  if(!rows.length)list.textContent='No achievements match this search.';
+}
+$('bAchievements').onclick=()=>{renderAchievements();$('achievements').showModal();};
+$('bAchievementsClose').onclick=()=>$('achievements').close();
+$('achievementSearch').oninput=$('achievementFilter').onchange=()=>{achievementPage=0;renderAchievements();};
+$('achievementPrev').onclick=()=>{achievementPage=Math.max(0,achievementPage-1);renderAchievements();};
+$('achievementNext').onclick=()=>{achievementPage++;renderAchievements();};
+$('achievements').addEventListener('keydown',e=>e.stopPropagation());
+function renderLeaderboard(){
+  const list=$('leaderboardList');list.replaceChildren();$('leaderboardName').value=CreaseProduct.name();const rows=CreaseProduct.scores();
+  if(!rows.length){list.textContent='No local scores yet. Finish a match to claim the first spot.';return;}
+  rows.slice(0,50).forEach((row,i)=>{const li=document.createElement('li');li.innerHTML=`<span>${i+1}</span><span>${String(row.name).replace(/[<>]/g,'')}</span><strong>${row.wins||0} W <small>${row.streak||0} streak</small></strong>`;list.append(li);});
+}
+function renderPremium(){
+  const paid=CreaseProduct.isPremium();$('premiumStatus').textContent=paid?'Premium Pass active on this browser.':'Free garage: Classic Cyan is available. Premium cosmetics and modifiers are locked until the one-time pass is verified.';
+  $('premiumCheckout').href=CreaseProduct.checkout();$('premiumCheckout').textContent=paid?'Creator contact / manage pass':'GET PREMIUM PASS';
+  const grid=$('premiumGrid');grid.replaceChildren();
+  for(const [id,s] of Object.entries(CreaseProduct.styles)){
+    const card=document.createElement('article');card.className='product-card'+(s.premium&&!paid?' locked':'');
+    const h=document.createElement('h3');h.textContent=s.name;const p=document.createElement('p');p.textContent=s.premium?'Premium paddle appearance with distinct trail and arena lighting.':'Included with every game.';
+    const b=document.createElement('button');b.className='btn plain';b.textContent=s.premium&&!paid?'LOCKED':(CreaseProduct.paddleStyle()===s?'EQUIPPED':'EQUIP');b.disabled=s.premium&&!paid;b.onclick=()=>{if(CreaseProduct.setPaddleStyle(id))renderPremium();};card.append(h,p,b);grid.append(card);
+  }
+  const extra=document.createElement('article');extra.className='product-card'+(paid?'':' locked');extra.innerHTML='<h3>Round Carryover</h3><p>Collected BIG and WALL power-ups persist into the next round. MULTI remains a round pickup.</p>';grid.append(extra);
+  const fire=document.createElement('article');fire.className='product-card';fire.innerHTML='<h3>Fire Mode</h3><p>Free gameplay feature: score three goals in a row to ignite the puck, rails and grid for seven seconds.</p>';grid.append(fire);
+}
+$('bLeaderboard').onclick=()=>{renderLeaderboard();$('leaderboard').showModal();};$('bLeaderboardClose').onclick=()=>$('leaderboard').close();$('saveLeaderboardName').onclick=()=>{CreaseProduct.setName($('leaderboardName').value);renderLeaderboard();};
+$('bPremium').onclick=()=>{renderPremium();$('premium').showModal();};$('bPremiumClose').onclick=()=>$('premium').close();
+$('leaderboard').addEventListener('keydown',e=>e.stopPropagation());$('premium').addEventListener('keydown',e=>e.stopPropagation());
 let arenaRaf = 0, arenaLastFrame = -Infinity;
 function updateArenaSelection() {
   const world = window.CreaseArenas?.worlds[stageIx]; if (!world) return;
@@ -2460,13 +2614,13 @@ function renderArenaPreview(now) {
   c.setTransform(w,0,0,w,0,0); c.fillStyle = '#030309'; c.fillRect(0,0,1,h/w);
   const engine = window.CreaseArenas, t = game.t;
   const focal = engine.ready ? engine.prepare(t,game.beat,perf.detail) : null;
-  engine.draw(c,{H:HORIZON,t,half:0,lean:0,beat:game.beat,flash:game.stageFlash,detail:perf.detail,focal});
+  engine.draw(c,{H:HORIZON,t,half:0,lean:0,beat:game.beat,flash:game.stageFlash,detail:perf.detail,focal,preview:true});
   c.lineWidth = 1/w; c.strokeStyle = ST().grid; c.globalAlpha = .5;
   for (let i=-10;i<=10;i++) { c.beginPath(); c.moveTo(.5+i*.026,HORIZON); c.lineTo(.5+i*.19,h/w); c.stroke(); }
   const motion = matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : t*.14;
   for (let i=0;i<9;i++) { const f=((i/9+motion)%1);const y=HORIZON+(h/w-HORIZON)*f*f;c.beginPath();c.moveTo(0,y);c.lineTo(1,y);c.stroke(); }
   c.globalAlpha=1;
-  const status = engine.ready ? '' : 'Loading arena artwork…';
+  const status = !progress.canPlay(stageIx)?'Locked · '+progress.requirement(stageIx):engine.ready ? '' : 'Loading arena artwork…';
   if ($('arenaStatus').textContent !== status) $('arenaStatus').textContent=status;
 }
 function closeArenaGallery() {
@@ -2479,9 +2633,10 @@ $('bArenas').onclick = () => {
     tile.setAttribute('aria-label',STAGES[i].name);tile.setAttribute('aria-pressed','false');
     const img=document.createElement('img');img.src=`assets/arenas/${world.id}-thumb.webp`;img.alt='';img.loading='lazy';
     const name=document.createElement('strong');name.textContent=STAGES[i].name;
-    tile.append(img,name);tile.onclick=()=>setStage(i);$('arenaGrid').append(tile);
+    const lock=document.createElement('small');lock.dataset.lock=i;
+    tile.append(img,name,lock);tile.onclick=()=>setStage(i);$('arenaGrid').append(tile);
   });
-  updateArenaSelection();show('arenas',true);$('menu').inert=true;$('bArenaClose').focus();
+  updateArenaSelection();refreshStageLock();show('arenas',true);$('menu').inert=true;$('bArenaClose').focus();
   if (!arenaRaf) arenaRaf=requestAnimationFrame(renderArenaPreview);
 };
 $('bArenaClose').onclick=closeArenaGallery;$('bArenaUse').onclick=closeArenaGallery;
@@ -2494,7 +2649,7 @@ $('arenas').addEventListener('keydown',e=>{
   }
 });
 function show(id, on) { $(id).classList.toggle('hidden', !on); }
-function start(mode, reason = 'new') { matchTracked = false; track('match_start', { mode, difficulty: game.diff, reason }); if (reason === 'rematch') track('rematch', { mode }); storage.set('crease.visited.v1', '1'); unlockAudio(); booted = true; music.start(); show('menu', false); show('over', false); show('pauseM', false); newMatch(mode); }
+function start(mode, reason = 'new') { if(!progress.canPlay(stageIx)){$('bArenas').click();return;} matchTracked = false; track('match_start', { mode, difficulty: game.diff, reason }); if (reason === 'rematch') track('rematch', { mode }); storage.set('crease.visited.v1', '1'); unlockAudio(); booted = true; music.start(); show('menu', false); show('over', false); show('pauseM', false); newMatch(mode); }
 function toMenu() { show('pauseM', false); show('over', false); show('menu', true); newMatch('demo'); }
 function pause() {
   if (game.mode === 'demo' || game.mode === 'intro' || game.state === 'paused' || game.state === 'over') return;
@@ -2580,6 +2735,7 @@ for (const b of $('diff').querySelectorAll('button')) {
   };
 }
 document.addEventListener('visibilitychange', () => {
+  progress.save();
   if (document.hidden) { pause(); if (ac) ac.suspend(); }
   else if (ac && booted) ac.resume();
 });
