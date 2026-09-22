@@ -1,0 +1,64 @@
+# CREASE — full reference
+
+Last updated: 2026-09-21
+Canonical URL: https://prodbykctw-max.github.io/crease-iphone-duo/
+
+## TL;DR
+
+CREASE is a free, browser-based, two-player neon air hockey game. One screen, two players, first to 7. In portrait the screen is a pocket table for solo play against the CPU (Easy, Normal, Hard); in landscape it becomes a wide table with one player on each side of the glowing center line, the "crease." It has a dark vaporwave look, a tap-to-boot intro, an animated cutscene, smash and bump mechanics, power-ups, and a synthwave soundtrack. It was designed with foldable phones — specifically Apple's iPhone Duo — in mind, and works on any modern mobile or desktop browser. Built by prodbyKCTW (Melvin D. Brown III, Atlanta, GA).
+
+## How to play
+
+- Drag your paddle. Stay on your side of the crease (the glowing center line).
+- First to 7 goals wins.
+- Portrait: pocket table, ideal for solo vs CPU.
+- Landscape: wide table, one player per side, each holding one half of the screen.
+- Rotate, resize, fold or unfold mid-match — the table adapts and the match keeps going.
+- Tip: on iPhone use Share → Add to Home Screen for true full-screen play.
+
+## Mechanics
+
+- SMASH: flick your paddle hard into the puck. It goes white-hot and faster.
+- BUMP: gold bumpers on the crease kick the puck. Score off one for a BANK SHOT.
+- Power-ups spawn on the crease; knock the puck through one to take it: BIG paddle, MULTI puck, WALL over your goal.
+- Hit and scoring effects: freeze-frames, screen shake, pop-up text, race-to-7 bars; the table pulses to the soundtrack.
+- Difficulty (solo): Easy, Normal, Hard.
+- Sound can be toggled on/off.
+
+## Flow
+
+Tap to boot (unlocks sound) → prodbyKCTW studio logo → intro cutscene (the table unfolds out of the crease, a rally, a smash, the title; tap to skip, replay from the menu) → match. Winning plays a victory cutscene. Returning players skip the intro after their first match. A "Challenge a friend" link shares the game.
+
+## Tech
+
+Single static index.html (HTML5 canvas + vanilla JavaScript), no build step, hosted on GitHub Pages. Optional anonymous analytics (disabled until configured; no names or contact details requested). Visit preferences and game totals stay in the player's browser.
+
+## Frequently asked questions
+
+Q: What is CREASE?
+A: A free two-player neon air hockey game that runs in your browser — one screen, two players, first to 7. Solo vs CPU in portrait, head-to-head in landscape.
+
+Q: Is it free?
+A: Yes. No download, no account, no payment.
+
+Q: Can two people play on one phone?
+A: Yes. Turn the phone to landscape; each player controls the paddle on their half of the screen.
+
+Q: Does it work on iPhone?
+A: Yes — Safari and as a home-screen app. It also runs in Android Chrome and desktop browsers.
+
+Q: What is the iPhone Duo connection?
+A: CREASE was designed fold-first for Apple's book-style foldable: pocket table on the small outer screen, full two-player table on the inner screen. Physical iPhone Duo testing is still pending.
+
+Q: What are SMASH and BUMP?
+A: SMASH is flicking your paddle hard into the puck to make it faster. BUMP is bouncing the puck off the gold bumpers on the crease; scoring off one is a BANK SHOT.
+
+Q: Who made it?
+A: prodbyKCTW — Melvin D. Brown III, an independent developer and producer in the Atlanta area, co-founder of RARƎ AGENCY. Custom game inquiries via the link in the game.
+
+## Links
+
+- Play: https://prodbykctw-max.github.io/crease-iphone-duo/
+- Source: https://github.com/prodbykctw-max/crease-iphone-duo
+- Developer Instagram: https://www.instagram.com/prodbykctw/
+- Developer GitHub: https://github.com/prodbykctw-max
