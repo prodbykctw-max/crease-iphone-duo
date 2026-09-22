@@ -1420,7 +1420,7 @@ function drawScenery(t) {
     sceneFx(t, H, half);
     ctx.restore();
   }
-  arenas?.drawCenter(ctx,{L,focal,beat:game.beat});
+  arenas?.drawCenter(ctx,{L,focal,beat:Math.min(1,game.beat+game.stageFlash),t});
   ctx.restore();
 }
 function sceneFx(t, H, half) {
