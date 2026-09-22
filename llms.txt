@@ -1,0 +1,19 @@
+# CREASE
+
+> CREASE is a free two-player neon air hockey game that runs in the browser. One screen, two players, first to 7. Play solo against the CPU (Easy / Normal / Hard) in portrait, or head-to-head in landscape with one player on each side of the glowing center line — the "crease." Dark vaporwave style, built with foldable phones (the iPhone Duo) in mind. Made by prodbyKCTW (Melvin D. Brown III). No download, no sign-up.
+
+- Genre: Arcade / sports (air hockey)
+- Platform: Web browser, mobile-first (iPhone Safari, Android Chrome, desktop); installable as a home-screen app
+- Players: 1 (vs CPU) or 2 (same device)
+- Price: free
+- Developer: prodbyKCTW / RARƎ AGENCY — custom game inquiries via the in-game link
+
+## Pages
+
+- [Play CREASE](https://prodbykctw-max.github.io/crease-iphone-duo/): the game
+- [llms-full.txt](https://prodbykctw-max.github.io/crease-iphone-duo/llms-full.txt): full description, controls, mechanics, FAQ
+
+## Optional
+
+- [Source on GitHub](https://github.com/prodbykctw-max/crease-iphone-duo)
+- [Developer on Instagram](https://www.instagram.com/prodbykctw/)
