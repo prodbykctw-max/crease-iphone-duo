@@ -2688,7 +2688,7 @@ $('arenas').addEventListener('keydown',e=>{
   }
 });
 function show(id, on) { $(id).classList.toggle('hidden', !on); }
-function start(mode, reason = 'new') { if(!progress.canPlay(stageIx)){$('bArenas').click();return;} matchTracked = false; track('match_start', { mode, difficulty: game.diff, reason }); if (reason === 'rematch') track('rematch', { mode }); storage.set('crease.visited.v1', '1'); unlockAudio(); booted = true; music.start(); show('menu', false); show('over', false); show('pauseM', false); newMatch(mode); }
+function start(mode, reason = 'new') { if(!progress.canPlay(stageIx)){$('bArenas').click();return;} matchTracked = false; track('match_start', { mode, difficulty: game.diff, reason }); if (reason === 'rematch') track('rematch', { mode }); unlockAudio(); booted = true; music.start(); show('menu', false); show('over', false); show('pauseM', false); newMatch(mode); }
 function toMenu() { show('pauseM', false); show('over', false); show('menu', true); newMatch('demo'); }
 function pause() {
   if (game.mode === 'demo' || game.mode === 'intro' || game.state === 'paused' || game.state === 'over') return;
@@ -2793,7 +2793,8 @@ try { const sv = +localStorage.getItem('crease.stage'); if (Number.isFinite(sv) 
 setStage(stageIx, false);
 layout();
 newMatch('demo');
-if (/[?&]nointro\b/.test(location.search) || challenged || storage.get('crease.visited.v1') === '1') show('menu', true); else showBoot();
+// The intro plays on every open. Only a test flag or an incoming challenge link skips it.
+if (/[?&]nointro\b/.test(location.search) || challenged) show('menu', true); else showBoot();
 requestAnimationFrame(t => { last = t; requestAnimationFrame(frame); });
 
 // test hooks (harmless in production)
