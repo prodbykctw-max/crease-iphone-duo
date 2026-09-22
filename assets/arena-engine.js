@@ -135,9 +135,10 @@
       if(isRing>.5){
         float r=length(P.xz);
         float line=.65+.35*sin(r*110.);
+        float sweep=pow(.5+.5*cos(atan(P.z,P.x)*2.-time*1.6),18.);
         col=mix(vec3(.32,.14,.57),vec3(.83,.69,1.),line);
         if(style==1.) col=mix(vec3(.05,.4,.12),vec3(.4,1.,.75),line);
-        gl_FragColor=vec4(col*(.55+.45*diffuse),1.); return;
+        gl_FragColor=vec4(col*(.55+.45*diffuse)+vec3(.35,.8,1.)*sweep*(.4+beat),1.); return;
       }
       if(style==0.){
         if(P.y<.12 && sin(P.y*34.) < -.22) discard;
@@ -146,13 +147,22 @@
         float circuit=pow(abs(sin(P.x*14.+sin(P.y*12.))*sin(P.z*13.+time*.4)),12.);
         col=mix(vec3(.015,.08,.045),vec3(.25,1.,.44),circuit);
         emission=.3+circuit*.5;
-      }else if(style==2.){col=vec3(.23,.67,.93);}
+      }else if(style==2.){
+        float veins=pow(1.-abs(2.*turbulence(P*13.)-1.),10.);
+        col=mix(vec3(.045,.18,.35),vec3(.45,.86,1.),turbulence(P*8.));
+        emission=veins*(.3+beat*.65);
+      }
       else if(style==3.){
-        float lava=pow(abs(sin(P.x*9.+sin(P.z*8.))*sin(P.y*11.+sin(P.x*8.))),6.);
+        float lava=pow(1.-abs(2.*turbulence(P*7.+vec3(0.,time*.08,0.))-1.),12.);
         col=mix(vec3(.10,.015,.025),vec3(1.,.36,.035),lava); emission=lava;
-      }else if(style==4.){col=mix(vec3(.15,.055,.37),vec3(.63,.38,.82),bands);}
-      else if(style==5.){col=vec3(.94,.56,.12);}
-      else if(style==6.){col=vec3(.045,.05,.065);}
+      }else if(style==4.){col=mix(vec3(.15,.055,.37),vec3(.83,.56,.72),bands)*(.65+.55*turbulence(P*18.+vec3(time*.04,0.,0.)));}
+      else if(style==5.){col=mix(vec3(.22,.08,.012),vec3(1.,.73,.22),turbulence(P*25.));emission=.15*pow(.5+.5*sin(P.y*19.+time),12.);}
+      else if(style==6.){col=vec3(.045,.05,.065);emission=pow(1.-abs(2.*turbulence(P*9.+time*.025)-1.),18.)*(.2+beat);}
+      else if(style==8.){
+        float grooves=pow(abs(sin(length(P.xy)*60.)),5.);
+        col=mix(vec3(.035,.012,.09),vec3(.08,.65,.75),grooves*.5);
+        emission=pow(.5+.5*cos(atan(P.y,P.x)*8.-time*2.),10.)*(.2+beat*.8);
+      }
       else {
         float grain=sin(P.x*42.+sin(P.z*38.))*sin(P.y*53.);
         col=vec3(.76,.8,.9)*( .83+.17*grain );
@@ -164,8 +174,8 @@
   class Centerpiece {
     constructor() {
       this.canvas=document.createElement('canvas');
-      this.canvas.width=this.canvas.height=320;
-      this.snapshot=document.createElement('canvas'); this.snapshot.width=this.snapshot.height=320;
+      this.canvas.width=this.canvas.height=640;
+      this.snapshot=document.createElement('canvas'); this.snapshot.width=this.snapshot.height=640;
       this.paint=this.snapshot.getContext('2d'); this.last=-Infinity; this.stage=-1;
       this.gl=this.canvas.getContext('webgl',{alpha:true,antialias:true,premultipliedAlpha:false,preserveDrawingBuffer:false,powerPreference:'low-power'});
       this.available=false;
@@ -191,26 +201,31 @@
       }catch(err){this.available=false;console.warn('3D centerpiece unavailable:',err.message);}
     }
     render(index,t,beat,detail) {
-      if(!this.available||index===9)return null;
+      if(!this.available)return null;
       const kind=worlds[index].kind,staticTime=reduced.matches?0:t;
       const interval=reduced.matches?Infinity:1/(detail<.7?18:30);
       if(this.stage===index && staticTime>=this.last && staticTime-this.last<interval)return this.snapshot;
       this.stage=index;this.last=staticTime;
       const gl=this.gl,u=this.uniform;
-      gl.viewport(0,0,320,320);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);gl.useProgram(this.program);
-      const styles={sun:0,core:1,crystal:2,molten:3,planet:4,gold:5,prism:6,moon:7};
+      const resolution=detail<.7?320:640;
+      if(this.canvas.width!==resolution){this.canvas.width=this.canvas.height=resolution;this.snapshot.width=this.snapshot.height=resolution;}
+      gl.viewport(0,0,resolution,resolution);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);gl.useProgram(this.program);
+      const styles={sun:0,core:1,crystal:2,molten:3,planet:4,gold:5,prism:6,moon:7,studio:8};
       gl.uniform1f(u.style,styles[kind]);gl.uniform1f(u.time,staticTime);gl.uniform1f(u.beat,reduced.matches?0:beat);
-      gl.uniform1f(u.texturedSun,index===0?1:0);
+      gl.uniform1f(u.texturedSun,kind==='sun'?1:0);
       const draw=(name,angle,tilt,scale,isRing)=>{
         const mesh=this.mesh[name];gl.bindBuffer(gl.ARRAY_BUFFER,mesh.buffer);
         gl.enableVertexAttribArray(this.pos);gl.vertexAttribPointer(this.pos,3,gl.FLOAT,false,24,0);
         gl.enableVertexAttribArray(this.normal);gl.vertexAttribPointer(this.normal,3,gl.FLOAT,false,24,12);
         gl.uniform2f(u.rotation,angle,tilt);gl.uniform1f(u.scale,scale);gl.uniform1f(u.isRing,isRing);gl.drawArrays(gl.TRIANGLES,0,mesh.count);
       };
-      const faceted=['crystal','gold','prism'].includes(kind),hasRing=kind==='planet'||kind==='core';
+      const faceted=['crystal','gold','prism'].includes(kind),hasRing=['planet','core','studio'].includes(kind);
       draw(faceted?'crystal':'sphere',index===0?0:staticTime*(kind==='sun'?.025:.12),faceted?.18:0,hasRing?.82:1.23,0);
       if(hasRing)draw('ring',0,.45+Math.sin(staticTime*.08)*.13,.82,1);
-      this.paint.clearRect(0,0,320,320);this.paint.drawImage(this.canvas,0,0);
+      // Average opposite views into one object: identical from either end of
+      // the table without drawing a second centerpiece in the arena.
+      this.paint.clearRect(0,0,resolution,resolution);this.paint.globalCompositeOperation='lighter';this.paint.globalAlpha=.5;this.paint.drawImage(this.canvas,0,0);
+      this.paint.save();this.paint.translate(resolution,resolution);this.paint.rotate(Math.PI);this.paint.drawImage(this.canvas,0,0);this.paint.restore();this.paint.globalAlpha=1;this.paint.globalCompositeOperation='source-over';
       return this.snapshot;
     }
   }
@@ -225,8 +240,12 @@
     if(!plate)return false;
     const motion=reduced.matches?0:1, clock=t*motion;
     const drift=Math.sin(clock*.16+half)*.003-lean*.01*motion;
-    const studio=current===9, w=studio?.80:1.08, h=w*plate.naturalHeight/plate.naturalWidth;
-    const y=H-h*(studio?.66:.91), left=(1-w)/2;
+    const studio=current===9;
+    // The art is the world; the floor grid only supports play. Each crop makes
+    // the ten plates feel like a place rather than a palette behind a table.
+    const zoom=[1.35,1.27,1.32,1.30,1.28,1.31,1.29,1.25,1.34,.94][current];
+    const w=zoom,h=w*plate.naturalHeight/plate.naturalWidth;
+    const y=H-h*(studio?.66:.90), left=(1-w)/2;
     c.save();c.beginPath();c.rect(0,0,1,H+.014);c.clip();
     c.globalAlpha=Math.min(1,(performance.now()-readyAt)/350);
     c.fillStyle='#030309';c.fillRect(0,0,1,H+.014);
@@ -242,7 +261,7 @@
   // Called once in table space, outside the two player-facing environment passes.
   // Keep the object on the crease; scenery moves behind it for depth parallax.
   function drawCenter(c,{L,focal,beat}) {
-    if(!focal || current===9)return;
+    if(!focal)return;
     const pulse=reduced.matches?0:Math.max(0,Math.min(1,beat));
     const size=current===4?.52:.49;
     c.save();
@@ -284,6 +303,14 @@
         c.fillStyle=g;c.beginPath();c.moveTo(x-.003,H);c.lineTo(tip-.055,0);c.lineTo(tip+.055,0);c.lineTo(x+.003,H);c.fill();
       }
     }
+    if(current===0){
+      // Midnight: slow city scan strips, like distant traffic behind the sun.
+      for(let j=0;j<6;j++){const y=H*(.18+j*.075),x=((t*.045+j*.21)%1);c.strokeStyle=`rgba(255,55,150,${.055+beat*.05})`;c.lineWidth=.0018;c.beginPath();c.moveTo(x-.13,y);c.lineTo(x+.13,y);c.stroke();}
+    }
+    if(current===1){
+      // Toxic: bio-reactor spores drift upward and react to an impact.
+      for(let j=0;j<18;j++){const x=(j*.271+t*.009)%1,y=H*(.92-((j*.139+t*.025)%1)*.7);const r=.0015+(j%3)*.0008;c.fillStyle=`rgba(115,255,145,${.10+beat*.15})`;c.beginPath();c.arc(x,y,r,0,Math.PI*2);c.fill();}
+    }
     if(current===2){
       // Aurora ribbons are independent of the ice plate and move slowly.
       for(let j=0;j<3;j++){
@@ -296,6 +323,14 @@
         c.stroke();
       }
     }
+    if(current===3){
+      // Inferno: vertical heat distortion marks the caldera rather than a grid.
+      for(let j=0;j<10;j++){const x=(j+.5)/10+Math.sin(t*.7+j)*.008;c.strokeStyle=`rgba(255,104,40,${.04+beat*.08})`;c.lineWidth=.006;c.beginPath();c.moveTo(x,H);c.quadraticCurveTo(x+.02*Math.sin(t+j),H*.58,x,H*.2);c.stroke();}
+    }
+    if(current===4){
+      // Ultraviolet: orbital debris flows around the central ringed planet.
+      for(let j=0;j<10;j++){const a=t*.17+j*.63,r=.12+(j%3)*.055,x=.5+Math.cos(a)*r,y=H*.40+Math.sin(a)*r*.38;c.fillStyle=`rgba(210,170,255,${.1+beat*.12})`;c.fillRect(x,y,.003,.003);}
+    }
     if(current===5){
       // Water highlights stay beneath the horizon instead of crossing play.
       c.lineWidth=.001;
@@ -304,6 +339,18 @@
         c.strokeStyle=`rgba(70,225,230,${.07+.04*Math.sin(t+j)})`;
         c.beginPath();c.moveTo(x-.04,y);c.lineTo(x+.04,y);c.stroke();
       }
+    }
+    if(current===6){
+      // Gold Rush: wind-driven sand glints along the lower mesas.
+      for(let j=0;j<24;j++){const x=((j*.19+t*.028)%1),y=H*(.57+(j%6)*.035);c.strokeStyle='rgba(255,212,110,.13)';c.lineWidth=.001;c.beginPath();c.moveTo(x-.02,y);c.lineTo(x+.025,y-.002);c.stroke();}
+    }
+    if(current===7){
+      // Void: sparse architectural seams shift independently of the playfield.
+      for(let j=0;j<5;j++){const x=.14+j*.18+Math.sin(t*.18+j)*.012;c.strokeStyle=`rgba(235,235,255,${.05+beat*.08})`;c.lineWidth=.001;c.beginPath();c.moveTo(x,0);c.lineTo(x+.06,H*.72);c.stroke();}
+    }
+    if(current===8){
+      // Sakura: petals loop around the moon, never through the crease.
+      for(let j=0;j<18;j++){const x=((j*.17+t*.012)%1),y=H*(.18+((j*.23+t*.02)%1)*.52);c.fillStyle=`rgba(255,183,215,${.13+beat*.1})`;c.beginPath();c.ellipse(x,y,.0028,.0014,Math.sin(t+j),0,Math.PI*2);c.fill();}
     }
     // Distinct spatial effects. Seeded phase, no per-frame random allocations.
     const count=Math.round((kind==='planet'?14:22)*detail);

@@ -210,16 +210,26 @@ button:focus-visible{outline:2px solid var(--p1);outline-offset:4px}
     <div class="seg" id="diff" role="group" aria-label="CPU difficulty">
       <button data-d="easy">Easy</button><button data-d="normal" class="on">Normal</button><button data-d="hard">Hard</button>
     </div>
-    <div class="row">
+    <nav class="row" aria-label="Game menu">
+      <button id="bGarageHub" class="link">Garage</button>
+      <button id="bProgressHub" class="link">Progress</button>
+      <button id="bSettingsHub" class="link">Settings</button>
+    </nav>
+    <dialog id="garageHub" class="product-dialog"><h2>GARAGE</h2><p class="hint">Your worlds. Your style.</p><div class="row">
+      <button id="bArenas" class="link">Arenas</button>
+      <button id="bPremium" class="link">Paddles &amp; pass</button>
+    </div><button class="link" data-close-hub="garageHub">Back</button></dialog>
+    <dialog id="progressHub" class="product-dialog"><h2>PROGRESS</h2><div class="row">
+      <button id="bAchievements" class="link">Achievements</button>
+      <button id="bLeaderboard" class="link">Records</button>
+    </div><button class="link" data-close-hub="progressHub">Back</button></dialog>
+    <dialog id="settingsHub" class="product-dialog"><h2>SETTINGS &amp; HELP</h2><div class="row">
+      <a href="online.html" class="link">Online friend match · beta</a>
       <button id="bHow" class="link">How to play</button>
       <button id="bShareMenu" class="link">Challenge a friend</button>
       <button id="bIntro" class="link">Intro</button>
-      <button id="bArenas" class="link">Explore arenas</button>
-      <button id="bAchievements" class="link">Achievements · 1,989</button>
-      <button id="bLeaderboard" class="link">Leaderboard</button>
-      <button id="bPremium" class="link">Premium garage</button>
       <button id="bSound" class="link">Sound: On</button>
-    </div>
+    </div><button class="link" data-close-hub="settingsHub">Back</button></dialog>
   <p id="menuShareStatus" class="share-status" role="status"></p>
     <input id="menuShareUrl" class="share-url hidden" readonly aria-label="Challenge link — select and copy">
     <a class="creator" data-inquiry href="https://www.instagram.com/prodbykctw/" target="_blank" rel="noopener noreferrer">Built by KCTW · Want a custom game? DM me</a>
@@ -1361,7 +1371,7 @@ function drawScenery(t) {
   ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
   const L = view.L, s = view.s, dpr = view.dpr, H = HORIZON, sc = SCENES[stageIx];
   const arenas = window.CreaseArenas;
-  const focal = arenas?.ready ? arenas.prepare(t, game.beat, perf.detail) : null;
+  const focal = arenas?.ready ? arenas.prepare(t, Math.min(1,game.beat+game.stageFlash+((game.fire[0]>0||game.fire[1]>0)?.3:0)), perf.detail) : null;
   ctx.save(); fieldTf(); rr(ctx, 0, 0, 1, L, 0.06); ctx.clip();
   for (const half of [0, 1]) {
     ctx.save();
@@ -1564,8 +1574,8 @@ function paintHalf(c, bright) {
   }
   // NOTE: the horizontal floor lines are NOT painted here — they scroll, and are drawn live by drawFloorGrid()
   const gcol = bright ? '#ffffff' : ST().grid;
-  for (let k = -14; k <= 14; k++) {
-    c.globalAlpha = bright ? 0.6 : 0.4;
+  for (let k = -7; k <= 7; k++) {
+    c.globalAlpha = bright ? 0.34 : 0.12;
     c.strokeStyle = gcol; c.lineWidth = 1 * px;
     c.beginPath(); c.moveTo(0.5 + k * 0.028, hz); c.lineTo(0.5 + k * 0.17, L + 0.02); c.stroke();
   }
@@ -2335,7 +2345,7 @@ function drawVictory() {
 // The floor grid: unchanged motion — horizontal lines drifting toward each player.
 // Hits make the existing lines light up; nothing is added to the grid itself.
 function drawFloorGrid(t) {
-  const L = view.L, px = 1 / view.s, hz0 = L / 2 + HORIZON, N = 11, SPEED = 0.11;
+  const L = view.L, px = 1 / view.s, hz0 = L / 2 + HORIZON, N = 7, SPEED = 0.075;
   const col = ST().grid, beat = game.beat * 0.35 + (game.fire[0]||game.fire[1]?0.22:0);
   ctx.save(); fieldTf(); rr(ctx, 0, 0, 1, L, 0.06); ctx.clip();
   for (const half of [0, 1]) {
@@ -2350,7 +2360,7 @@ function drawFloorGrid(t) {
       const f = ((i / N + t * SPEED) % 1 + 1) % 1;
       const v = hz0 + (L - hz0) * f * f;
       const fade = Math.min(1, f * 6);                        // fade in at the horizon
-      ctx.globalAlpha = (0.22 + f * 0.5 + beat) * fade;
+      ctx.globalAlpha = (0.075 + f * 0.18 + beat*.35) * fade;
       ctx.strokeStyle = col; ctx.lineWidth = (1 + f * 1.6) * px;
       ctx.beginPath(); ctx.moveTo(-0.05, v); ctx.lineTo(1.05, v); ctx.stroke();
       // lit segment where a surge ring crosses this line
@@ -2564,12 +2574,19 @@ function drawDepthRails(){
 }
 
 // ---------- UI ----------
+for(const [button,dialog] of [['bGarageHub','garageHub'],['bProgressHub','progressHub'],['bSettingsHub','settingsHub']]){
+  $(button).onclick=()=>$(dialog).showModal();
+  $(dialog).addEventListener('keydown',e=>e.stopPropagation());
+  $(dialog).addEventListener('click',e=>{if(e.target.closest('button')?.id && e.target.id!=='bSound')$(dialog).close();},true);
+}
+document.querySelectorAll('[data-close-hub]').forEach(b=>b.onclick=()=>$(b.dataset.closeHub).close());
 function refreshStageLock(){
   const playable=progress.canPlay(stageIx);
   $('bSolo').disabled=$('bDuo').disabled=!playable;
   $('bArenaUse').disabled=!playable;$('bArenaUse').textContent=playable?'USE THIS ARENA':'ARENA LOCKED';
   if(!playable)$('screenHint').textContent='Locked · '+progress.requirement(stageIx);else updateHint();
   for(const el of document.querySelectorAll('[data-lock]'))el.textContent=progress.canPlay(+el.dataset.lock)?'Unlocked':progress.requirement(+el.dataset.lock);
+  [...$('stageDots').children].forEach((el,i)=>{el.hidden=!progress.canPlay(i);});
 }
 let achievementPage=0;
 function renderAchievements(){
@@ -2645,6 +2662,7 @@ function renderArenaPreview(now) {
   if ($('arenaStatus').textContent !== status) $('arenaStatus').textContent=status;
 }
 function closeArenaGallery() {
+  if(!progress.canPlay(stageIx))setStage(progress.state.unlocked[0]||0);
   show('arenas',false); $('menu').inert=false;
   cancelAnimationFrame(arenaRaf); arenaRaf=0; $('bArenas').focus();
 }
@@ -2735,11 +2753,12 @@ $('bIntro').onclick = () => { unlockAudio(); booted = true; playStudio(); };
   STAGES.forEach((st, i) => {
     const d = document.createElement('button');
     d.dataset.i = i; d.title = st.name; d.setAttribute('aria-label', st.name); d.setAttribute('aria-pressed','false');
-    d.onclick = () => { setStage(i); tone(520 + i * 40, 0.05, 'triangle', 0.05); };
+    d.onclick = () => { if(!progress.canPlay(i))return;setStage(i); tone(520 + i * 40, 0.05, 'triangle', 0.05); };
     dots.appendChild(d);
   });
-  $('stagePrev').onclick = () => { setStage(stageIx - 1); tone(440, 0.05, 'triangle', 0.05); };
-  $('stageNext').onclick = () => { setStage(stageIx + 1); tone(660, 0.05, 'triangle', 0.05); };
+  function nextUnlocked(dir){for(let n=1;n<=STAGES.length;n++){const i=(stageIx+dir*n+STAGES.length)%STAGES.length;if(progress.canPlay(i)){setStage(i);break;}}}
+  $('stagePrev').onclick = () => nextUnlocked(-1);
+  $('stageNext').onclick = () => nextUnlocked(1);
 }
 $('bHowClose').onclick = () => show('how', false);
 $('bSound').onclick = () => { muted = !muted; $('bSound').textContent = 'Sound: ' + (muted ? 'Off' : 'On'); unlockAudio(); booted = true; music.start(); };
