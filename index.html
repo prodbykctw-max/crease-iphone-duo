@@ -238,13 +238,13 @@ button:focus-visible{outline:2px solid var(--p1);outline-offset:4px}
 <dialog id="achievements" aria-labelledby="achievementTitle">
   <div class="arena-heading"><h2 id="achievementTitle">ACHIEVEMENTS</h2><button id="bAchievementsClose" class="link">Close</button></div>
   <p id="achievementTotal" role="status"></p>
-  <p class="hint">Saved on this browser. Tracks solo play and Player 1 in local two-player. Finish matches to claim achievements and unlock arenas.</p>
+  <p class="hint">Saved on this device. Tracks solo play and Player 1 in two-player. Finish matches to claim achievements and unlock arenas.</p>
   <div class="achievement-tools"><input id="achievementSearch" type="search" placeholder="Search achievements" aria-label="Search achievements"><select id="achievementFilter" aria-label="Achievement filter"><option value="all">All</option><option value="earned">Earned</option><option value="special">Special challenges</option><option value="locked">Not earned yet</option></select></div>
   <div id="achievementList" class="achievement-list"></div>
   <div class="row"><button id="achievementPrev" class="link">Previous</button><span id="achievementPage"></span><button id="achievementNext" class="link">Next</button></div>
 </dialog>
 <div id="achievementToast" class="hidden" role="status" aria-live="polite"></div>
-<dialog id="leaderboard" class="product-dialog" aria-labelledby="leaderboardTitle"><div class="arena-heading"><h2 id="leaderboardTitle">LEADERBOARD</h2><button id="bLeaderboardClose" class="link">Close</button></div><p class="hint">This browser’s local board is active now. A public board can be connected to your D1 endpoint after you choose the player identity and anti-cheat rules.</p><label class="field">Display name<input id="leaderboardName" maxlength="24" autocomplete="nickname" placeholder="Player 1"></label><button id="saveLeaderboardName" class="btn plain">SAVE NAME</button><ol id="leaderboardList" class="leaderboard-list"></ol></dialog>
+<dialog id="leaderboard" class="product-dialog" aria-labelledby="leaderboardTitle"><div class="arena-heading"><h2 id="leaderboardTitle">LEADERBOARD</h2><button id="bLeaderboardClose" class="link">Close</button></div><p class="hint">Your best matches, saved on this device.</p><label class="field">Display name<input id="leaderboardName" maxlength="24" autocomplete="nickname" placeholder="Player 1"></label><button id="saveLeaderboardName" class="btn plain">SAVE NAME</button><ol id="leaderboardList" class="leaderboard-list"></ol></dialog>
 <dialog id="premium" class="product-dialog" aria-labelledby="premiumTitle"><div class="arena-heading"><h2 id="premiumTitle">PREMIUM GARAGE</h2><button id="bPremiumClose" class="link">Close</button></div><p id="premiumStatus" class="hint"></p><div id="premiumGrid" class="product-grid"></div><a id="premiumCheckout" class="btn p1" target="_blank" rel="noopener noreferrer">GET PREMIUM PASS</a></dialog>
 
 <div id="how" class="overlay hidden">
@@ -254,7 +254,7 @@ button:focus-visible{outline:2px solid var(--p1);outline-offset:4px}
       <li>Drag your paddle. Stay on your side of the <b>crease</b> (the glowing center line). First to <b>7</b> wins.</li>
       <li><b>Portrait:</b> pocket table, ideal for solo.</li>
       <li><b>Landscape:</b> wide table, with one player on each side.</li>
-      <li>Rotate or resize mid-match to adapt the table. Designed with foldables in mind; physical iPhone Duo testing is still pending.</li>
+      <li>Rotate or fold mid-match — the table adapts and your score carries over.</li>
       <li><b>SMASH:</b> flick your paddle hard into the puck. It goes white-hot and faster.</li>
       <li><b>BUMP:</b> the gold bumpers on the crease kick the puck. Score off one for a <b>BANK SHOT</b>.</li>
       <li>Power-ups spawn on the crease. Knock the puck through one to take it:<br>
@@ -262,7 +262,7 @@ button:focus-visible{outline:2px solid var(--p1);outline-offset:4px}
         <span class="chip" style="background:#7cff6b"></span><b>MULTI</b> puck ·
         <span class="chip" style="background:#a78bfa"></span><b>WALL</b> over your goal</li>
       <li>Tip: Share → <b>Add to Home Screen</b> for true full-screen.</li>
-      <li>Visit preferences and game totals stay in this browser. When enabled, basic anonymous game events help improve CREASE. No names or contact details are requested.</li>
+      <li>Your settings and stats stay on this device. Anonymous play data may be used to improve CREASE. No names or contact details are collected.</li>
     </ul>
     <button id="bHowClose" class="btn plain"><span>GOT IT</span></button>
   </div>
@@ -2598,11 +2598,11 @@ $('achievementNext').onclick=()=>{achievementPage++;renderAchievements();};
 $('achievements').addEventListener('keydown',e=>e.stopPropagation());
 function renderLeaderboard(){
   const list=$('leaderboardList');list.replaceChildren();$('leaderboardName').value=CreaseProduct.name();const rows=CreaseProduct.scores();
-  if(!rows.length){list.textContent='No local scores yet. Finish a match to claim the first spot.';return;}
+  if(!rows.length){list.textContent='No scores yet. Finish a match to claim the first spot.';return;}
   rows.slice(0,50).forEach((row,i)=>{const li=document.createElement('li');li.innerHTML=`<span>${i+1}</span><span>${String(row.name).replace(/[<>]/g,'')}</span><strong>${row.wins||0} W <small>${row.streak||0} streak</small></strong>`;list.append(li);});
 }
 function renderPremium(){
-  const paid=CreaseProduct.isPremium();$('premiumStatus').textContent=paid?'Premium Pass active on this browser.':'Free garage: Classic Cyan is available. Premium cosmetics and modifiers are locked until the one-time pass is verified.';
+  const paid=CreaseProduct.isPremium();$('premiumStatus').textContent=paid?'Premium Pass active on this device.':'Classic Cyan is free. The one-time pass unlocks every paddle and modifier.';
   $('premiumCheckout').href=CreaseProduct.checkout();$('premiumCheckout').textContent=paid?'Creator contact / manage pass':'GET PREMIUM PASS';
   const grid=$('premiumGrid');grid.replaceChildren();
   for(const [id,s] of Object.entries(CreaseProduct.styles)){
