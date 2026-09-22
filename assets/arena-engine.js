@@ -3,7 +3,7 @@
 (() => {
   'use strict';
   const worlds = [
-    ['midnight', 'Neon metropolis', 'A sculpted sunset above rain-polished towers.', 'sun'],
+    ['midnight', 'Neon metropolis', 'One textured solar core on the crease. Equal from either side.', 'sun'],
     ['toxic', 'Reactor garden', 'A living energy core inside an overgrown bioreactor.', 'core'],
     ['ice', 'Glacial cathedral', 'A turning ice crystal beneath the aurora.', 'crystal'],
     ['inferno', 'Obsidian caldera', 'A molten world above lava falls and basalt.', 'molten'],
@@ -86,8 +86,47 @@
     precision mediump float;
     varying vec3 N; varying vec3 P;
     uniform float style; uniform float time; uniform float isRing; uniform float beat;
+    uniform float texturedSun;
+    float hash3(vec3 p){
+      p=fract(p*.1031);p+=dot(p,p.yzx+33.33);
+      return fract((p.x+p.y)*p.z);
+    }
+    float noise3(vec3 p){
+      vec3 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);
+      return mix(mix(mix(hash3(i),hash3(i+vec3(1,0,0)),f.x),
+                     mix(hash3(i+vec3(0,1,0)),hash3(i+vec3(1,1,0)),f.x),f.y),
+                 mix(mix(hash3(i+vec3(0,0,1)),hash3(i+vec3(1,0,1)),f.x),
+                     mix(hash3(i+vec3(0,1,1)),hash3(i+vec3(1,1,1)),f.x),f.y),f.z);
+    }
+    float turbulence(vec3 p){
+      return noise3(p)*.55+noise3(p*2.03+7.)*.28+noise3(p*4.07+19.)*.17;
+    }
     void main(){
       vec3 n=normalize(N); vec3 light=normalize(vec3(-.65,.8,1.));
+      if(texturedSun>.5 && isRing<.5){
+        // Double-angle coordinates are identical after a 180-degree turn.
+        // The sphere's geometry, light, bands and flowing material share that
+        // symmetry: neither player gets an upside-down or second sun.
+        float radius=length(n.xy);
+        float angle=atan(n.y,n.x)*2.+time*.065;
+        vec3 q=vec3(radius*cos(angle),radius*sin(angle),n.z);
+        vec3 flow=q*11.+vec3(time*.07,0.,time*.035);
+        float broad=turbulence(flow);
+        float granules=noise3(flow*5.+broad*2.);
+        float filament=pow(1.-abs(2.*turbulence(flow*1.8+vec3(broad*2.))-1.),9.);
+        float latitude=abs(n.y);
+        // Original two-sided synthwave bands; texture remains volumetric.
+        float band=fract((latitude-.22)/.135);
+        if(latitude>.22 && band<.035+latitude*.085)discard;
+        vec3 hot=mix(vec3(1.,.65,.08),vec3(.94,.055,.24),smoothstep(.05,.97,latitude));
+        vec3 material=mix(vec3(.12,.009,.025),hot,smoothstep(.25,.76,broad));
+        material*=.72+granules*.55;
+        material+=vec3(1.,.43,.07)*filament*(.5+beat*.24);
+        float curvature=.22+.78*pow(max(n.z,0.),.65);
+        float rim=pow(1.-abs(n.z),4.);
+        gl_FragColor=vec4(material*curvature+hot*rim*.34,1.);
+        return;
+      }
       float diffuse=max(dot(n,light),0.);
       float rim=pow(1.-abs(n.z),3.);
       float spec=pow(max(dot(reflect(-light,n),vec3(0.,0.,1.)),0.),35.);
@@ -143,7 +182,7 @@
         this.program=gl.createProgram(); gl.attachShader(this.program,vs);gl.attachShader(this.program,fs);gl.linkProgram(this.program);
         if(!gl.getProgramParameter(this.program,gl.LINK_STATUS))throw Error(gl.getProgramInfoLog(this.program));
         gl.deleteShader(vs);gl.deleteShader(fs);gl.useProgram(this.program);
-        this.uniform={}; for(const key of ['rotation','scale','style','time','isRing','beat'])this.uniform[key]=gl.getUniformLocation(this.program,key);
+        this.uniform={}; for(const key of ['rotation','scale','style','time','isRing','beat','texturedSun'])this.uniform[key]=gl.getUniformLocation(this.program,key);
         this.pos=gl.getAttribLocation(this.program,'position');this.normal=gl.getAttribLocation(this.program,'normal');
         this.mesh={};for(const [name,data] of [['sphere',sphere()],['crystal',crystal()],['ring',ring()]]){
           const buffer=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,buffer);gl.bufferData(gl.ARRAY_BUFFER,data,gl.STATIC_DRAW);this.mesh[name]={buffer,count:data.length/6};
@@ -161,6 +200,7 @@
       gl.viewport(0,0,320,320);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);gl.useProgram(this.program);
       const styles={sun:0,core:1,crystal:2,molten:3,planet:4,gold:5,prism:6,moon:7};
       gl.uniform1f(u.style,styles[kind]);gl.uniform1f(u.time,staticTime);gl.uniform1f(u.beat,reduced.matches?0:beat);
+      gl.uniform1f(u.texturedSun,index===0?1:0);
       const draw=(name,angle,tilt,scale,isRing)=>{
         const mesh=this.mesh[name];gl.bindBuffer(gl.ARRAY_BUFFER,mesh.buffer);
         gl.enableVertexAttribArray(this.pos);gl.vertexAttribPointer(this.pos,3,gl.FLOAT,false,24,0);
@@ -168,7 +208,7 @@
         gl.uniform2f(u.rotation,angle,tilt);gl.uniform1f(u.scale,scale);gl.uniform1f(u.isRing,isRing);gl.drawArrays(gl.TRIANGLES,0,mesh.count);
       };
       const faceted=['crystal','gold','prism'].includes(kind),hasRing=kind==='planet'||kind==='core';
-      draw(faceted?'crystal':'sphere',staticTime*(kind==='sun'?.025:.12),faceted?.18:0,hasRing?.82:1.23,0);
+      draw(faceted?'crystal':'sphere',index===0?0:staticTime*(kind==='sun'?.025:.12),faceted?.18:0,hasRing?.82:1.23,0);
       if(hasRing)draw('ring',0,.45+Math.sin(staticTime*.08)*.13,.82,1);
       this.paint.clearRect(0,0,320,320);this.paint.drawImage(this.canvas,0,0);
       return this.snapshot;
@@ -181,7 +221,7 @@
   }
   // Precomputed composition: 3:1 artwork is never stretched. Player motion shifts
   // the world slightly; the actual 3D object moves independently in front of it.
-  function draw(c,{H,t,half,lean,beat,flash,detail,focal}) {
+  function draw(c,{H,t,half,lean,beat,flash,detail,focal,preview=false}) {
     if(!plate)return false;
     const motion=reduced.matches?0:1, clock=t*motion;
     const drift=Math.sin(clock*.16+half)*.003-lean*.01*motion;
@@ -191,13 +231,30 @@
     c.globalAlpha=Math.min(1,(performance.now()-readyAt)/350);
     c.fillStyle='#030309';c.fillRect(0,0,1,H+.014);
     c.drawImage(plate,left+drift,y,w,h);
-    if(focal){
+    if(focal && preview){
       const size=current===4?.235:.19, x=.5-lean*.022*motion;
       const cy=H*.36+Math.sin(clock*.28)*.003;
       c.drawImage(focal,x-size/2,cy-size/2,size,size);
     }
     atmosphere(c,H,clock,beat*motion,flash*motion,detail,drift);
     c.restore();return true;
+  }
+  // Called once in table space, outside the two player-facing environment passes.
+  // Keep the object on the crease; scenery moves behind it for depth parallax.
+  function drawCenter(c,{L,focal,beat}) {
+    if(!focal || current===9)return;
+    const pulse=reduced.matches?0:Math.max(0,Math.min(1,beat));
+    const size=current===4?.52:.49;
+    c.save();
+    if(current===0){
+      const halo=c.createRadialGradient(.5,L/2,.09,.5,L/2,.24);
+      halo.addColorStop(0,`rgba(255,105,25,${.16+pulse*.08})`);
+      halo.addColorStop(.58,`rgba(245,36,91,${.06+pulse*.025})`);
+      halo.addColorStop(1,'rgba(245,36,91,0)');
+      c.fillStyle=halo;c.fillRect(.26,L/2-.24,.48,.48);
+    }
+    c.drawImage(focal,.5-size/2,L/2-size/2,size,size);
+    c.restore();
   }
   function atmosphere(c,H,t,beat,flash,detail,drift) {
     const kind=worlds[current].kind;
@@ -266,5 +323,5 @@
     fade.addColorStop(0,'rgba(3,3,9,0)');fade.addColorStop(1,'rgba(3,3,9,.85)');
     c.fillStyle=fade;c.fillRect(0,H*.8,1,H*.2+.014);c.restore();
   }
-  window.CreaseArenas={worlds,select,prepare,draw,get ready(){return !!plate;},get gpuReady(){return !!centerpiece?.available;}};
+  window.CreaseArenas={worlds,select,prepare,draw,drawCenter,get ready(){return !!plate;},get gpuReady(){return !!centerpiece?.available;}};
 })();

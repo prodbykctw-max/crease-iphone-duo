@@ -248,7 +248,7 @@ button:focus-visible{outline:2px solid var(--p1);outline-offset:4px}
 
 <script src="analytics-config.js"></script>
 <script src="analytics.js"></script>
-<script src="assets/arena-engine.js"></script>
+<script src="assets/arena-engine.js?v=shared-sun-1"></script>
 <script>
 (() => {
 'use strict';
@@ -1323,6 +1323,7 @@ function drawScenery(t) {
     sceneFx(t, H, half);
     ctx.restore();
   }
+  arenas?.drawCenter(ctx,{L,focal,beat:game.beat});
   ctx.restore();
 }
 function sceneFx(t, H, half) {
@@ -2460,7 +2461,7 @@ function renderArenaPreview(now) {
   c.setTransform(w,0,0,w,0,0); c.fillStyle = '#030309'; c.fillRect(0,0,1,h/w);
   const engine = window.CreaseArenas, t = game.t;
   const focal = engine.ready ? engine.prepare(t,game.beat,perf.detail) : null;
-  engine.draw(c,{H:HORIZON,t,half:0,lean:0,beat:game.beat,flash:game.stageFlash,detail:perf.detail,focal});
+  engine.draw(c,{H:HORIZON,t,half:0,lean:0,beat:game.beat,flash:game.stageFlash,detail:perf.detail,focal,preview:true});
   c.lineWidth = 1/w; c.strokeStyle = ST().grid; c.globalAlpha = .5;
   for (let i=-10;i<=10;i++) { c.beginPath(); c.moveTo(.5+i*.026,HORIZON); c.lineTo(.5+i*.19,h/w); c.stroke(); }
   const motion = matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : t*.14;
