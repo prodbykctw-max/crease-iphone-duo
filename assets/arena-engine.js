@@ -3,7 +3,7 @@
 (() => {
   'use strict';
   const worlds = [
-    ['midnight', 'Neon metropolis', 'One textured solar core on the crease. Equal from either side.', 'sun'],
+    ['midnight', 'Neon metropolis', 'A burning sun low over the neon skyline.', 'sun'],
     ['toxic', 'Reactor garden', 'A living energy core inside an overgrown bioreactor.', 'core'],
     ['ice', 'Glacial cathedral', 'A turning ice crystal beneath the aurora.', 'crystal'],
     ['inferno', 'Obsidian caldera', 'A molten world above lava falls and basalt.', 'molten'],
