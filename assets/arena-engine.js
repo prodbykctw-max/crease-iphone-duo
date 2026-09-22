@@ -240,8 +240,12 @@
     if(!plate)return false;
     const motion=reduced.matches?0:1, clock=t*motion;
     const drift=Math.sin(clock*.16+half)*.003-lean*.01*motion;
-    const studio=current===9, w=studio?.80:1.08, h=w*plate.naturalHeight/plate.naturalWidth;
-    const y=H-h*(studio?.66:.91), left=(1-w)/2;
+    const studio=current===9;
+    // The art is the world; the floor grid only supports play. Each crop makes
+    // the ten plates feel like a place rather than a palette behind a table.
+    const zoom=[1.35,1.27,1.32,1.30,1.28,1.31,1.29,1.25,1.34,.94][current];
+    const w=zoom,h=w*plate.naturalHeight/plate.naturalWidth;
+    const y=H-h*(studio?.66:.90), left=(1-w)/2;
     c.save();c.beginPath();c.rect(0,0,1,H+.014);c.clip();
     c.globalAlpha=Math.min(1,(performance.now()-readyAt)/350);
     c.fillStyle='#030309';c.fillRect(0,0,1,H+.014);
@@ -299,6 +303,14 @@
         c.fillStyle=g;c.beginPath();c.moveTo(x-.003,H);c.lineTo(tip-.055,0);c.lineTo(tip+.055,0);c.lineTo(x+.003,H);c.fill();
       }
     }
+    if(current===0){
+      // Midnight: slow city scan strips, like distant traffic behind the sun.
+      for(let j=0;j<6;j++){const y=H*(.18+j*.075),x=((t*.045+j*.21)%1);c.strokeStyle=`rgba(255,55,150,${.055+beat*.05})`;c.lineWidth=.0018;c.beginPath();c.moveTo(x-.13,y);c.lineTo(x+.13,y);c.stroke();}
+    }
+    if(current===1){
+      // Toxic: bio-reactor spores drift upward and react to an impact.
+      for(let j=0;j<18;j++){const x=(j*.271+t*.009)%1,y=H*(.92-((j*.139+t*.025)%1)*.7);const r=.0015+(j%3)*.0008;c.fillStyle=`rgba(115,255,145,${.10+beat*.15})`;c.beginPath();c.arc(x,y,r,0,Math.PI*2);c.fill();}
+    }
     if(current===2){
       // Aurora ribbons are independent of the ice plate and move slowly.
       for(let j=0;j<3;j++){
@@ -311,6 +323,14 @@
         c.stroke();
       }
     }
+    if(current===3){
+      // Inferno: vertical heat distortion marks the caldera rather than a grid.
+      for(let j=0;j<10;j++){const x=(j+.5)/10+Math.sin(t*.7+j)*.008;c.strokeStyle=`rgba(255,104,40,${.04+beat*.08})`;c.lineWidth=.006;c.beginPath();c.moveTo(x,H);c.quadraticCurveTo(x+.02*Math.sin(t+j),H*.58,x,H*.2);c.stroke();}
+    }
+    if(current===4){
+      // Ultraviolet: orbital debris flows around the central ringed planet.
+      for(let j=0;j<10;j++){const a=t*.17+j*.63,r=.12+(j%3)*.055,x=.5+Math.cos(a)*r,y=H*.40+Math.sin(a)*r*.38;c.fillStyle=`rgba(210,170,255,${.1+beat*.12})`;c.fillRect(x,y,.003,.003);}
+    }
     if(current===5){
       // Water highlights stay beneath the horizon instead of crossing play.
       c.lineWidth=.001;
@@ -319,6 +339,18 @@
         c.strokeStyle=`rgba(70,225,230,${.07+.04*Math.sin(t+j)})`;
         c.beginPath();c.moveTo(x-.04,y);c.lineTo(x+.04,y);c.stroke();
       }
+    }
+    if(current===6){
+      // Gold Rush: wind-driven sand glints along the lower mesas.
+      for(let j=0;j<24;j++){const x=((j*.19+t*.028)%1),y=H*(.57+(j%6)*.035);c.strokeStyle='rgba(255,212,110,.13)';c.lineWidth=.001;c.beginPath();c.moveTo(x-.02,y);c.lineTo(x+.025,y-.002);c.stroke();}
+    }
+    if(current===7){
+      // Void: sparse architectural seams shift independently of the playfield.
+      for(let j=0;j<5;j++){const x=.14+j*.18+Math.sin(t*.18+j)*.012;c.strokeStyle=`rgba(235,235,255,${.05+beat*.08})`;c.lineWidth=.001;c.beginPath();c.moveTo(x,0);c.lineTo(x+.06,H*.72);c.stroke();}
+    }
+    if(current===8){
+      // Sakura: petals loop around the moon, never through the crease.
+      for(let j=0;j<18;j++){const x=((j*.17+t*.012)%1),y=H*(.18+((j*.23+t*.02)%1)*.52);c.fillStyle=`rgba(255,183,215,${.13+beat*.1})`;c.beginPath();c.ellipse(x,y,.0028,.0014,Math.sin(t+j),0,Math.PI*2);c.fill();}
     }
     // Distinct spatial effects. Seeded phase, no per-frame random allocations.
     const count=Math.round((kind==='planet'?14:22)*detail);

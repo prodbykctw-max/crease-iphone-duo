@@ -18,3 +18,11 @@ does not submit competitive rankings or payments.
 
 The local `node --test tests/online.test.mjs` tests physics only. They are not
 evidence of a deployed or cross-device-tested service.
+
+## Capturing the intro for Instagram
+
+From the repository root on the creator machine: run `python tools/make-capture.py`,
+open the generated `capture-local.html` in Chrome, click **Record intro**, then
+run `python tools/to-instagram-mp4.py crease-intro.webm crease-intro.mp4`.
+The exported MP4 is 1080 × 1920 with the landscape game centered over a subdued,
+blurred version of the game image. It is ready for an Instagram Reel or vertical post.

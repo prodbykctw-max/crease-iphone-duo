@@ -1574,8 +1574,8 @@ function paintHalf(c, bright) {
   }
   // NOTE: the horizontal floor lines are NOT painted here — they scroll, and are drawn live by drawFloorGrid()
   const gcol = bright ? '#ffffff' : ST().grid;
-  for (let k = -14; k <= 14; k++) {
-    c.globalAlpha = bright ? 0.6 : 0.4;
+  for (let k = -7; k <= 7; k++) {
+    c.globalAlpha = bright ? 0.34 : 0.12;
     c.strokeStyle = gcol; c.lineWidth = 1 * px;
     c.beginPath(); c.moveTo(0.5 + k * 0.028, hz); c.lineTo(0.5 + k * 0.17, L + 0.02); c.stroke();
   }
@@ -2345,7 +2345,7 @@ function drawVictory() {
 // The floor grid: unchanged motion — horizontal lines drifting toward each player.
 // Hits make the existing lines light up; nothing is added to the grid itself.
 function drawFloorGrid(t) {
-  const L = view.L, px = 1 / view.s, hz0 = L / 2 + HORIZON, N = 11, SPEED = 0.11;
+  const L = view.L, px = 1 / view.s, hz0 = L / 2 + HORIZON, N = 7, SPEED = 0.075;
   const col = ST().grid, beat = game.beat * 0.35 + (game.fire[0]||game.fire[1]?0.22:0);
   ctx.save(); fieldTf(); rr(ctx, 0, 0, 1, L, 0.06); ctx.clip();
   for (const half of [0, 1]) {
@@ -2360,7 +2360,7 @@ function drawFloorGrid(t) {
       const f = ((i / N + t * SPEED) % 1 + 1) % 1;
       const v = hz0 + (L - hz0) * f * f;
       const fade = Math.min(1, f * 6);                        // fade in at the horizon
-      ctx.globalAlpha = (0.22 + f * 0.5 + beat) * fade;
+      ctx.globalAlpha = (0.075 + f * 0.18 + beat*.35) * fade;
       ctx.strokeStyle = col; ctx.lineWidth = (1 + f * 1.6) * px;
       ctx.beginPath(); ctx.moveTo(-0.05, v); ctx.lineTo(1.05, v); ctx.stroke();
       // lit segment where a surge ring crosses this line
