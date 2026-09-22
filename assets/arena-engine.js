@@ -135,9 +135,10 @@
       if(isRing>.5){
         float r=length(P.xz);
         float line=.65+.35*sin(r*110.);
+        float sweep=pow(.5+.5*cos(atan(P.z,P.x)*2.-time*1.6),18.);
         col=mix(vec3(.32,.14,.57),vec3(.83,.69,1.),line);
         if(style==1.) col=mix(vec3(.05,.4,.12),vec3(.4,1.,.75),line);
-        gl_FragColor=vec4(col*(.55+.45*diffuse),1.); return;
+        gl_FragColor=vec4(col*(.55+.45*diffuse)+vec3(.35,.8,1.)*sweep*(.4+beat),1.); return;
       }
       if(style==0.){
         if(P.y<.12 && sin(P.y*34.) < -.22) discard;
@@ -146,13 +147,22 @@
         float circuit=pow(abs(sin(P.x*14.+sin(P.y*12.))*sin(P.z*13.+time*.4)),12.);
         col=mix(vec3(.015,.08,.045),vec3(.25,1.,.44),circuit);
         emission=.3+circuit*.5;
-      }else if(style==2.){col=vec3(.23,.67,.93);}
+      }else if(style==2.){
+        float veins=pow(1.-abs(2.*turbulence(P*13.)-1.),10.);
+        col=mix(vec3(.045,.18,.35),vec3(.45,.86,1.),turbulence(P*8.));
+        emission=veins*(.3+beat*.65);
+      }
       else if(style==3.){
-        float lava=pow(abs(sin(P.x*9.+sin(P.z*8.))*sin(P.y*11.+sin(P.x*8.))),6.);
+        float lava=pow(1.-abs(2.*turbulence(P*7.+vec3(0.,time*.08,0.))-1.),12.);
         col=mix(vec3(.10,.015,.025),vec3(1.,.36,.035),lava); emission=lava;
-      }else if(style==4.){col=mix(vec3(.15,.055,.37),vec3(.63,.38,.82),bands);}
-      else if(style==5.){col=vec3(.94,.56,.12);}
-      else if(style==6.){col=vec3(.045,.05,.065);}
+      }else if(style==4.){col=mix(vec3(.15,.055,.37),vec3(.83,.56,.72),bands)*(.65+.55*turbulence(P*18.+vec3(time*.04,0.,0.)));}
+      else if(style==5.){col=mix(vec3(.22,.08,.012),vec3(1.,.73,.22),turbulence(P*25.));emission=.15*pow(.5+.5*sin(P.y*19.+time),12.);}
+      else if(style==6.){col=vec3(.045,.05,.065);emission=pow(1.-abs(2.*turbulence(P*9.+time*.025)-1.),18.)*(.2+beat);}
+      else if(style==8.){
+        float grooves=pow(abs(sin(length(P.xy)*60.)),5.);
+        col=mix(vec3(.035,.012,.09),vec3(.08,.65,.75),grooves*.5);
+        emission=pow(.5+.5*cos(atan(P.y,P.x)*8.-time*2.),10.)*(.2+beat*.8);
+      }
       else {
         float grain=sin(P.x*42.+sin(P.z*38.))*sin(P.y*53.);
         col=vec3(.76,.8,.9)*( .83+.17*grain );
@@ -164,8 +174,8 @@
   class Centerpiece {
     constructor() {
       this.canvas=document.createElement('canvas');
-      this.canvas.width=this.canvas.height=320;
-      this.snapshot=document.createElement('canvas'); this.snapshot.width=this.snapshot.height=320;
+      this.canvas.width=this.canvas.height=640;
+      this.snapshot=document.createElement('canvas'); this.snapshot.width=this.snapshot.height=640;
       this.paint=this.snapshot.getContext('2d'); this.last=-Infinity; this.stage=-1;
       this.gl=this.canvas.getContext('webgl',{alpha:true,antialias:true,premultipliedAlpha:false,preserveDrawingBuffer:false,powerPreference:'low-power'});
       this.available=false;
@@ -191,26 +201,31 @@
       }catch(err){this.available=false;console.warn('3D centerpiece unavailable:',err.message);}
     }
     render(index,t,beat,detail) {
-      if(!this.available||index===9)return null;
+      if(!this.available)return null;
       const kind=worlds[index].kind,staticTime=reduced.matches?0:t;
       const interval=reduced.matches?Infinity:1/(detail<.7?18:30);
       if(this.stage===index && staticTime>=this.last && staticTime-this.last<interval)return this.snapshot;
       this.stage=index;this.last=staticTime;
       const gl=this.gl,u=this.uniform;
-      gl.viewport(0,0,320,320);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);gl.useProgram(this.program);
-      const styles={sun:0,core:1,crystal:2,molten:3,planet:4,gold:5,prism:6,moon:7};
+      const resolution=detail<.7?320:640;
+      if(this.canvas.width!==resolution){this.canvas.width=this.canvas.height=resolution;this.snapshot.width=this.snapshot.height=resolution;}
+      gl.viewport(0,0,resolution,resolution);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);gl.useProgram(this.program);
+      const styles={sun:0,core:1,crystal:2,molten:3,planet:4,gold:5,prism:6,moon:7,studio:8};
       gl.uniform1f(u.style,styles[kind]);gl.uniform1f(u.time,staticTime);gl.uniform1f(u.beat,reduced.matches?0:beat);
-      gl.uniform1f(u.texturedSun,index===0?1:0);
+      gl.uniform1f(u.texturedSun,kind==='sun'?1:0);
       const draw=(name,angle,tilt,scale,isRing)=>{
         const mesh=this.mesh[name];gl.bindBuffer(gl.ARRAY_BUFFER,mesh.buffer);
         gl.enableVertexAttribArray(this.pos);gl.vertexAttribPointer(this.pos,3,gl.FLOAT,false,24,0);
         gl.enableVertexAttribArray(this.normal);gl.vertexAttribPointer(this.normal,3,gl.FLOAT,false,24,12);
         gl.uniform2f(u.rotation,angle,tilt);gl.uniform1f(u.scale,scale);gl.uniform1f(u.isRing,isRing);gl.drawArrays(gl.TRIANGLES,0,mesh.count);
       };
-      const faceted=['crystal','gold','prism'].includes(kind),hasRing=kind==='planet'||kind==='core';
+      const faceted=['crystal','gold','prism'].includes(kind),hasRing=['planet','core','studio'].includes(kind);
       draw(faceted?'crystal':'sphere',index===0?0:staticTime*(kind==='sun'?.025:.12),faceted?.18:0,hasRing?.82:1.23,0);
       if(hasRing)draw('ring',0,.45+Math.sin(staticTime*.08)*.13,.82,1);
-      this.paint.clearRect(0,0,320,320);this.paint.drawImage(this.canvas,0,0);
+      // Average opposite views into one object: identical from either end of
+      // the table without drawing a second centerpiece in the arena.
+      this.paint.clearRect(0,0,resolution,resolution);this.paint.globalCompositeOperation='lighter';this.paint.globalAlpha=.5;this.paint.drawImage(this.canvas,0,0);
+      this.paint.save();this.paint.translate(resolution,resolution);this.paint.rotate(Math.PI);this.paint.drawImage(this.canvas,0,0);this.paint.restore();this.paint.globalAlpha=1;this.paint.globalCompositeOperation='source-over';
       return this.snapshot;
     }
   }
@@ -242,7 +257,7 @@
   // Called once in table space, outside the two player-facing environment passes.
   // Keep the object on the crease; scenery moves behind it for depth parallax.
   function drawCenter(c,{L,focal,beat}) {
-    if(!focal || current===9)return;
+    if(!focal)return;
     const pulse=reduced.matches?0:Math.max(0,Math.min(1,beat));
     const size=current===4?.52:.49;
     c.save();
