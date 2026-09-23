@@ -52,7 +52,7 @@ for(let i=0;i<2;i++){
 }
 enter.onclick=async()=>{
   enter.disabled=true;unlockSound();let session;
-  try{session=await navigator.xr.requestSession('immersive-vr',{requiredFeatures:['local-floor']});
+  try{session=await navigator.xr.requestSession('immersive-vr',{requiredFeatures:['local-floor'],optionalFeatures:['hand-tracking']});
     desktop=false;playing=false;state=initial();document.body.classList.add('in-vr');
     session.addEventListener('end',()=>{playing=false;document.body.classList.remove('in-vr');enter.disabled=false;enter.textContent='Enter VR';status.textContent='VR ended. Enter again or return to the phone game.';});
     await renderer.xr.setSession(session);enter.textContent='In VR';
@@ -65,10 +65,21 @@ const local=new THREE.Vector3(),listenerPos=new THREE.Vector3(),forward=new THRE
 renderer.setAnimationLoop((now,frame)=>{
   const dt=Math.min((now-last)/1000||0,.05);last=now;let tracked=desktop;
   const session=renderer.xr.getSession();
+  let pinch=false;
   if(frame&&session){
     tracked=false;const source=[...session.inputSources].find(s=>s.handedness===hand.value&&s.gripSpace);
-    const pose=source&&frame.getPose(source.gripSpace,renderer.xr.getReferenceSpace());
+    const ref=renderer.xr.getReferenceSpace();
+    const handSource=[...session.inputSources].find(s=>s.handedness===hand.value&&s.hand);
+    const pose=source&&frame.getPose(source.gripSpace,ref);
     if(pose&&session.visibilityState==='visible'){local.set(pose.transform.position.x,pose.transform.position.y,pose.transform.position.z);table.worldToLocal(local);target={x:local.x+.5,y:local.z+.9};tracked=true;}
+    if(!pose&&handSource){
+      const tip=handSource.hand.get('index-finger-tip'),thumb=handSource.hand.get('thumb-tip'),tp=tip&&frame.getJointPose(tip,ref),th=thumb&&frame.getJointPose(thumb,ref);
+      if(tp){local.set(tp.transform.position.x,tp.transform.position.y,tp.transform.position.z);table.worldToLocal(local);target={x:local.x+.5,y:local.z+.9};tracked=true;}
+      pinch=!!(tp&&th&&Math.hypot(tp.transform.position.x-th.transform.position.x,tp.transform.position.y-th.transform.position.y,tp.transform.position.z-th.transform.position.z)<.035);
+    }
+    // No controller or hand required: aim the paddle with the headset gaze.
+    if(!tracked){const vp=frame.getViewerPose(ref),view=vp?.views?.[0];if(view){const origin=new THREE.Vector3().setFromMatrixPosition(new THREE.Matrix4().fromArray(view.transform.matrix));const dir=new THREE.Vector3(0,0,-1).applyQuaternion(new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().fromArray(view.transform.matrix))).normalize();if(new THREE.Ray(origin,dir).intersectPlane(plane,hit)){table.worldToLocal(hit);target={x:hit.x+.5,y:hit.z+.9};tracked=true;}}}
+    if(pinch&&!playing)reset();
   }
   if(playing&&tracked&&!document.hidden){acc+=dt;while(acc>=1/60){
     const smoothing=1-Math.exp(-dt*18);smoothTarget.x+=(target.x-smoothTarget.x)*smoothing;smoothTarget.y+=(target.y-smoothTarget.y)*smoothing;
