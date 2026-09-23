@@ -224,8 +224,13 @@
       };
       const faceted=['crystal','gold','prism'].includes(kind),hasRing=['planet','core','studio'].includes(kind);
       const breathe=1+Math.sin(staticTime*(kind==='crystal'?.95:.55)+index)*.022+beat*.045;
-      draw(faceted?'crystal':'sphere',staticTime*(kind==='sun'?.055:kind==='moon'?.035:.12),faceted?.18:Math.sin(staticTime*.23+index)*.055, (hasRing?.82:1.23)*breathe,0);
-      if(hasRing)draw('ring',0,.45+Math.sin(staticTime*.08)*.13,.82,1);
+      // Every centerpiece must have a readable, continuous turn.  The old
+      // rates were too subtle on a phone; these are deliberately visible even
+      // before a puck interacts with the world.
+      const spin={sun:.22,core:.46,crystal:.68,molten:.36,planet:.42,gold:.58,prism:.74,moon:.30,studio:.48}[kind];
+      const tilt=faceted?.28:Math.sin(staticTime*.38+index)*.11;
+      draw(faceted?'crystal':'sphere',staticTime*spin,tilt,(hasRing?.82:1.23)*breathe,0);
+      if(hasRing)draw('ring',staticTime*spin*.72,.45+Math.sin(staticTime*.18)*.13,.82,1);
       // Average opposite views into one object: identical from either end of
       // the table without drawing a second centerpiece in the arena.
       this.paint.clearRect(0,0,resolution,resolution);this.paint.globalCompositeOperation='lighter';this.paint.globalAlpha=.5;this.paint.drawImage(this.canvas,0,0);
