@@ -1,0 +1,8 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>CREASE · Quest VR prototype</title>
+<style>body{margin:0;background:#080514;color:#f5eaff;font:16px system-ui}canvas{display:block}aside{position:absolute;top:16px;left:16px;max-width:340px;background:#100b20e8;padding:20px;border:1px solid #734394;border-radius:18px}body.in-vr aside{display:none}h1{margin:0;color:#36eeee}button,select,a{font:inherit;margin:6px 0;padding:10px;border-radius:8px}button{background:#36eeee;color:#120727;border:0;cursor:pointer}a{color:#fff}p{line-height:1.5}#status{color:#ffd15f}</style></head>
+<body><aside><h1>CREASE / VR LAB</h1><p>A first-to-7 table built for Quest controllers. Select your paddle hand, enter VR, then pull its trigger to start. Move that controller over your half of the table. After a match, pull the trigger for a rematch.</p>
+<label>Paddle hand <select id="hand"><option value="right">Right</option><option value="left">Left</option></select></label><br>
+<button id="enter" disabled>Checking headset…</button> <button id="preview">Desktop practice</button>
+<p id="status" role="status">Loading 3D scene…</p><a href="./">Back to phone game</a><p>Prototype: headset testing pending. Desktop: move the pointer over the table.</p></aside>
+<script type="module">import('./assets/quest-vr.mjs').catch(error=>{document.querySelector('#status').textContent='Could not load VR: '+error.message;});</script></body></html>
