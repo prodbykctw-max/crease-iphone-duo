@@ -4,17 +4,20 @@ import {initial,move,step} from '../backend/online/physics.mjs';
 const status=document.querySelector('#status'),enter=document.querySelector('#enter'),hand=document.querySelector('#hand');
 const scene=new THREE.Scene();scene.background=new THREE.Color('#080514');scene.fog=new THREE.Fog('#080514',5,15);
 const camera=new THREE.PerspectiveCamera(60,innerWidth/innerHeight,.01,30);
-camera.position.set(0,1.8,1.3);camera.lookAt(0,.8,-1.1);
+camera.position.set(0,1.55,1.3);camera.lookAt(0,.58,-1.25);
 const renderer=new THREE.WebGLRenderer({antialias:true});renderer.setPixelRatio(Math.min(devicePixelRatio,1.5));renderer.setSize(innerWidth,innerHeight);renderer.xr.enabled=true;renderer.xr.setReferenceSpaceType('local-floor');document.body.append(renderer.domElement);
 scene.add(new THREE.HemisphereLight(0xc7bbff,0x170924,2));
 const light=new THREE.DirectionalLight(0xffffff,3);light.position.set(-2,4,1);scene.add(light);
-const table=new THREE.Group();table.position.set(0,.78,-1.15);scene.add(table);
+// local-floor is measured from the Quest floor. Keep the play surface below
+// the face, at a comfortable waist height, with the full table in view.
+const table=new THREE.Group();table.position.set(0,.54,-1.25);scene.add(table);
 function mesh(geometry,color,emissive=0){return new THREE.Mesh(geometry,new THREE.MeshStandardMaterial({color,emissive,roughness:.32,metalness:.55}));}
 function box(w,h,d,x,y,z,color,glow=0){const m=mesh(new THREE.BoxGeometry(w,h,d),color,glow);m.position.set(x,y,z);table.add(m);return m;}
 box(1.06,.1,1.86,0,-.06,0,0x180d2c);box(1,.018,1.8,0,0,0,0x091b28);
 for(const x of [-.515,.515])box(.025,.07,1.8,x,.025,0,0x4ce9ff,0x126478);
 // The visible goal mouths match the shared physics goal width.
 for(const z of [-.915,.915])for(const x of [-.375,.375])box(.25,.07,.025,x,.025,z,z<0?0xff3195:0x2de2e6);
+for(const z of [-.925,.925])box(1.02,.018,.012,0,.065,z,0x6d3bba,0x24116b);
 box(1,.002,.008,0,.012,0,0xbb66ff,0x673399);
 for(const x of [-.4,.4])for(const z of [-.7,.7])box(.07,.72,.07,x,-.43,z,0x25143b);
 const grid=new THREE.GridHelper(16,32,0x842e8f,0x271438);grid.position.y=-.01;scene.add(grid);
@@ -31,10 +34,14 @@ const windowMesh=table.children[1];windowMesh.material.transparent=true;windowMe
 const halo=mesh(new THREE.TorusGeometry(.23,.006,8,48),0xff49b6,0x99195f);halo.rotation.x=.7;orb.add(halo);
 const boardCanvas=document.createElement('canvas');boardCanvas.width=1024;boardCanvas.height=256;
 const boardContext=boardCanvas.getContext('2d'),boardTexture=new THREE.CanvasTexture(boardCanvas);
-const board=new THREE.Mesh(new THREE.PlaneGeometry(1.3,.325),new THREE.MeshBasicMaterial({map:boardTexture,side:THREE.DoubleSide}));board.position.set(0,1.5,-2.2);scene.add(board);
-let state=initial(),playing=false,desktop=false,last=0,acc=0,lastLabel='',audio;
+const board=new THREE.Mesh(new THREE.PlaneGeometry(1.3,.325),new THREE.MeshBasicMaterial({map:boardTexture,side:THREE.DoubleSide}));board.position.set(0,1.25,-1.75);scene.add(board);
+let state=initial(),playing=false,desktop=false,menuOpen=true,last=0,acc=0,lastLabel='',audio;
 let target={x:.5,y:1.6},smoothTarget={x:.5,y:1.6};const sources=new Map();
-function reset(){state=initial();playing=true;acc=0;}
+const jointNames=['wrist','thumb-metacarpal','thumb-phalanx-proximal','thumb-phalanx-distal','thumb-tip','index-finger-metacarpal','index-finger-phalanx-proximal','index-finger-phalanx-intermediate','index-finger-phalanx-distal','index-finger-tip','middle-finger-metacarpal','middle-finger-phalanx-proximal','middle-finger-phalanx-intermediate','middle-finger-phalanx-distal','middle-finger-tip','ring-finger-metacarpal','ring-finger-phalanx-proximal','ring-finger-phalanx-intermediate','ring-finger-phalanx-distal','ring-finger-tip','pinky-finger-metacarpal','pinky-finger-phalanx-proximal','pinky-finger-phalanx-intermediate','pinky-finger-phalanx-distal','pinky-finger-tip'];
+const handVisuals=new Map();
+function makeHandVisual(){const g=new THREE.Group();for(const name of jointNames){const dot=mesh(new THREE.SphereGeometry(name==='wrist'?.022:.014,10,8),0xefffff,0x36eeee);g.add(dot);}g.visible=false;scene.add(g);return g;}
+const controllerVisuals=[];
+function reset(){state=initial();playing=true;menuOpen=false;acc=0;}
 function unlockSound(){audio??=new AudioContext();audio.resume().catch(()=>{});}
 function haptic(source, intensity=.55, duration=35){try{const a=source?.gamepad?.hapticActuators?.[0];if(a?.pulse)a.pulse(intensity,duration).catch(()=>{});else if(source?.gamepad?.vibrationActuator?.playEffect)source.gamepad.vibrationActuator.playEffect('dual-rumble',{duration,strongMagnitude:intensity,weakMagnitude:intensity*.6}).catch(()=>{});}catch{}}
 function impact(player=0){
@@ -47,7 +54,8 @@ function impact(player=0){
 }
 for(let i=0;i<2;i++){
   const controller=renderer.xr.getController(i);scene.add(controller);
-  controller.addEventListener('connected',e=>sources.set(i,e.data));controller.addEventListener('disconnected',()=>sources.delete(i));
+  const grip=renderer.xr.getControllerGrip(i),gripMesh=mesh(new THREE.CapsuleGeometry(.025,.11,6,12),0x9eecff,0x1685a0);gripMesh.rotation.x=Math.PI/2;gripMesh.visible=false;grip.add(gripMesh);controllerVisuals.push(gripMesh);
+  controller.addEventListener('connected',e=>{sources.set(i,e.data);gripMesh.visible=true;});controller.addEventListener('disconnected',()=>{sources.delete(i);gripMesh.visible=false;});
   controller.addEventListener('selectstart',()=>{if(sources.get(i)?.handedness!==hand.value)return;const source=sources.get(i);unlockSound();haptic(source,.55,35);if(!playing||state.winner)reset();});
 }
 enter.onclick=async()=>{
@@ -72,26 +80,28 @@ renderer.setAnimationLoop((now,frame)=>{
     const handSource=[...session.inputSources].find(s=>s.handedness===hand.value&&s.hand);
     const pose=source&&frame.getPose(source.gripSpace,ref);
     if(pose&&session.visibilityState==='visible'){local.set(pose.transform.position.x,pose.transform.position.y,pose.transform.position.z);table.worldToLocal(local);target={x:local.x+.5,y:local.z+.9};tracked=true;}
+    for(const hv of handVisuals.values())hv.visible=false;
     if(!pose&&handSource){
       const tip=handSource.hand.get('index-finger-tip'),thumb=handSource.hand.get('thumb-tip'),tp=tip&&frame.getJointPose(tip,ref),th=thumb&&frame.getJointPose(thumb,ref);
       if(tp){local.set(tp.transform.position.x,tp.transform.position.y,tp.transform.position.z);table.worldToLocal(local);target={x:local.x+.5,y:local.z+.9};tracked=true;}
       pinch=!!(tp&&th&&Math.hypot(tp.transform.position.x-th.transform.position.x,tp.transform.position.y-th.transform.position.y,tp.transform.position.z-th.transform.position.z)<.035);
+      let hv=handVisuals.get(handSource.handedness);if(!hv){hv=makeHandVisual();handVisuals.set(handSource.handedness,hv);}hv.visible=true;for(let j=0;j<jointNames.length;j++){const jp=frame.getJointPose(handSource.hand.get(jointNames[j]),ref);if(jp)hv.children[j].position.set(jp.transform.position.x,jp.transform.position.y,jp.transform.position.z);}
     }
     // No controller or hand required: aim the paddle with the headset gaze.
     if(!tracked){const vp=frame.getViewerPose(ref),view=vp?.views?.[0];if(view){const origin=new THREE.Vector3().setFromMatrixPosition(new THREE.Matrix4().fromArray(view.transform.matrix));const dir=new THREE.Vector3(0,0,-1).applyQuaternion(new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().fromArray(view.transform.matrix))).normalize();if(new THREE.Ray(origin,dir).intersectPlane(plane,hit)){table.worldToLocal(hit);target={x:hit.x+.5,y:hit.z+.9};tracked=true;}}}
-    if(pinch&&!playing)reset();
+    if(pinch&&(!playing||state.winner))reset();
   }
   if(playing&&tracked&&!document.hidden){acc+=dt;while(acc>=1/60){
     const smoothing=1-Math.exp(-dt*18);smoothTarget.x+=(target.x-smoothTarget.x)*smoothing;smoothTarget.y+=(target.y-smoothTarget.y)*smoothing;
     move(state,0,smoothTarget.x,smoothTarget.y);const ai=state.paddles[1];move(state,1,ai.x+Math.max(-.007,Math.min(.007,state.puck.x-ai.x)),.22);
     const vx=state.puck.vx,vy=state.puck.vy,score=state.score.join();step(state);
-    if(state.score.join()!==score||vx*state.puck.vx<0||vy*state.puck.vy<0)impact(state.puck.y>.9?0:1);acc-=1/60;
+    if(state.score.join()!==score||vx*state.puck.vx<0||vy*state.puck.vy<0)impact(state.puck.y>.9?0:1);if(state.winner)menuOpen=true;acc-=1/60;
   }}else acc=0;
   paddles.forEach((m,i)=>m.position.set(state.paddles[i].x-.5,0,state.paddles[i].y-.9));puck.position.set(state.puck.x-.5,.028,state.puck.y-.9);
   orb.rotation.y+=dt*.65;halo.rotation.z+=dt*.4;orb.scale.lerp(new THREE.Vector3(1,1,1),Math.min(1,dt*7));
-  const label=state.winner?(state.winner===1?'YOU WIN — TRIGGER TO REMATCH':'CPU WINS — TRIGGER TO REMATCH'):!playing?'PULL YOUR PADDLE-HAND TRIGGER':!tracked?'TRACKING PAUSED — PICK UP CONTROLLER':state.countdown>0?'READY…':'FIRST TO 7';
-  const text=state.score.join(' : ')+' / '+label;
-  if(text!==lastLabel){lastLabel=text;boardContext.fillStyle='#100821';boardContext.fillRect(0,0,1024,256);boardContext.textAlign='center';boardContext.fillStyle='#36eeee';boardContext.font='bold 82px sans-serif';boardContext.fillText('CREASE   '+state.score.join(' : '),512,110);boardContext.fillStyle='#fff';boardContext.font='28px sans-serif';boardContext.fillText(label,512,190);boardTexture.needsUpdate=true;status.textContent=text;}
+  const label=menuOpen?'SOLO VS CPU   ·   2 PLAYERS   ·   GARAGE   ·   PROGRESS   ·   SETTINGS':state.winner?(state.winner===1?'YOU WIN — TRIGGER TO REMATCH':'CPU WINS — TRIGGER TO REMATCH'):!playing?'PULL YOUR PADDLE-HAND TRIGGER':!tracked?'TRACKING PAUSED — PICK UP CONTROLLER':state.countdown>0?'READY…':'FIRST TO 7';
+  const text=menuOpen?'CREASE VR MENU':state.score.join(' : ')+' / '+label;
+  if(text!==lastLabel){lastLabel=text;boardContext.fillStyle='#100821';boardContext.fillRect(0,0,1024,256);boardContext.textAlign='center';boardContext.fillStyle='#36eeee';boardContext.font='bold 70px sans-serif';boardContext.fillText(menuOpen?'CREASE':'CREASE   '+state.score.join(' : '),512,92);boardContext.fillStyle='#fff';boardContext.font=menuOpen?'bold 24px sans-serif':'28px sans-serif';boardContext.fillText(label,512,174);boardContext.fillStyle='#ff3195';boardContext.font='18px sans-serif';boardContext.fillText(menuOpen?'ONE SCREEN · TWO PLAYERS · FIRST TO 7':'TRIGGER TO OPEN MENU',512,220);boardTexture.needsUpdate=true;status.textContent=text;}
   if(audio){const cam=renderer.xr.isPresenting?renderer.xr.getCamera():camera;cam.getWorldPosition(listenerPos);forward.set(0,0,-1).applyQuaternion(cam.quaternion);up.set(0,1,0).applyQuaternion(cam.quaternion);audio.listener.setPosition(listenerPos.x,listenerPos.y,listenerPos.z);audio.listener.setOrientation(forward.x,forward.y,forward.z,up.x,up.y,up.z);}
   renderer.render(scene,camera);
 });
