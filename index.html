@@ -210,7 +210,7 @@ button:focus-visible{outline:2px solid var(--p1);outline-offset:4px}
       <button id="stageNext" class="arrow" aria-label="Next stage">›</button>
     </div>
     <div class="seg" id="diff" role="group" aria-label="CPU difficulty">
-      <button data-d="easy">Easy</button><button data-d="normal" class="on">Normal</button><button data-d="hard">Hard</button>
+      <button data-d="easy" class="on">Easy</button><button data-d="normal">Normal</button><button data-d="hard">Hard</button>
     </div>
     <nav class="row" aria-label="Game menu">
       <button id="bGarageHub" class="link">Garage</button>
@@ -390,10 +390,10 @@ function setStage(i, rebuild = true) {
 }
 const COL = { p1: '#2de2e6', p2: '#ff2a8a', puck: '#ffffff', BIG: '#ffd23f', MULTI: '#7cff6b', WALL: '#b26bff', gold: '#ffd23f', orange: '#ff7a2f', purple: '#b026ff', ink: '#0b0120' };
 // Mobile/tabletop: calmer rallies with sustained air-table glide, not heavy braking.
-const CFG = { padR: 0.075, puckR: 0.042, goalW: 0.38, maxSpd: 2.4, smashSpd: 3.3, smashNeed: 2.1, bumpR: 0.05, bumpKick: 1.35, fric: 0.08, rest: 0.94, padRest: 0.85, win: 7, maxPucks: 3 };
+const CFG = { padR: 0.085, puckR: 0.042, goalW: 0.38, maxSpd: 1.65, smashSpd: 2.2, smashNeed: 2.8, bumpR: 0.05, bumpKick: 1.05, fric: 0.08, rest: 0.94, padRest: 0.7, win: 7, maxPucks: 3 };
 const DIFF = {
-  easy:   { spd: 1.15, react: 0.22, err: 0.09, aggr: 0.55 },
-  normal: { spd: 1.85, react: 0.11, err: 0.04, aggr: 0.8 },
+  easy:   { spd: 0.65, react: 0.36, err: 0.15, aggr: 0.35 },
+  normal: { spd: 1.2, react: 0.2, err: 0.075, aggr: 0.65 },
   hard:   { spd: 2.75, react: 0.04, err: 0.015, aggr: 1.0 },
 };
 const PUPS = ['BIG', 'MULTI', 'WALL'];
@@ -453,7 +453,7 @@ function toScreen(u, v) {
 const game = {
   bumpers: [], pops: [], board: null, hitstop: 0, beat: 0, surges: [], stageFlash: 0, railHits: [],
   introT: 0, introFx: 0, rings: [], shake: 0, flashW: 0, overT: 0, confT: 0,
-  state: 'play', resume: 'play', mode: 'demo', diff: 'normal',
+  state: 'play', resume: 'play', mode: 'demo', diff: 'easy',
 score: [0, 0], pucks: [], paddles: [], pups: [], parts: [], shields: [0, 0],
   timer: 0, pupT: 8, msg: '', msgT: 0, winner: 0, conceder: 0, t: 0, crease: 0, flash: [0, 0], overShown: false, fire: [0, 0], streak: [0, 0], roundPups: [[], []],
 };
@@ -509,6 +509,14 @@ function paddleFor(f) {
   return f.v >= view.L / 2 ? game.paddles[0] : game.paddles[1];
 }
 function setTarget(pd, f) {
+  if (pd.dragAnchor) {
+    // Relative drag: touching down never teleports the paddle into the puck.
+    pd.tu = clamp(pd.dragAnchor.u + f.u - pd.dragAnchor.fu, pd.r, 1-pd.r);
+    const lo = pd.p === 1 ? view.L/2+pd.r : pd.r, hi = pd.p === 1 ? view.L-pd.r : view.L/2-pd.r;
+    pd.tv = clamp(pd.dragAnchor.v + f.v - pd.dragAnchor.fv, lo, hi);
+    pd.dragAnchor = {u:pd.tu,v:pd.tv,fu:f.u,fv:f.v};
+    return;
+  }
   const ahead = pd.p === 1 ? -0.03 : 0.03; // keep the paddle just ahead of the fingertip
   pd.tu = f.u; pd.tv = f.v + ahead;
 }
@@ -518,6 +526,8 @@ cv.addEventListener('pointerdown', e => {
   const f = toField(e.clientX, e.clientY);
   const pd = paddleFor(f);
   if (!pd || pd.ctrl !== 'human') return;
+  if (pd.ptr !== null && pd.ptr !== e.pointerId) return;
+  pd.dragAnchor = e.pointerType === 'touch' ? {u:pd.u,v:pd.v,fu:f.u,fv:f.v} : null;
   ptrs.set(e.pointerId, pd); pd.ptr = e.pointerId;
   setTarget(pd, f);
   try { cv.setPointerCapture(e.pointerId); } catch (_) {}
@@ -532,7 +542,7 @@ cv.addEventListener('pointermove', e => {
   setTarget(pd, toField(e.clientX, e.clientY));
   e.preventDefault();
 }, { passive: false });
-const endPtr = e => { const pd = ptrs.get(e.pointerId); if (pd && pd.ptr === e.pointerId) pd.ptr = null; ptrs.delete(e.pointerId); };
+const endPtr = e => { const pd = ptrs.get(e.pointerId); if (pd && pd.ptr === e.pointerId) { pd.ptr = null; pd.dragAnchor = null; } ptrs.delete(e.pointerId); };
 cv.addEventListener('pointerup', endPtr);
 cv.addEventListener('pointercancel', endPtr);
 document.addEventListener('touchmove', e => { if (e.target === cv) e.preventDefault(); }, { passive: false });
@@ -704,8 +714,9 @@ function physics(dt, puckLive) {
     if (pd.ctrl === 'cpu') ai(pd, dt, D);
     const lo = pd.p === 1 ? L / 2 + pd.r : pd.r, hi = pd.p === 1 ? L - pd.r : L / 2 - pd.r;
     const tu = clamp(pd.tu, pd.r, 1 - pd.r), tv = clamp(pd.tv, lo, hi);
-    const maxS = pd.ctrl === 'cpu' ? D.spd : 22;
+    const maxS = pd.ctrl === 'cpu' ? D.spd : 4;
     let du = tu - pd.u, dv = tv - pd.v;
+    if (pd.ctrl === 'human') { const follow = 1 - Math.exp(-70 * dt); du *= follow; dv *= follow; }
     const d = Math.hypot(du, dv), md = maxS * dt;
     if (d > md) { du *= md / d; dv *= md / d; }
     pd.vu = du / dt; pd.vv = dv / dt;
