@@ -849,9 +849,13 @@ function post(pk, pu, pv) {
 }
 function placeBumpers() {
   const L = view.L, old = game.bumpers;
-  game.bumpers = [0.19, 0.81].map((u, i) => ({ u, v: L / 2, r: CFG.bumpR, flash: old[i] ? old[i].flash : 0, punch: 0, pv: 0 }));
+  game.bumpers = [0.19, 0.81].map((u, i) => ({ u, v: L / 2, r: CFG.bumpR, flash: old[i] ? old[i].flash : 0, punch: 0, pv: 0, phase: i * Math.PI }));
 }
+// Bumpers breathe between solid and phase states. A phase bumper is visible
+// but has no collision, so the center remains a choice instead of a trap.
+function bumperActive(b) { return Math.sin(game.t * 1.55 + b.phase) > -0.18; }
 function hitBumper(pk, b) {
+  if (!bumperActive(b)) return;
   const du = pk.u - b.u, dv = pk.v - b.v, d = Math.hypot(du, dv), m = pk.r + b.r;
   if (d >= m) return;
   const nu = d < 1e-6 ? 0 : du / d, nv = d < 1e-6 ? (pk.v < b.v ? -1 : 1) : dv / d;
@@ -859,18 +863,23 @@ function hitBumper(pk, b) {
   const vn = pk.vu * nu + pk.vv * nv;
   if (vn >= 0) return;
   pk.vu -= 2 * vn * nu; pk.vv -= 2 * vn * nv;
+  // Deflect forward toward the opponent rather than sending a clean attack
+  // straight back at the person who made it.
+  const forward = pk.last === 1 ? -1 : pk.last === 2 ? 1 : (pk.vv < 0 ? -1 : 1);
+  pk.vv = Math.abs(pk.vv) * forward;
   const sp = Math.hypot(pk.vu, pk.vv), want = Math.max(sp * 1.12, CFG.bumpKick);
   pk.vu *= want / (sp || 1); pk.vv *= want / (sp || 1);
   if (Math.abs(pk.vv) < 0.35) pk.vv = (pk.v < b.v ? -1 : 1) * 0.35;   // never kick it along the crease forever
   pk.bumped = true;
   b.flash = 1; b.pv += 9;
-  burst(b.u + nu * b.r, b.v + nv * b.r, COL.gold, 16, 1.5); burst(b.u + nu * b.r, b.v + nv * b.r, COL.purple, 12, 1.2);
-  sparks(b.u + nu * b.r, b.v + nv * b.r, nu, nv, COL.gold, 20, 1.85);
-  game.rings.push({ u: b.u, v: b.v, age: 0, life: 0.42, col: COL.gold, max: 0.17 });
-  game.rings.push({ u: b.u, v: b.v, age: -0.08, life: 0.48, col: COL.purple, max: 0.22 });
-  addPop('BUMP', b.u, b.v - nv * 0.02, COL.gold, pk.v >= view.L / 2 ? 1 : 2, 0.06);
+  const col = b.u < .5 ? ST().p1 : ST().p2, alt = b.u < .5 ? ST().p2 : ST().p1;
+  burst(b.u + nu * b.r, b.v + nv * b.r, col, 16, 1.5); burst(b.u + nu * b.r, b.v + nv * b.r, alt, 12, 1.2);
+  sparks(b.u + nu * b.r, b.v + nv * b.r, nu, nv, col, 20, 1.85);
+  game.rings.push({ u: b.u, v: b.v, age: 0, life: 0.42, col, max: 0.17 });
+  game.rings.push({ u: b.u, v: b.v, age: -0.08, life: 0.48, col: alt, max: 0.22 });
+  addPop('BUMP', b.u, b.v - nv * 0.02, col, pk.v >= view.L / 2 ? 1 : 2, 0.06);
   juice({ stop: 0.035, shake: 0.17, flash: 0.08 });
-  surge(b.u, b.v, COL.gold, 1.45);
+  surge(b.u, b.v, col, 1.45);
   sfx.bump();
 }
 // Light racing out through the grid from wherever the puck struck.
@@ -1771,12 +1780,16 @@ function drawPaddle(pd, glowA) {
   const style=CreaseProduct.paddleStyle();
   const ring = pd.big > 0 ? COL.BIG : col;
   glowCircle(pd.u, pd.v, pd.r * 1.7, style.trail, glowA+(game.fire[pd.p-1]>0?.18:0));
-  ctx.fillStyle = '#0b0e22';
-  ctx.beginPath(); ctx.arc(pd.u, pd.v, pd.r, 0, Math.PI * 2); ctx.fill();
+  // Raised glossy body: shadow, outer bevel, metallic rim, glass core.
+  ctx.fillStyle = 'rgba(0,0,0,.52)';ctx.beginPath();ctx.ellipse(pd.u+pd.r*.15,pd.v+pd.r*.22,pd.r*.98,pd.r*.70,0,0,Math.PI*2);ctx.fill();
+  const body=ctx.createRadialGradient(pd.u-pd.r*.34,pd.v-pd.r*.48,pd.r*.06,pd.u,pd.v,pd.r*1.16);
+  body.addColorStop(0,'#ffffff');body.addColorStop(.08,hexA(col,.95));body.addColorStop(.31,'#17223e');body.addColorStop(.70,'#070916');body.addColorStop(1,'#01020a');
+  ctx.fillStyle=body;ctx.beginPath();ctx.arc(pd.u,pd.v,pd.r,0,Math.PI*2);ctx.fill();
   ctx.lineWidth = Math.max(4 * px, pd.r * 0.2); ctx.strokeStyle = pd.big > 0 ? COL.BIG : style.ring;
-  ctx.beginPath(); ctx.arc(pd.u, pd.v, pd.r * 0.88, 0, Math.PI * 2); ctx.stroke();
-  ctx.fillStyle = style.core;
-  ctx.beginPath(); ctx.arc(pd.u, pd.v, pd.r * 0.42, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(pd.u, pd.v-pd.r*.035, pd.r * 0.84, 0, Math.PI * 2); ctx.stroke();
+  const glass=ctx.createRadialGradient(pd.u-pd.r*.17,pd.v-pd.r*.22,pd.r*.02,pd.u,pd.v,pd.r*.52);glass.addColorStop(0,'#fff');glass.addColorStop(.16,hexA(col,.95));glass.addColorStop(.65,style.core);glass.addColorStop(1,'#101427');ctx.fillStyle=glass;
+  ctx.beginPath(); ctx.arc(pd.u, pd.v-pd.r*.025, pd.r * .47, 0, Math.PI * 2); ctx.fill();
+  ctx.globalAlpha=.42;ctx.fillStyle='#fff';ctx.beginPath();ctx.ellipse(pd.u-pd.r*.26,pd.v-pd.r*.30,pd.r*.23,pd.r*.10,-.55,0,Math.PI*2);ctx.fill();ctx.globalAlpha=1;
   if(game.fire[pd.p-1]>0){ctx.strokeStyle=style.trail;ctx.lineWidth=2*px;ctx.beginPath();ctx.arc(pd.u,pd.v,pd.r*1.25+Math.sin(game.t*12)*px,pd.v*.0,Math.PI*2);ctx.stroke();}
   ctx.fillStyle = 'rgba(255,255,255,.55)';
   ctx.beginPath(); ctx.arc(pd.u - pd.r * 0.12, pd.v - pd.r * 0.12, pd.r * 0.14, 0, Math.PI * 2); ctx.fill();
@@ -2422,17 +2435,20 @@ function beatGlow(sx, sy) {
 function drawBumpers() {
   const px = 1 / view.s;
   for (const b of game.bumpers) {
-    const r = b.r * (1 + b.punch * 0.35), f = b.flash;
-    glowCircle(b.u, b.v, r * 2.1, COL.purple, 0.16 + f * 0.3 + game.beat * 0.08);
-    if (f > 0.05) { ctx.globalAlpha = f * 0.5; ctx.strokeStyle = COL.gold; ctx.lineWidth = 3 * px;
+    const r = b.r * (1 + b.punch * 0.35), f = b.flash, active=bumperActive(b), col=b.u<.5?ST().p1:ST().p2, alt=b.u<.5?ST().p2:ST().p1;
+    const phase=active?1:.20;
+    glowCircle(b.u, b.v, r * 2.1, col, phase*(.16 + f * .3 + game.beat * .08));
+    if (f > 0.05) { ctx.globalAlpha = f * 0.5; ctx.strokeStyle = col; ctx.lineWidth = 3 * px;
       ctx.beginPath(); ctx.arc(b.u, b.v, r * (1.4 + (1 - f) * 2.2), 0, Math.PI * 2); ctx.stroke(); ctx.globalAlpha = 1; }
-    ctx.fillStyle='rgba(0,0,0,.58)';ctx.beginPath();ctx.ellipse(b.u+r*.13,b.v+r*.21,r*1.1,r*.6,0,0,Math.PI*2);ctx.fill();
+    ctx.globalAlpha=phase;ctx.fillStyle='rgba(0,0,0,.58)';ctx.beginPath();ctx.ellipse(b.u+r*.13,b.v+r*.21,r*1.1,r*.6,0,0,Math.PI*2);ctx.fill();
     ctx.fillStyle='#090715';ctx.beginPath();ctx.arc(b.u,b.v+r*.15,r*1.02,0,Math.PI*2);ctx.fill();
     const shell=ctx.createRadialGradient(b.u-r*.34,b.v-r*.43,r*.05,b.u,b.v,r);
-    shell.addColorStop(0,'#fff');shell.addColorStop(.1,f>.08?'#fff3ad':'#ffd23f');shell.addColorStop(.3,'#b26b12');shell.addColorStop(.68,'#321044');shell.addColorStop(1,'#080612');ctx.fillStyle=shell;ctx.beginPath();ctx.arc(b.u,b.v,r,0,Math.PI*2);ctx.fill();
-    const spin=game.t*4.8+b.u*8;ctx.lineCap='round';ctx.lineWidth=Math.max(3*px,r*.2);ctx.strokeStyle=f>.3?'#fff':COL.gold;ctx.beginPath();ctx.arc(b.u,b.v,r*.84,spin,spin+Math.PI*1.38);ctx.stroke();
-    ctx.strokeStyle=COL.purple;ctx.lineWidth=Math.max(1.5*px,r*.075);ctx.beginPath();ctx.arc(b.u,b.v,r*.84,spin+Math.PI*1.54,spin+Math.PI*1.92);ctx.stroke();
-    const core=ctx.createRadialGradient(b.u-r*.1,b.v-r*.14,r*.02,b.u,b.v,r*.35);core.addColorStop(0,'#fff');core.addColorStop(.25,f>.1?'#fff6c3':COL.gold);core.addColorStop(1,COL.purple);ctx.fillStyle=core;ctx.beginPath();ctx.arc(b.u,b.v,r*.33*(1+f*.26+game.beat*.1),0,Math.PI*2);ctx.fill();
+    shell.addColorStop(0,'#fff');shell.addColorStop(.1,f>.08?'#fff':col);shell.addColorStop(.3,col);shell.addColorStop(.68,'#101225');shell.addColorStop(1,'#02030b');ctx.fillStyle=shell;ctx.beginPath();ctx.arc(b.u,b.v,r,0,Math.PI*2);ctx.fill();
+    const spin=game.t*4.8+b.u*8;ctx.lineCap='round';ctx.lineWidth=Math.max(3*px,r*.2);ctx.strokeStyle=f>.3?'#fff':col;ctx.beginPath();ctx.arc(b.u,b.v,r*.84,spin,spin+Math.PI*1.38);ctx.stroke();
+    ctx.strokeStyle=alt;ctx.lineWidth=Math.max(1.5*px,r*.075);ctx.beginPath();ctx.arc(b.u,b.v,r*.84,spin+Math.PI*1.54,spin+Math.PI*1.92);ctx.stroke();
+    const core=ctx.createRadialGradient(b.u-r*.1,b.v-r*.14,r*.02,b.u,b.v,r*.35);core.addColorStop(0,'#fff');core.addColorStop(.25,f>.1?'#fff':col);core.addColorStop(1,alt);ctx.fillStyle=core;ctx.beginPath();ctx.arc(b.u,b.v,r*.33*(1+f*.26+game.beat*.1),0,Math.PI*2);ctx.fill();
+    if(!active){ctx.globalAlpha=.75;ctx.strokeStyle=alt;ctx.lineWidth=Math.max(1.5*px,r*.06);ctx.setLineDash([r*.18,r*.13]);ctx.beginPath();ctx.arc(b.u,b.v,r*1.22,0,Math.PI*2);ctx.stroke();ctx.setLineDash([]);}
+    ctx.globalAlpha=1;
   }
 }
 function chromeFill(c, px) {
