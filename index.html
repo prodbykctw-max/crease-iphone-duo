@@ -102,7 +102,9 @@ h2{margin:0 0 6px;font-size:clamp(30px,8vmin,48px);font-weight:900;font-style:it
 
 /* ---- studio splash: prodbyKCTW logo video on a plain black screen ---- */
 #studio{background:#000;cursor:pointer;overflow:hidden}
-#stLogo{display:block;width:min(88vw,88vh,560px);aspect-ratio:1/1;opacity:0;pointer-events:none}
+/* This is the supplied prodbyKCTW mark.  Scale the whole artwork up — never
+   stretch it — so its actual logo artwork reaches toward the phone edges. */
+#stLogo{display:block;width:min(118vw,118vh,720px);aspect-ratio:1/1;opacity:0;pointer-events:none}
 #studio.play #stLogo{animation:stIn .35s ease-out forwards}
 #studio.out{animation:stOut .35s ease-in forwards}
 @keyframes stIn{from{opacity:0}to{opacity:1}}
@@ -1970,17 +1972,7 @@ function glitchSlice(table, f) { let cur = null; for (const k of table) if (f >=
 function bootMarkSetup() {
   const dpr = Math.min(window.devicePixelRatio || 1, 3);
   const vmin = Math.min(window.innerWidth, window.innerHeight);
-  // The opening wordmark is the hero of the boot screen.  Size it from the
-  // available *width* (not only vmin) so it reaches toward both phone edges
-  // without ever stretching the lettering.
-  const fitProbe = mkCanvas(1, 1).getContext('2d');
-  const naturalWidth = (f) => {
-    fitProbe.font = `900 ${f}px -apple-system, "SF Pro Rounded", system-ui, sans-serif`;
-    const letters = [...'CREASE'], tracking = 0.14 * f;
-    return 0.24 * f + letters.reduce((w, ch) => w + fitProbe.measureText(ch).width + tracking, 0) + 0.1 * f;
-  };
-  const widthFit = window.innerWidth * 0.88 / naturalWidth(100) * 100;
-  const F = Math.max(52, Math.min(122, Math.max(vmin * 0.15, widthFit)));
+  const F = Math.max(46, Math.min(96, vmin * 0.14));                 // font-size: clamp(46px, 14vmin, 96px)
   const key = F + '|' + dpr;
   if (key === bootMark.key) return true;
   bootMark.key = key; bootMark.dpr = dpr; bootMark.F = F;
@@ -2276,9 +2268,7 @@ function drawIntro(sx, sy) {
 }
 function drawTitle(T) {
   const word = 'CREASE', cx = view.vw / 2, cy = view.vh / 2 - Math.min(view.vw, view.vh) * 0.04;
-  // Keep the in-game title card as assertive as the boot wordmark.  This is a
-  // true scale increase, never a horizontal stretch.
-  const size = Math.min(view.vw * 0.18, view.vh * 0.18, 126);
+  const size = Math.min(view.vw * 0.15, view.vh * 0.16, 110);
   ctx.save(); ctx.setTransform(view.dpr, 0, 0, view.dpr, 0, 0);
   ctx.font = `900 ${Math.round(size)}px -apple-system, "SF Pro Rounded", system-ui, sans-serif`;
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
