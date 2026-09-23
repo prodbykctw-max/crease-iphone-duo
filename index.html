@@ -389,7 +389,8 @@ function setStage(i, rebuild = true) {
   if (rebuild) { sceneLayers.key = ''; buildBg(); }
 }
 const COL = { p1: '#2de2e6', p2: '#ff2a8a', puck: '#ffffff', BIG: '#ffd23f', MULTI: '#7cff6b', WALL: '#b26bff', gold: '#ffd23f', orange: '#ff7a2f', purple: '#b026ff', ink: '#0b0120' };
-const CFG = { padR: 0.075, puckR: 0.042, goalW: 0.38, maxSpd: 3.4, smashSpd: 4.8, smashNeed: 2.1, bumpR: 0.05, bumpKick: 1.9, fric: 0.28, rest: 0.9, padRest: 0.95, win: 7, maxPucks: 3 };
+// Mobile/tabletop: calmer rallies with sustained air-table glide, not heavy braking.
+const CFG = { padR: 0.075, puckR: 0.042, goalW: 0.38, maxSpd: 2.4, smashSpd: 3.3, smashNeed: 2.1, bumpR: 0.05, bumpKick: 1.35, fric: 0.08, rest: 0.94, padRest: 0.85, win: 7, maxPucks: 3 };
 const DIFF = {
   easy:   { spd: 1.15, react: 0.22, err: 0.09, aggr: 0.55 },
   normal: { spd: 1.85, react: 0.11, err: 0.04, aggr: 0.8 },
