@@ -108,9 +108,11 @@
         // The sphere's geometry, light, bands and flowing material share that
         // symmetry: neither player gets an upside-down or second sun.
         float radius=length(n.xy);
-        float angle=atan(n.y,n.x)*2.+time*.065;
+        // This is the moving material inside the sun itself, not an effect on
+        // the playfield. Double-angle space preserves bilateral play.
+        float angle=atan(n.y,n.x)*2.-time*.52;
         vec3 q=vec3(radius*cos(angle),radius*sin(angle),n.z);
-        vec3 flow=q*11.+vec3(time*.07,0.,time*.035);
+        vec3 flow=q*11.+vec3(time*.28,0.,time*.16);
         float broad=turbulence(flow);
         float granules=noise3(flow*5.+broad*2.);
         float filament=pow(1.-abs(2.*turbulence(flow*1.8+vec3(broad*2.))-1.),9.);
@@ -120,8 +122,9 @@
         if(latitude>.22 && band<.035+latitude*.085)discard;
         vec3 hot=mix(vec3(1.,.65,.08),vec3(.94,.055,.24),smoothstep(.05,.97,latitude));
         vec3 material=mix(vec3(.12,.009,.025),hot,smoothstep(.25,.76,broad));
-        material*=.72+granules*.55;
-        material+=vec3(1.,.43,.07)*filament*(.5+beat*.24);
+        material*=.66+granules*.66;
+        float current=.5+.5*sin(angle*4.+time*2.2+broad*5.);
+        material+=vec3(1.,.43,.07)*(filament*(.7+beat*.65)+current*.13);
         float curvature=.22+.78*pow(max(n.z,0.),.65);
         float rim=pow(1.-abs(n.z),4.);
         gl_FragColor=vec4(material*curvature+hot*rim*.34,1.);
@@ -220,7 +223,8 @@
         gl.uniform2f(u.rotation,angle,tilt);gl.uniform1f(u.scale,scale);gl.uniform1f(u.isRing,isRing);gl.drawArrays(gl.TRIANGLES,0,mesh.count);
       };
       const faceted=['crystal','gold','prism'].includes(kind),hasRing=['planet','core','studio'].includes(kind);
-      draw(faceted?'crystal':'sphere',index===0?0:staticTime*(kind==='sun'?.025:.12),faceted?.18:0,hasRing?.82:1.23,0);
+      const breathe=1+Math.sin(staticTime*(kind==='crystal'?.95:.55)+index)*.022+beat*.045;
+      draw(faceted?'crystal':'sphere',staticTime*(kind==='sun'?.055:kind==='moon'?.035:.12),faceted?.18:Math.sin(staticTime*.23+index)*.055, (hasRing?.82:1.23)*breathe,0);
       if(hasRing)draw('ring',0,.45+Math.sin(staticTime*.08)*.13,.82,1);
       // Average opposite views into one object: identical from either end of
       // the table without drawing a second centerpiece in the arena.
@@ -260,19 +264,20 @@
   }
   // Called once in table space, outside the two player-facing environment passes.
   // Keep the object on the crease; scenery moves behind it for depth parallax.
-  function drawCenter(c,{L,focal,beat}) {
+  function drawCenter(c,{L,focal,beat,t=0}) {
     if(!focal)return;
     const pulse=reduced.matches?0:Math.max(0,Math.min(1,beat));
-    const size=current===4?.52:.49;
+    const floatY=reduced.matches?0:Math.sin(t*.75+current*1.7)*.012;
+    const size=(current===4?.52:.49)*(1+Math.sin(t*.7+current)*.018+pulse*.045);
     c.save();
     if(current===0){
-      const halo=c.createRadialGradient(.5,L/2,.09,.5,L/2,.24);
+      const halo=c.createRadialGradient(.5,L/2+floatY,.09,.5,L/2+floatY,.24);
       halo.addColorStop(0,`rgba(255,105,25,${.16+pulse*.08})`);
       halo.addColorStop(.58,`rgba(245,36,91,${.06+pulse*.025})`);
       halo.addColorStop(1,'rgba(245,36,91,0)');
-      c.fillStyle=halo;c.fillRect(.26,L/2-.24,.48,.48);
+      c.fillStyle=halo;c.fillRect(.26,L/2+floatY-.24,.48,.48);
     }
-    c.drawImage(focal,.5-size/2,L/2-size/2,size,size);
+    c.drawImage(focal,.5-size/2,L/2+floatY-size/2,size,size);
     c.restore();
   }
   function atmosphere(c,H,t,beat,flash,detail,drift) {
