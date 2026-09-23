@@ -1,5 +1,6 @@
 import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js';
 import {initial,move,step} from '../backend/online/physics.mjs';
+import {followHand,createOpponent,opponentMove} from './quest-controls.mjs';
 
 const status=document.querySelector('#status'),enter=document.querySelector('#enter'),hand=document.querySelector('#hand');
 const scene=new THREE.Scene();scene.background=new THREE.Color('#080514');scene.fog=new THREE.Fog('#080514',5,15);
@@ -36,12 +37,12 @@ const boardCanvas=document.createElement('canvas');boardCanvas.width=1024;boardC
 const boardContext=boardCanvas.getContext('2d'),boardTexture=new THREE.CanvasTexture(boardCanvas);
 const board=new THREE.Mesh(new THREE.PlaneGeometry(1.3,.325),new THREE.MeshBasicMaterial({map:boardTexture,side:THREE.DoubleSide}));board.position.set(0,1.25,-1.75);scene.add(board);
 let state=initial(),playing=false,desktop=false,intro=true,menuOpen=false,introT=0,last=0,acc=0,lastLabel='',audio;
-let target={x:.5,y:1.6},smoothTarget={x:.5,y:1.6};const sources=new Map();
+let target={x:.5,y:1.6},smoothTarget={x:.5,y:1.6},opponent=createOpponent();const sources=new Map();
 const jointNames=['wrist','thumb-metacarpal','thumb-phalanx-proximal','thumb-phalanx-distal','thumb-tip','index-finger-metacarpal','index-finger-phalanx-proximal','index-finger-phalanx-intermediate','index-finger-phalanx-distal','index-finger-tip','middle-finger-metacarpal','middle-finger-phalanx-proximal','middle-finger-phalanx-intermediate','middle-finger-phalanx-distal','middle-finger-tip','ring-finger-metacarpal','ring-finger-phalanx-proximal','ring-finger-phalanx-intermediate','ring-finger-phalanx-distal','ring-finger-tip','pinky-finger-metacarpal','pinky-finger-phalanx-proximal','pinky-finger-phalanx-intermediate','pinky-finger-phalanx-distal','pinky-finger-tip'];
 const handVisuals=new Map();
 function makeHandVisual(){const g=new THREE.Group();for(const name of jointNames){const dot=mesh(new THREE.SphereGeometry(name==='wrist'?.022:.014,10,8),0xefffff,0x36eeee);g.add(dot);}g.visible=false;scene.add(g);return g;}
 const controllerVisuals=[];
-function reset(){state=initial();playing=true;intro=false;menuOpen=false;table.visible=true;acc=0;}
+function reset(){state=initial();opponent=createOpponent();smoothTarget={...state.paddles[0]};playing=true;intro=false;menuOpen=false;table.visible=true;acc=0;}
 function skipIntro(){if(!intro)return;intro=false;menuOpen=true;table.visible=true;lastLabel='';}
 function unlockSound(){audio??=new AudioContext();audio.resume().catch(()=>{});}
 function haptic(source, intensity=.55, duration=35){try{const a=source?.gamepad?.hapticActuators?.[0];if(a?.pulse)a.pulse(intensity,duration).catch(()=>{});else if(source?.gamepad?.vibrationActuator?.playEffect)source.gamepad.vibrationActuator.playEffect('dual-rumble',{duration,strongMagnitude:intensity,weakMagnitude:intensity*.6}).catch(()=>{});}catch{}}
@@ -68,7 +69,7 @@ enter.onclick=async()=>{
   }catch(e){await session?.end().catch(()=>{});status.textContent='VR could not start: '+e.message;enter.disabled=false;}
 };
 document.querySelector('#preview').onclick=()=>{desktop=true;unlockSound();reset();};
-const ray=new THREE.Raycaster(),pointer=new THREE.Vector2(),hit=new THREE.Vector3(),plane=new THREE.Plane(new THREE.Vector3(0,1,0),-.8);
+const ray=new THREE.Raycaster(),pointer=new THREE.Vector2(),hit=new THREE.Vector3(),plane=new THREE.Plane(new THREE.Vector3(0,1,0),-table.position.y);
 renderer.domElement.addEventListener('pointermove',e=>{if(renderer.xr.isPresenting)return;pointer.set(e.clientX/innerWidth*2-1,1-e.clientY/innerHeight*2);ray.setFromCamera(pointer,camera);if(ray.ray.intersectPlane(plane,hit)){table.worldToLocal(hit);target={x:hit.x+.5,y:hit.z+.9};}});
 const local=new THREE.Vector3(),listenerPos=new THREE.Vector3(),forward=new THREE.Vector3(),up=new THREE.Vector3();
 renderer.setAnimationLoop((now,frame)=>{
@@ -93,9 +94,8 @@ renderer.setAnimationLoop((now,frame)=>{
     if(pinch){if(intro)skipIntro();else if(!playing||state.winner)reset();}
   }
   if(intro){introT+=dt;if(introT>4.8)skipIntro();}
-  if(playing&&tracked&&!document.hidden){acc+=dt;while(acc>=1/60){
-    const smoothing=1-Math.exp(-dt*18);smoothTarget.x+=(target.x-smoothTarget.x)*smoothing;smoothTarget.y+=(target.y-smoothTarget.y)*smoothing;
-    move(state,0,smoothTarget.x,smoothTarget.y);const ai=state.paddles[1];move(state,1,ai.x+Math.max(-.007,Math.min(.007,state.puck.x-ai.x)),.22);
+  if(playing&&tracked&&!document.hidden){followHand(smoothTarget,target,dt);acc+=dt;while(acc>=1/60){
+    move(state,0,smoothTarget.x,smoothTarget.y);const ai=opponentMove(state,opponent,1/60);move(state,1,ai.x,ai.y);
     const vx=state.puck.vx,vy=state.puck.vy,score=state.score.join();step(state);
     if(state.score.join()!==score||vx*state.puck.vx<0||vy*state.puck.vy<0)impact(state.puck.y>.9?0:1);if(state.winner)menuOpen=true;acc-=1/60;
   }}else acc=0;
