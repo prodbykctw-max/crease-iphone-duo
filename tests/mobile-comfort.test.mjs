@@ -21,3 +21,14 @@ test('mobile inline scripts parse',()=>{
     if(!/src=|application\/ld\+json|type="module"/.test(m[1]))new vm.Script(m[2]);
   }
 });
+test('center bumpers phase and always direct a bump toward the opponent',()=>{
+  assert.match(html,/function bumperActive\(b\).*Math\.sin\(game\.t \* 1\.55 \+ b\.phase\) > -0\.18/);
+  assert.match(html,/if \(!bumperActive\(b\)\) return;/);
+  assert.match(html,/const forward = pk\.last === 1 \? -1 : pk\.last === 2 \? 1/);
+  assert.match(html,/pk\.vv = Math\.abs\(pk\.vv\) \* forward/);
+  assert.match(html,/active=bumperActive\(b\), col=b\.u<\.5\?ST\(\)\.p1:ST\(\)\.p2/);
+});
+test('paddles use layered glossy depth rendering',()=>{
+  const paddle=html.slice(html.indexOf('function drawPaddle'),html.indexOf('function drawPuck'));
+  assert.match(paddle,/Raised glossy body/);assert.match(paddle,/createRadialGradient/);assert.match(paddle,/ctx\.ellipse/);
+});
