@@ -5,7 +5,7 @@ Canonical URL: https://prodbykctw-max.github.io/crease-iphone-duo/
 
 ## TL;DR
 
-CREASE is a free, browser-based, two-player neon air hockey game. One screen, two players, first to 7. In portrait the screen is a pocket table for solo play against the CPU (Easy, Normal, Hard); in landscape it becomes a wide table with one player on each side of the glowing center line, the "crease." It has a dark vaporwave look, a tap-to-boot intro, an animated cutscene, smash and bump mechanics, power-ups, and a synthwave soundtrack. It was designed with foldable phones — specifically Apple's iPhone Duo — in mind, and works on any modern mobile or desktop browser. Built by prodbyKCTW (Melvin D. Brown III, Atlanta, GA).
+CREASE is a free, browser-based, two-player neon air hockey game made for iPhone Duo. One screen, two players, first to 7. In portrait the screen is a pocket table for solo play against the CPU (Easy, Normal, Hard); in landscape it becomes a wide table with one player on each side of the glowing center line, the "crease." It has a dark vaporwave look, a tap-to-boot intro, an animated cutscene, smash and bump mechanics, power-ups, and a synthwave soundtrack. It was created specifically around the iPhone Duo foldable-phone experience and works on any modern mobile or desktop browser. Built by prodbyKCTW (Melvin D. Brown III, Atlanta, GA).
 
 ## How to play
 
@@ -47,8 +47,8 @@ A: Yes. Turn the phone to landscape; each player controls the paddle on their ha
 Q: Does it work on iPhone?
 A: Yes — Safari and as a home-screen app. It also runs in Android Chrome and desktop browsers.
 
-Q: What is the iPhone Duo connection?
-A: CREASE was designed fold-first for Apple's book-style foldable: pocket table on the small outer screen, full two-player table on the inner screen. Physical iPhone Duo testing is still pending.
+Q: Is CREASE made for iPhone Duo?
+A: Yes. CREASE was created as an iPhone Duo game: a pocket table on the small outer screen and a full two-player table on the inner screen. It also works on other modern phones and browsers. Physical iPhone Duo testing is still pending.
 
 Q: What are SMASH and BUMP?
 A: SMASH is flicking your paddle hard into the puck to make it faster. BUMP is bouncing the puck off the gold bumpers on the crease; scoring off one is a BANK SHOT.
