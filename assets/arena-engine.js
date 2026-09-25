@@ -107,16 +107,17 @@
         // Double-angle coordinates are identical after a 180-degree turn.
         // The sphere's geometry, light, bands and flowing material share that
         // symmetry: neither player gets an upside-down or second sun.
-        float radius=length(n.xy);
+        vec3 surface=normalize(P);
+        float radius=length(surface.xy);
         // This is the moving material inside the sun itself, not an effect on
         // the playfield. Double-angle space preserves bilateral play.
-        float angle=atan(n.y,n.x)*2.-time*.52;
-        vec3 q=vec3(radius*cos(angle),radius*sin(angle),n.z);
+        float angle=atan(surface.y,surface.x)*2.;
+        vec3 q=vec3(radius*cos(angle),radius*sin(angle),surface.z);
         vec3 flow=q*11.+vec3(time*.28,0.,time*.16);
         float broad=turbulence(flow);
         float granules=noise3(flow*5.+broad*2.);
         float filament=pow(1.-abs(2.*turbulence(flow*1.8+vec3(broad*2.))-1.),9.);
-        float latitude=abs(n.y);
+        float latitude=abs(surface.y);
         // Original two-sided synthwave bands; texture remains volumetric.
         float band=fract((latitude-.22)/.135);
         if(latitude>.22 && band<.035+latitude*.085)discard;
@@ -125,7 +126,7 @@
         material*=.66+granules*.66;
         float current=.5+.5*sin(angle*4.+time*2.2+broad*5.);
         material+=vec3(1.,.43,.07)*(filament*(.7+beat*.65)+current*.13);
-        float curvature=.22+.78*pow(max(n.z,0.),.65);
+        float curvature=.26+.74*max(dot(n,light),0.);
         float rim=pow(1.-abs(n.z),4.);
         gl_FragColor=vec4(material*curvature+hot*rim*.34,1.);
         return;
@@ -167,8 +168,9 @@
         emission=pow(.5+.5*cos(atan(P.y,P.x)*8.-time*2.),10.)*(.2+beat*.8);
       }
       else {
-        float grain=sin(P.x*42.+sin(P.z*38.))*sin(P.y*53.);
-        col=vec3(.76,.8,.9)*( .83+.17*grain );
+        float grain=turbulence(P*19.);
+        float craters=smoothstep(.35,.65,turbulence(P*5.));
+        col=mix(vec3(.16,.18,.29),vec3(.88,.83,.95),craters)*(.7+.3*grain);
       }
       vec3 result=col*(.18+.82*diffuse+emission)+vec3(spec*.7)+col*rim*(.8+beat*.3);
       if(style==6.) result+=vec3(rim*.9);
@@ -227,14 +229,15 @@
       // Every centerpiece must have a readable, continuous turn.  The old
       // rates were too subtle on a phone; these are deliberately visible even
       // before a puck interacts with the world.
-      const spin={sun:.22,core:.46,crystal:.68,molten:.36,planet:.42,gold:.58,prism:.74,moon:.30,studio:.48}[kind];
-      const tilt=faceted?.28:Math.sin(staticTime*.38+index)*.11;
+      const spin={sun:.48,core:.65,crystal:.72,molten:.46,planet:.50,gold:.62,prism:.74,moon:.42,studio:.58}[kind];
+      const tilt=faceted?.32+Math.sin(staticTime*.5)*.16:.20+Math.sin(staticTime*.38+index)*.16;
       draw(faceted?'crystal':'sphere',staticTime*spin,tilt,(hasRing?.82:1.23)*breathe,0);
       if(hasRing)draw('ring',staticTime*spin*.72,.45+Math.sin(staticTime*.18)*.13,.82,1);
-      // Average opposite views into one object: identical from either end of
-      // the table without drawing a second centerpiece in the arena.
-      this.paint.clearRect(0,0,resolution,resolution);this.paint.globalCompositeOperation='lighter';this.paint.globalAlpha=.5;this.paint.drawImage(this.canvas,0,0);
-      this.paint.save();this.paint.translate(resolution,resolution);this.paint.rotate(Math.PI);this.paint.drawImage(this.canvas,0,0);this.paint.restore();this.paint.globalAlpha=1;this.paint.globalCompositeOperation='source-over';
+      // One opaque depth-tested object. Abstract geometry has no upright face:
+      // both players share it without compositing a second mirrored silhouette.
+      this.paint.clearRect(0,0,resolution,resolution);
+      this.paint.globalCompositeOperation='source-over';this.paint.globalAlpha=1;
+      this.paint.drawImage(this.canvas,0,0);
       return this.snapshot;
     }
   }
@@ -260,7 +263,7 @@
     c.fillStyle='#030309';c.fillRect(0,0,1,H+.014);
     c.drawImage(plate,left+drift,y,w,h);
     if(focal && preview){
-      const size=current===4?.235:.19, x=.5-lean*.022*motion;
+      const size=current===4?.40:.36, x=.5-lean*.022*motion;
       const cy=H*.36+Math.sin(clock*.28)*.003;
       c.drawImage(focal,x-size/2,cy-size/2,size,size);
     }
@@ -273,7 +276,7 @@
     if(!focal)return;
     const pulse=reduced.matches?0:Math.max(0,Math.min(1,beat));
     const floatY=reduced.matches?0:Math.sin(t*.75+current*1.7)*.012;
-    const size=(current===4?.52:.49)*(1+Math.sin(t*.7+current)*.018+pulse*.045);
+    const size=(current===4?.70:.66)*(1+Math.sin(t*.7+current)*.018+pulse*.045);
     c.save();
     if(current===0){
       const halo=c.createRadialGradient(.5,L/2+floatY,.09,.5,L/2+floatY,.24);
