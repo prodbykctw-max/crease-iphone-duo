@@ -212,7 +212,7 @@
       if(this.stage===index && staticTime>=this.last && staticTime-this.last<interval)return this.snapshot;
       this.stage=index;this.last=staticTime;
       const gl=this.gl,u=this.uniform;
-      const resolution=detail<.7?320:640;
+      const resolution=detail<.7?256:384;
       if(this.canvas.width!==resolution){this.canvas.width=this.canvas.height=resolution;this.snapshot.width=this.snapshot.height=resolution;}
       gl.viewport(0,0,resolution,resolution);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);gl.useProgram(this.program);
       const styles={sun:0,core:1,crystal:2,molten:3,planet:4,gold:5,prism:6,moon:7,studio:8};
