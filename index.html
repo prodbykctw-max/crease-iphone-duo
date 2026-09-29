@@ -297,6 +297,7 @@ button:focus-visible{outline:2px solid var(--p1);outline-offset:4px}
   <div class="card">
     <h2 id="overTitle">YOU WIN</h2>
     <p id="overScore" class="hint"></p>
+    <p id="overReflection" class="hint" aria-live="polite"></p>
     <div class="btns">
       <button id="bAgain" class="btn p1"><span>REMATCH</span></button>
       <button id="bMenu" class="btn plain"><span>MENU</span></button>
@@ -465,6 +466,7 @@ const game = {
   state: 'play', resume: 'play', mode: 'demo', diff: 'easy',
 score: [0, 0], pucks: [], paddles: [], pups: [], parts: [], shields: [0, 0],
   timer: 0, pupT: 8, msg: '', msgT: 0, winner: 0, conceder: 0, t: 0, crease: 0, flash: [0, 0], overShown: false, fire: [0, 0], streak: [0, 0], roundPups: [[], []],
+  bestRally: 0, playerReturns: 0,
 };
 let muted = false;
 
@@ -486,7 +488,7 @@ function newMatch(mode) {
   if (mode !== 'demo' && !progress.canPlay(stageIx)) return false;
   progress.begin({mode,stage:stageIx,difficulty:game.diff});
   game.mode = mode;
-  game.score = [0, 0]; game.shields = [0, 0]; game.pups = []; game.parts = []; game.fire=[0,0]; game.streak=[0,0]; game.roundPups=[[],[]];
+  game.score = [0, 0]; game.shields = [0, 0]; game.pups = []; game.parts = []; game.fire=[0,0]; game.streak=[0,0]; game.roundPups=[[],[]]; game.bestRally=0; game.playerReturns=0;
   game.paddles = [mkPaddle(1, mode === 'demo' ? 'cpu' : 'human'), mkPaddle(2, mode === 'duo' ? 'human' : 'cpu')];
   game.winner = 0; game.overShown = false; game.pupT = rand(6, 9);
   game.pops = []; game.hitstop = 0; resetBoard();
@@ -519,15 +521,17 @@ function paddleFor(f) {
 }
 function setTarget(pd, f) {
   if (pd.dragAnchor) {
-    // Relative drag: touching down never teleports the paddle into the puck.
+    // Preserve the exact point the player grabbed: no snap under the thumb.
     pd.tu = clamp(pd.dragAnchor.u + f.u - pd.dragAnchor.fu, pd.r, 1-pd.r);
     const lo = pd.p === 1 ? view.L/2+pd.r : pd.r, hi = pd.p === 1 ? view.L-pd.r : view.L/2-pd.r;
     pd.tv = clamp(pd.dragAnchor.v + f.v - pd.dragAnchor.fv, lo, hi);
     pd.dragAnchor = {u:pd.tu,v:pd.tv,fu:f.u,fv:f.v};
     return;
   }
-  const ahead = pd.p === 1 ? -0.03 : 0.03; // keep the paddle just ahead of the fingertip
-  pd.tu = f.u; pd.tv = f.v + ahead;
+  pd.tu = f.u; pd.tv = f.v;
+}
+function canGrabPaddle(pd, f) {
+  return Math.hypot(f.u - pd.u, f.v - pd.v) <= pd.r * 1.35;
 }
 cv.addEventListener('pointerdown', e => {
   unlockAudio();
@@ -536,6 +540,7 @@ cv.addEventListener('pointerdown', e => {
   const pd = paddleFor(f);
   if (!pd || pd.ctrl !== 'human') return;
   if (pd.ptr !== null && pd.ptr !== e.pointerId) return;
+  if (e.pointerType === 'touch' && !canGrabPaddle(pd, f)) return;
   pd.dragAnchor = e.pointerType === 'touch' ? {u:pd.u,v:pd.v,fu:f.u,fv:f.v} : null;
   ptrs.set(e.pointerId, pd); pd.ptr = e.pointerId;
   setTarget(pd, f);
@@ -823,6 +828,11 @@ function hitPaddle(pk, pd) {
     pk.last = pd.p; pk.bumped = false;
     pk.lastTouch = pd.p; pk.rallyHits = (pk.rallyHits || 0) + 1;
     progress.event('hit',{player:pd.p,rally:pk.rallyHits});
+    if (pd.ctrl === 'human') {
+      game.playerReturns++;
+      game.bestRally = Math.max(game.bestRally, pk.rallyHits);
+      if (pk.rallyHits === 5) toast('RALLY · KEEP IT CLEAN', 1.15);
+    }
     const col = pd.p === 1 ? COL.p1 : COL.p2;
     const push = Math.max(0, pd.vu * nu + pd.vv * nv);   // paddle speed driving into the puck
     pd.punch = Math.min(1, (pd.punch || 0) + 0.25 + Math.min(1, j / 3) * 0.5);
@@ -976,6 +986,9 @@ function scored(scorer, pk) {
   surge(0.5, gv, col, 2);
   sfx.goal(scorer);
   buzz(30);
+  if (game.mode === 'solo' && scorer === 2 && game.score[1] - game.score[0] >= 3) {
+    toast('RESET · ONE CLEAN RETURN', 1.4);
+  }
   const alive = game.pucks.filter(p => !p.dead).length;
   if (game.score[scorer - 1] >= CFG.win) {
     game.state = 'over'; game.winner = scorer; game.pups = [];
@@ -2760,6 +2773,10 @@ function showOver() {
   $('overTitle').style.color = w === 1 ? COL.p1 : COL.p2;
   const who = game.mode === 'solo' ? ['You', 'CPU (' + difficultyLabel(game.diff) + ')'] : ['Cyan', 'Pink'];
   $('overScore').textContent = `${who[0]} ${game.score[0]} – ${game.score[1]} ${who[1]}`;
+  const rally = game.bestRally || 0;
+  $('overReflection').textContent = game.mode === 'solo'
+    ? (w === 1 ? `Strong finish · best rally: ${rally} hits.` : `Best rally: ${rally} hits · one clean return at a time.`)
+    : `Best shared rally: ${rally} hits · run it back when you’re ready.`;
   $('bPause').classList.add('hidden');
   show('over', true);
 }
