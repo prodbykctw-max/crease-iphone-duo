@@ -1,0 +1,20 @@
+name: Cache tags
+
+# A changed asset served under an unchanged ?v= tag is invisible to every
+# browser that already cached it. This fails the check instead of shipping a
+# fix that returning players never receive.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: node tools/stamp-assets.mjs --check

@@ -313,9 +313,9 @@ button:focus-visible{outline:2px solid var(--p1);outline-offset:4px}
 
 <script src="analytics-config.js"></script>
 <script src="analytics.js"></script>
-<script src="assets/arena-engine.js?v=ios-readiness-1"></script>
-<script src="assets/progression.js?v=1989-1"></script>
-<script src="assets/monetization.js?v=pass-1"></script>
+<script src="assets/arena-engine.js?v=839de2dcf7"></script>
+<script src="assets/progression.js?v=da90ce5c11"></script>
+<script src="assets/monetization.js?v=75092ba24a"></script>
 <script>
 (() => {
 'use strict';
@@ -499,9 +499,20 @@ function newMatch(mode) {
 function resetRound(servTo, cd = 0.9) {
   const L = view.L;
   const v = servTo === 1 ? L / 2 + 0.2 : servTo === 2 ? L / 2 - 0.2 : L / 2;
-  game.pucks = [mkPuck(0.5, v)];
+  // Paddles stay exactly where the player left them between rounds — they are
+  // never snapped back to the goal. Only motion and round power-ups are cleared.
+  for (const pd of game.paddles) { pd.vu = pd.vv = 0; pd.big = 0; pd.r = CFG.padR; pd.tu = pd.u; pd.tv = pd.v; }
+  // If a paddle happens to be sitting on the serve spot, the SERVE moves aside,
+  // not the paddle.
+  let su = 0.5;
+  for (const pd of game.paddles) {
+    const need = pd.r + CFG.puckR + 0.03;
+    if (Math.abs(pd.v - v) >= need) continue;
+    const du = su - pd.u;
+    if (Math.abs(du) < need) su = pd.u + (du >= 0 ? need : -need);
+  }
+  game.pucks = [mkPuck(clamp(su, CFG.puckR + 0.02, 1 - CFG.puckR - 0.02), v)];
   game.shields = [0, 0];
-  for (const pd of game.paddles) { pd.u = pd.tu = 0.5; pd.v = pd.tv = pd.p === 1 ? L - 0.2 : 0.2; pd.vu = pd.vv = 0; pd.big = 0; pd.r = CFG.padR; }
   if(CreaseProduct.extendRounds()){
     for(const [who,list] of game.roundPups.entries())for(const type of list){
       if(type==='BIG')game.paddles[who].big=8*1.6;
