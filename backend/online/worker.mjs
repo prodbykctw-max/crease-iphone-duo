@@ -1,11 +1,59 @@
 import {initial,move,step} from './physics.mjs';
+
+const ALPHABET='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+const CODE=/^[A-Z2-9]{10}$/;
+// A waiting opponent is only offered to the next arrival for this long. If the
+// host closed their tab, the joiner gets a 404 from the room and asks again.
+const HOLD_MS=30000;
+
+function newCode(){
+  return Array.from(crypto.getRandomValues(new Uint8Array(10)),n=>ALPHABET[n%32]).join('');
+}
+function allowed(env,origin){
+  return (env.ALLOWED_ORIGINS||'').split(',').map(s=>s.trim()).filter(Boolean).includes(origin);
+}
+function cors(origin){
+  return {'Access-Control-Allow-Origin':origin,'Vary':'Origin','Cache-Control':'no-store'};
+}
+
 export default {async fetch(request,env){
   const url=new URL(request.url),origin=request.headers.get('Origin');
-  if(!(env.ALLOWED_ORIGINS||'').split(',').includes(origin))return new Response('Forbidden',{status:403});
-  if(!/^\/room\/[A-Z2-9]{10}$/.test(url.pathname))return new Response('Invalid room',{status:400});
-  if(request.headers.get('Upgrade')?.toLowerCase()!=='websocket')return new Response('WebSocket required',{status:426});
-  return env.ROOMS.get(env.ROOMS.idFromName(url.pathname)).fetch(request);
+
+  if(request.method==='OPTIONS'){
+    if(!allowed(env,origin))return new Response('Forbidden',{status:403});
+    return new Response(null,{status:204,headers:{...cors(origin),
+      'Access-Control-Allow-Methods':'GET,OPTIONS','Access-Control-Allow-Headers':'content-type','Access-Control-Max-Age':'86400'}});
+  }
+
+  if(!allowed(env,origin))return new Response('Forbidden',{status:403});
+
+  // Quick match: pair whoever is waiting with whoever asks next. One lobby for
+  // the whole game, so any two visitors meet without exchanging anything.
+  if(url.pathname==='/match'){
+    const res=await env.LOBBY.get(env.LOBBY.idFromName('global')).fetch(request);
+    const body=await res.text();
+    return new Response(body,{status:res.status,headers:{...cors(origin),'content-type':'application/json'}});
+  }
+
+  const room=url.pathname.startsWith('/room/')?url.pathname.slice(6):'';
+  if(!CODE.test(room))return new Response('Invalid room',{status:400,headers:cors(origin)});
+  if(request.headers.get('Upgrade')?.toLowerCase()!=='websocket')
+    return new Response('WebSocket required',{status:426,headers:cors(origin)});
+  return env.ROOMS.get(env.ROOMS.idFromName('/room/'+room)).fetch(request);
 }};
+
+export class Lobby {
+  constructor(ctx){this.ctx=ctx;this.waiting=null;}
+  async fetch(){
+    const now=Date.now();
+    if(this.waiting&&now-this.waiting.ts>HOLD_MS)this.waiting=null;
+    let body;
+    if(this.waiting){body={code:this.waiting.code,create:false};this.waiting=null;}
+    else{const code=newCode();this.waiting={code,ts:now};body={code,create:true};}
+    return new Response(JSON.stringify(body),{headers:{'content-type':'application/json'}});
+  }
+}
+
 export class Room {
   constructor(ctx){this.ctx=ctx;this.players=[];this.state=initial();this.timer=null;this.ticks=0;}
   async fetch(request){
@@ -15,6 +63,9 @@ export class Room {
     const pair=new WebSocketPair(),[client,server]=Object.values(pair);server.accept();
     const player=this.players.length;this.players.push(server);let last=0;
     server.send(JSON.stringify({type:'joined',player}));
+    // Tell the player already waiting that someone arrived, so the host's UI can
+    // stop saying "waiting" before the first state frame lands.
+    if(this.players.length===2)for(const ws of this.players)try{ws.send(JSON.stringify({type:'ready'}));}catch{}
     server.addEventListener('message',e=>{
       if(typeof e.data!=='string'||e.data.length>256)return;
       const now=Date.now();if(now-last<14)return;last=now;

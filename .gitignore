@@ -1,1 +1,5 @@
 capture-local.html
+node_modules/
+backend/online/.wrangler/
+backend/online/package-lock.json
+backend/online/package.json
