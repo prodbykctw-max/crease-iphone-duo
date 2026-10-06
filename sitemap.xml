@@ -1,6 +1,45 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url><loc>https://prodbykctw-max.github.io/crease-iphone-duo/</loc><lastmod>2026-09-21</lastmod><changefreq>weekly</changefreq><priority>1.0</priority></url>
-  <url><loc>https://prodbykctw-max.github.io/crease-iphone-duo/llms.txt</loc><lastmod>2026-09-21</lastmod><changefreq>monthly</changefreq><priority>0.5</priority></url>
-  <url><loc>https://prodbykctw-max.github.io/crease-iphone-duo/llms-full.txt</loc><lastmod>2026-09-21</lastmod><changefreq>monthly</changefreq><priority>0.5</priority></url>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:video="http://www.google.com/schemas/sitemap-video/1.1">
+  <url>
+    <loc>https://prodbykctw-max.github.io/crease-iphone-duo/</loc>
+    <lastmod>2026-10-05</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+    <video:video>
+      <video:thumbnail_loc>https://prodbykctw-max.github.io/crease-iphone-duo/media/crease-fold-poster.jpg</video:thumbnail_loc>
+      <video:title>CREASE on the iPhone Duo — the hinge is the table</video:title>
+      <video:description>CREASE running fold-first on the iPhone Duo. Folded, the outer screen is a pocket table for one. Opened, the hinge becomes the centre line of a full air-hockey table with a player on each side, and the score carries across the fold.</video:description>
+      <video:content_loc>https://prodbykctw-max.github.io/crease-iphone-duo/media/crease-fold.mp4</video:content_loc>
+      <video:duration>11</video:duration>
+      <video:publication_date>2026-10-05T00:00:00-04:00</video:publication_date>
+      <video:family_friendly>yes</video:family_friendly>
+      <video:requires_subscription>no</video:requires_subscription>
+      <video:live>no</video:live>
+    </video:video>
+  </url>
+  <url>
+    <loc>https://prodbykctw-max.github.io/crease-iphone-duo/online.html</loc>
+    <lastmod>2026-10-05</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://prodbykctw-max.github.io/crease-iphone-duo/vr.html</loc>
+    <lastmod>2026-10-05</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://prodbykctw-max.github.io/crease-iphone-duo/llms.txt</loc>
+    <lastmod>2026-10-05</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://prodbykctw-max.github.io/crease-iphone-duo/llms-full.txt</loc>
+    <lastmod>2026-10-05</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+  </url>
 </urlset>
