@@ -29,3 +29,14 @@ test('CORS preflight and unavailable database', async () => {
   assert.equal((await worker.fetch(req(),env)).status,503);
 });
 
+test('rate limits answer 429 before the database is touched', async () => {
+  const {env,writes} = setup();
+  env.PER_IP = { async limit() { return { success: false }; } };
+  assert.equal((await worker.fetch(req(), env)).status, 429);
+  env.PER_IP = { async limit() { return { success: true }; } };
+  env.ALL_TRAFFIC = { async limit({ key }) { assert.equal(key, 'all'); return { success: false }; } };
+  assert.equal((await worker.fetch(req(), env)).status, 429);
+  env.ALL_TRAFFIC = { async limit() { return { success: true }; } };
+  assert.equal((await worker.fetch(req(), env)).status, 204);
+  assert.equal(writes.length, 1);
+});
