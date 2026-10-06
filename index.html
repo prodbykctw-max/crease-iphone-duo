@@ -975,14 +975,13 @@ function spawnPup() {
   game.pups.push({ type, u: rand(0.36, 0.64), v: view.L / 2, r: 0.045, life: 9, dead: false });
 }
 
+// every goal on the scoreboard counts toward Fire Mode, whoever touched the puck last; the other side's streak resets
+function countStreak(scorer){const other=scorer===1?1:0;game.streak[scorer-1]++;game.streak[other]=0;game.fire[other]=0;return game.streak[scorer-1]>=CreaseProduct.fireThreshold;}
 function scored(scorer, pk) {
   pk.dead = true;
   const L = view.L;
   game.score[scorer - 1]++;
-  const ownTouch=pk.lastTouch===scorer;
-  if(ownTouch){game.streak[scorer-1]++;if(game.streak[scorer-1]>=CreaseProduct.fireThreshold){game.fire[scorer-1]=7;addPop('FIRE MODE',.5,scorer===1?L*.58:L*.42,CreaseProduct.paddleStyle().trail,scorer,.1,true);toast('FIRE MODE · 3 GOALS IN A ROW',1.8);}}
-  else {game.streak[scorer-1]=0;game.fire[scorer-1]=0;}
-  game.streak[scorer===1?1:0]=0;game.fire[scorer===1?1:0]=0;
+  if(countStreak(scorer)){game.fire[scorer-1]=7;addPop('FIRE MODE',.5,scorer===1?L*.58:L*.42,CreaseProduct.paddleStyle().trail,scorer,.1,true);toast('FIRE MODE · 3 GOALS IN A ROW',1.8);}
   progress.goal({scorer,lastTouch:pk.lastTouch,smash:pk.lastTouch===scorer&&pk.smashT>0,bank:pk.lastTouch===scorer&&pk.bumped});
   game.flash[scorer - 1] = 1;
   const col = scorer === 1 ? COL.p1 : COL.p2, gv = scorer === 1 ? 0 : L;

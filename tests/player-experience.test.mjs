@@ -23,3 +23,17 @@ test('player-centered feedback is present without coercive UI', () => {
   assert.match(html,/overReflection/);
   assert.match(html,/best rally/);
 });
+
+test('Fire Mode: three scoreboard goals in a row ignite it, whoever touched the puck last', () => {
+  const src = html.slice(html.indexOf('function countStreak('), html.indexOf('function scored('));
+  const ctx = vm.createContext({game:{streak:[0,0],fire:[0,0]},CreaseProduct:{fireThreshold:3}});
+  vm.runInContext(src, ctx);
+  assert.equal(ctx.countStreak(1), false);
+  assert.equal(ctx.countStreak(1), false);
+  assert.equal(ctx.countStreak(1), true);
+  ctx.game.fire[0] = 7;
+  assert.equal(ctx.countStreak(2), false);
+  assert.deepEqual([...ctx.game.streak], [0,1]);
+  assert.equal(ctx.game.fire[0], 0);
+  assert.doesNotMatch(html.slice(html.indexOf('function scored('), html.indexOf('progress.goal(')), /ownTouch/);
+});
