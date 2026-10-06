@@ -6,6 +6,26 @@ export function move(s,player,x,y){
   const d=Math.hypot(tx-p.x,ty-p.y),k=Math.min(1,.12/(d||1));
   p.x+=(tx-p.x)*k;p.y+=(ty-p.y)*k;
 }
+// ONLINE paddle input (backend/online/worker.mjs). move() above jumps a paddle
+// up to 0.12 per call, so a client that sent moves faster than the official one
+// moved faster. Online, a message only sets a TARGET (target()), and every
+// physics tick carries the paddle toward it at no more than MAX_SPEED (steer()).
+// MAX_SPEED: the official client (online.html) sends at most one move per 30 ms,
+// so honest play topped out at 0.12 / 0.030 = 4.0 table units/s (~3.6 at the
+// usual 33 ms pointer cadence); a modded client reached 0.12 per 14 ms = 8.6.
+// 4.2 leaves 5% over the honest maximum. Local/VR play keeps using move().
+export const MAX_SPEED=4.2;
+export function target(player,x,y){
+  if(!Number.isFinite(x)||!Number.isFinite(y))return null;
+  return {x:Math.max(.07,Math.min(.93,x)),y:Math.max(player?.07:.99,Math.min(player?.81:1.73,y))};
+}
+export function steer(s,targets,dt=1/60){
+  const max=MAX_SPEED*dt;
+  for(let i=0;i<2;i++){const t=targets[i];if(!t)continue;
+    const p=s.paddles[i],d=Math.hypot(t.x-p.x,t.y-p.y);
+    if(d<=max){p.x=t.x;p.y=t.y;targets[i]=null;}
+    else{const k=max/d;p.x+=(t.x-p.x)*k;p.y+=(t.y-p.y)*k;}}
+}
 export function step(s,dt=1/60){
   if(s.winner)return;
   if(s.countdown>0){s.countdown--;return;}

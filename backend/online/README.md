@@ -13,11 +13,25 @@ Two ways in, both served by the same Worker:
   characters from `ABCDEFGHJKLMNPQRSTUVWXYZ23456789`. `?create=1` opens the
   room; without it the player joins an existing one.
 
-`Lobby` is a single Durable Object holding at most one waiting room code, for
-30 seconds. `Room` is one Durable Object per match: it accepts two sockets,
-steps the physics at 60 Hz and broadcasts state at 30 Hz. A match is capped at
-ten minutes. Only origins in `ALLOWED_ORIGINS` are served; everything else gets
-403 before any socket is opened.
+`Lobby` is a single Durable Object holding waiting room codes for 30 seconds.
+A code is only offered to a second player after its host's socket is open in
+the Room (the Room calls the lobby's internal `/ready`), and never to a request
+from the host's own IP. `Room` is one Durable Object per match: it accepts two
+sockets, steps the physics at 60 Hz and broadcasts state at 30 Hz. A room that
+nobody joins closes 60 seconds after its first player arrived (a storage
+alarm); a finished match closes about 5 seconds after the winner is decided; a
+match is capped at ten minutes. Only origins in `ALLOWED_ORIGINS` are served;
+everything else gets 403 before any socket is opened.
+
+Abuse limits:
+
+- `MATCH_LIMIT` (Workers Rate Limiting, namespace 3003): 20 requests / 60 s per
+  `CF-Connecting-IP` across `/match` and `/room/*`. Skipped if the binding is
+  missing.
+- Paddle speed: a `move` message only sets a target; each physics tick moves
+  the paddle toward it by at most `MAX_SPEED` (4.2 table units/s, in
+  `physics.mjs`), just over the official client's ceiling of 0.12 per 30 ms.
+- Tests: `node --test tests/online.test.mjs tests/online-security.test.mjs`.
 
 ## Deploy
 
@@ -48,12 +62,15 @@ refused with 403.
 
 ```bash
 cd backend/online
-npx wrangler dev --port 8787 --local
+npx wrangler dev --env dev --port 8787 --local
 ```
 
-`wrangler.jsonc` already allows `http://127.0.0.1:8765`, so serving the repo
-root on port 8765 and opening `online.html` there will talk to the local
-Worker - point `window.CREASE_ONLINE_URL` at `http://127.0.0.1:8787` to try it.
+Production allows only `https://prodbykctw-max.github.io`. The `dev`
+environment in `wrangler.jsonc` allows `http://127.0.0.1:8765` (and localhost
+on 8787), so serving the repo root on port 8765 and opening `online.html`
+there will talk to the local Worker - point `window.CREASE_ONLINE_URL` at
+`http://127.0.0.1:8787` to try it. `npx wrangler deploy` (no `--env`) deploys
+production with no localhost origins.
 
 ## Verified
 

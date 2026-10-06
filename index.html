@@ -2689,7 +2689,10 @@ $('achievements').addEventListener('keydown',e=>e.stopPropagation());
 function renderLeaderboard(){
   const list=$('leaderboardList');list.replaceChildren();$('leaderboardName').value=CreaseProduct.name();const rows=CreaseProduct.scores();
   if(!rows.length){list.textContent='No scores yet. Finish a match to claim the first spot.';return;}
-  rows.slice(0,50).forEach((row,i)=>{const li=document.createElement('li');li.innerHTML=`<span>${i+1}</span><span>${String(row.name).replace(/[<>]/g,'')}</span><strong>${row.wins||0} W <small>${row.streak||0} streak</small></strong>`;list.append(li);});
+  // built with textContent: names come from storage, never parse them as HTML
+  rows.slice(0,50).forEach((row,i)=>{const li=document.createElement('li'),n=document.createElement('span'),who=document.createElement('span'),w=document.createElement('strong'),sm=document.createElement('small');
+    n.textContent=String(i+1);who.textContent=String(row.name).replace(/[<>]/g,'');sm.textContent=(Number(row.streak)||0)+' streak';
+    w.append((Number(row.wins)||0)+' W ',sm);li.append(n,who,w);list.append(li);});
 }
 function renderPremium(){
   const paid=CreaseProduct.isPremium();$('premiumStatus').textContent=paid?'Premium Pass active on this device.':'Classic Cyan is free. The one-time pass unlocks every paddle and modifier.';
