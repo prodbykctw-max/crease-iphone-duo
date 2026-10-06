@@ -85,7 +85,7 @@ h2{margin:0 0 6px;font-size:clamp(30px,8vmin,48px);font-weight:900;font-style:it
 .bl{font-size:11px;letter-spacing:.32em;margin:14px 0 0;text-transform:uppercase;padding-left:.32em}
 .bl.dim{color:#5c6389}
 .markc{display:block;margin:0 auto;max-width:none}
-.bl.build{font-size:9px;letter-spacing:.2em;margin-top:26px;opacity:.7}
+.about-crease{margin:14px 0 6px;text-align:center;color:#a99abf;font:12px/1.6 ui-monospace,"SF Mono",Menlo,Consolas,monospace;letter-spacing:.12em}.about-crease summary{cursor:pointer;color:#c9b8e8;letter-spacing:.2em;text-transform:uppercase}.about-crease p{margin:4px 0}
 .bl.grn{color:#5dffb1;text-shadow:0 0 8px rgba(93,255,177,.45);min-height:16px;margin-top:12px}
 .bar{height:2px;width:min(78%,360px);margin:12px auto 0;background:rgba(255,255,255,.08);overflow:hidden}
 .bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,#2de2e6,#ffffff,#ff2a8a);box-shadow:0 0 10px #fff}
@@ -182,11 +182,9 @@ button:focus-visible{outline:2px solid var(--p1);outline-offset:4px}
 <div id="boot" class="overlay hidden" role="button" aria-label="Tap to boot">
   <div class="bootbox">
     <canvas id="bootMark" class="markc" role="img" aria-label="CREASE"></canvas>
-    <p class="bl dim">Fold Engine v1 · Initializing</p>
     <div class="bar"><i></i></div>
     <p class="bl grn" id="bootStat">Awaiting input...</p>
     <button class="bootbtn" id="bBoot">TAP TO BOOT</button>
-    <p class="bl dim build" id="buildTag"></p>
   </div>
 </div>
 
@@ -232,7 +230,7 @@ button:focus-visible{outline:2px solid var(--p1);outline-offset:4px}
       <button id="bShareMenu" class="link">Challenge a friend</button>
       <button id="bIntro" class="link">Intro</button>
       <button id="bSound" class="link">Sound: On</button>
-    </div><button class="link" data-close-hub="settingsHub">Back</button></dialog>
+    </div><details class="about-crease"><summary>About</summary><p>CREASE · Fold Engine v1</p><p id="buildTag"></p></details><button class="link" data-close-hub="settingsHub">Back</button></dialog>
   <p id="menuShareStatus" class="share-status" role="status"></p>
     <input id="menuShareUrl" class="share-url hidden" readonly aria-label="Challenge link — select and copy">
     <a class="creator" data-inquiry href="https://www.instagram.com/prodbykctw/" target="_blank" rel="noopener noreferrer">Built by KCTW · Want a custom game? DM me</a>
