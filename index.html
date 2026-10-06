@@ -152,6 +152,45 @@ button:focus-visible{outline:2px solid var(--p1);outline-offset:4px}
 .product-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;margin:14px 0}.product-card{border:1px solid #372c46;border-radius:10px;background:#171122;padding:14px}.product-card.locked{opacity:.62}.product-card h3{margin:0 0 7px;font-size:15px}.product-card p{margin:0;color:#c2b5d4;font-size:12px;line-height:1.5}.product-card button{margin-top:10px;width:100%;min-height:42px}
 .leaderboard-list{margin:14px 0;padding:0;list-style:none}.leaderboard-list li{display:grid;grid-template-columns:32px 1fr auto;gap:10px;padding:12px 8px;border-bottom:1px solid #2b2337}.leaderboard-list small{color:#a99fba}
 @media(max-width:650px){.arena-shell{padding:14px}.arena-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.arena-copy{align-items:stretch;flex-direction:column}.arena-copy .btn{flex:auto}.arena-heading h2{font-size:20px}}
+
+/* ---- end-game marquee: a 3D slab over the frozen table ---- */
+.sr-only{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;overflow:hidden!important;clip:rect(0 0 0 0)!important;white-space:nowrap!important;border:0!important}
+#over{perspective:1100px}
+#over .marquee{max-width:460px;padding:16px 18px 16px;border:1px solid rgba(255,120,220,.32);border-radius:26px;transform:rotateX(6deg);transform-origin:50% 100%;
+  background:linear-gradient(180deg,#22073f 0%,#14022c 58%,#0c011f 100%);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.10),0 9px 0 #2b0852,0 12px 0 #12022a,0 0 0 1px rgba(255,42,138,.18),0 0 56px rgba(176,38,255,.32),0 42px 80px rgba(0,0,0,.72)}
+#over .marquee::after{content:"";position:absolute;inset:0;z-index:0;pointer-events:none;border-radius:inherit;opacity:.5;mix-blend-mode:overlay;
+  background-image:repeating-linear-gradient(0deg,rgba(0,0,0,.28) 0 1px,transparent 1px 3px),var(--mq-dither,none);background-size:auto,8px 8px;image-rendering:pixelated}
+#over .marquee>*{position:relative;z-index:1}
+#over .mq-head{display:flex;flex-direction:column;align-items:center}
+#over .mq-title{display:block;width:100%;height:auto}
+#over .mq-digits{display:block;width:74%;height:auto;margin-top:-10px}
+#over .mq-names{margin:2px 0 2px;color:var(--ink);font-size:14px;font-weight:700;letter-spacing:.02em}
+#over #overReflection{margin:2px 0 14px}
+#over .mq-keys{gap:12px 10px}
+#over .key{--kc:#2a1150;--kd:#12052a;--kg:rgba(176,38,255,.3);border:0;border-radius:16px;color:#14002c;cursor:pointer;
+  background:linear-gradient(180deg,rgba(255,255,255,.38),rgba(255,255,255,0) 46%),var(--kc);
+  box-shadow:0 6px 0 var(--kd),0 9px 18px rgba(0,0,0,.5),0 0 26px var(--kg);transition:transform .07s,box-shadow .07s}
+#over .key.p1{--kc:#2de2e6;--kd:#0b7177;--kg:rgba(45,226,230,.42)}
+#over .key.p2{--kc:#ff2a8a;--kd:#860b44;--kg:rgba(255,42,138,.42)}
+#over .key.plain{color:var(--ink)}
+#over .key-lg{flex:1 1 100%;min-height:58px;font-size:19px;letter-spacing:.06em}
+#over .key-sm{flex:1 1 40%;min-height:44px;font-size:14px;color:var(--kc);background:rgba(10,2,24,.55);box-shadow:inset 0 0 0 2px var(--kc),0 4px 0 var(--kd)}
+#over .key.plain.key-sm{--kc:rgba(245,234,255,.55);--kd:#12052a;color:var(--ink)}
+#over .key:active{transform:translateY(5px);box-shadow:0 1px 0 var(--kd),0 2px 6px rgba(0,0,0,.5),0 0 18px var(--kg)}
+#over .key-sm:active{transform:translateY(3px);box-shadow:inset 0 0 0 2px var(--kc),0 1px 0 var(--kd)}
+#over .key:focus-visible{outline:3px solid #ffd23f;outline-offset:3px}
+#over .marquee.mq-enter{animation:mqDrop .62s cubic-bezier(.2,1.25,.35,1) both}
+#over .marquee.mq-enter .mq-title{animation:mqStamp .5s .22s cubic-bezier(.2,1.6,.4,1) both}
+#over .marquee.mq-enter .mq-digits{animation:mqStamp .45s .36s cubic-bezier(.2,1.6,.4,1) both}
+@keyframes mqDrop{from{opacity:0;transform:translateY(-36px) rotateX(64deg)}to{opacity:1;transform:rotateX(6deg)}}
+@keyframes mqStamp{0%{opacity:0;transform:scale(1.55);filter:drop-shadow(-9px 0 0 rgba(45,226,230,.9)) drop-shadow(9px 0 0 rgba(255,42,138,.9))}60%{opacity:1;filter:drop-shadow(-3px 0 0 rgba(45,226,230,.7)) drop-shadow(3px 0 0 rgba(255,42,138,.7))}100%{opacity:1;transform:none;filter:none}}
+@media (prefers-reduced-motion:reduce){#over .marquee.mq-enter,#over .marquee.mq-enter .mq-title,#over .marquee.mq-enter .mq-digits{animation:none}}
+@media (orientation:landscape) and (max-height:560px){
+  #over .marquee{max-width:780px;display:grid;grid-template-columns:1fr 1fr;gap:6px 18px;align-items:center;transform:rotateX(4deg)}
+  #over .mq-digits{width:86%}
+  #over .key-lg{min-height:50px;font-size:17px}
+}
 </style>
 <!-- ai-seo:v1 -->
 <link rel="canonical" href="https://prodbykctw-max.github.io/crease-iphone-duo/">
@@ -292,19 +331,25 @@ button:focus-visible{outline:2px solid var(--p1);outline-offset:4px}
 </div>
 
 <div id="over" class="overlay hidden">
-  <div class="card">
-    <h2 id="overTitle">YOU WIN</h2>
-    <p id="overScore" class="hint"></p>
-    <p id="overReflection" class="hint" aria-live="polite"></p>
-    <div class="btns">
-      <button id="bAgain" class="btn p1"><span>REMATCH</span></button>
-      <button id="bShareCard" class="btn p2"><span>SHARE RESULT</span></button>
-      <button id="bMenu" class="btn plain"><span>MENU</span></button>
-      <button id="bShareResult" class="btn p2"><span>CHALLENGE A FRIEND</span></button>
+  <div class="card marquee" id="overCard">
+    <h2 id="overTitle" class="sr-only">YOU WIN</h2>
+    <div class="mq-head" aria-hidden="true">
+      <canvas id="overTitle3d" class="mq-title"></canvas>
+      <canvas id="overDigits" class="mq-digits"></canvas>
     </div>
-    <p id="resultShareStatus" class="share-status" role="status"></p>
-    <input id="resultShareUrl" class="share-url hidden" readonly aria-label="Challenge link — select and copy">
-    <a class="creator" data-inquiry href="https://www.instagram.com/prodbykctw/" target="_blank" rel="noopener noreferrer">Built by KCTW · Custom game inquiries</a>
+    <div class="mq-body">
+      <p id="overScore" class="hint mq-names"></p>
+      <p id="overReflection" class="hint" aria-live="polite"></p>
+      <div class="btns mq-keys">
+        <button id="bAgain" class="btn p1 key key-lg"><span>REMATCH</span></button>
+        <button id="bShareResult" class="btn p2 key key-lg"><span>CHALLENGE A FRIEND</span></button>
+        <button id="bShareCard" class="btn p2 key key-sm"><span>SHARE RESULT</span></button>
+        <button id="bMenu" class="btn plain key key-sm"><span>MENU</span></button>
+      </div>
+      <p id="resultShareStatus" class="share-status" role="status"></p>
+      <input id="resultShareUrl" class="share-url hidden" readonly aria-label="Challenge link — select and copy">
+      <a class="creator" data-inquiry href="https://www.instagram.com/prodbykctw/" target="_blank" rel="noopener noreferrer">Built by KCTW · Custom game inquiries</a>
+    </div>
   </div>
 </div>
 
@@ -2996,6 +3041,63 @@ function shareResultCard() {
     .catch(() => shareResultText(line, link, text));
 }
 
+
+// ---- end-game marquee: extruded 3D type with a dithered chrome face (drawn on canvas so iPhone Safari matches) ----
+const MQ = { dither: null, bayer: [0,8,2,10,12,4,14,6,3,11,1,9,15,7,13,5] };
+function mqDitherTile() {
+  if (MQ.dither) return MQ.dither;
+  const c = document.createElement('canvas'); c.width = c.height = 4; const x = c.getContext('2d'), d = x.createImageData(4, 4);
+  for (let i = 0; i < 16; i++) { const v = MQ.bayer[i] * 16; d.data[i * 4] = d.data[i * 4 + 1] = d.data[i * 4 + 2] = v; d.data[i * 4 + 3] = 255; }
+  x.putImageData(d, 0, 0); return (MQ.dither = 'url(' + c.toDataURL() + ')');
+}
+const mqHex = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
+// segs: [{text, size, top, bot, near, far, glow, dim}] laid out on one line, scaled to fit the canvas
+function mqDraw(cv, segs, gapEm = 0.18) {
+  const dpr = Math.min(3, window.devicePixelRatio || 1), cssW = Math.max(200, cv.clientWidth || cv.parentNode.clientWidth || 360);
+  const fam = getComputedStyle(document.body).fontFamily, font = sz => `italic 900 ${sz}px ${fam}`;
+  const m = document.createElement('canvas').getContext('2d');
+  let total = 0; const widths = segs.map((g, k) => { m.font = font(g.size); const w = m.measureText(g.text).width; total += w + (k ? g.size * gapEm : 0); return w; });
+  const maxSize = Math.max(...segs.map(g => g.size)), k = Math.min(1, (cssW * 0.84) / (total + maxSize * 0.2));
+  const depth = Math.max(3, Math.round(maxSize * k * 0.13)), pad = Math.round(maxSize * k * 0.2), Hc = Math.round(maxSize * k * 1.02 + pad * 2 + depth);
+  cv.width = Math.round(cssW * dpr); cv.height = Math.round(Hc * dpr); cv.style.aspectRatio = cssW + ' / ' + Hc;
+  const x = cv.getContext('2d'); x.setTransform(dpr, 0, 0, dpr, 0, 0); x.clearRect(0, 0, cssW, Hc);
+  let cx = (cssW - total * k - depth * 0.5) / 2; const base = pad + maxSize * k * 0.86;
+  segs.forEach((g, n) => {
+    const sz = g.size * k, dep = Math.max(3, Math.round(depth * g.size / maxSize)); if (n) cx += g.size * gapEm * k;
+    x.font = font(sz); x.textBaseline = 'alphabetic'; x.lineJoin = 'round';
+    // glow
+    x.save(); x.shadowColor = g.glow; x.shadowBlur = g.dim ? sz * 0.12 : sz * 0.32; x.fillStyle = g.glow; x.globalAlpha = g.dim ? 0.25 : 0.55; x.fillText(g.text, cx, base); x.restore();
+    // extrusion, far to near
+    const a = mqHex(g.near), b = mqHex(g.far);
+    for (let i = dep; i > 0; i--) { const t = i / dep; x.fillStyle = `rgb(${a.map((v, j) => Math.round(v * (1 - t) + b[j] * t)).join(',')})`; x.fillText(g.text, cx + i * 0.55, base + i); }
+    // outline
+    x.strokeStyle = '#0c0420'; x.lineWidth = Math.max(2, sz * 0.05); x.strokeText(g.text, cx, base);
+    // dithered chrome face
+    const fw = Math.ceil(widths[n] * k + 4), fh = Math.ceil(sz * 1.2), f = document.createElement('canvas'); f.width = Math.ceil(fw * dpr); f.height = Math.ceil(fh * dpr);
+    const fx = f.getContext('2d'); fx.setTransform(dpr, 0, 0, dpr, 0, 0); fx.font = font(sz); fx.fillStyle = '#fff'; fx.fillText(g.text, 2, sz * 0.92);
+    const img = fx.getImageData(0, 0, f.width, f.height), D = img.data, top = mqHex(g.top), bot = mqHex(g.bot), L = 5;
+    for (let yy = 0; yy < f.height; yy++) {
+      const yt = yy / f.height, hl = yt < 0.42 ? 0.28 : 0;
+      for (let xx = 0; xx < f.width; xx++) {
+        const o = (yy * f.width + xx) * 4; if (!D[o + 3]) continue;
+        const q = Math.min(1, Math.floor(yt * (L - 1) + (MQ.bayer[(yy & 3) * 4 + (xx & 3)] + 0.5) / 16) / (L - 1));
+        for (let j = 0; j < 3; j++) { const v = top[j] * (1 - q) + bot[j] * q; D[o + j] = Math.round(v + (255 - v) * hl); }
+      }
+    }
+    fx.putImageData(img, 0, 0); x.drawImage(f, cx - 2, base - sz * 0.92, fw, fh);
+    cx += widths[n] * k;
+  });
+}
+function mqRender(w) {
+  const card = $('overCard'); card.style.setProperty('--mq-dither', mqDitherTile());
+  const CY = '#2de2e6', PK = '#ff2a8a', winC = w === 1 ? CY : PK, sideC = w === 1 ? PK : CY;
+  mqDraw($('overTitle3d'), [{ text: winText(w), size: 84, top: '#ffffff', bot: winC, near: sideC, far: '#2a0640', glow: winC }]);
+  const lit = (n, c, side) => ({ text: String(n), size: 120, top: '#ffffff', bot: c, near: side, far: '#2a0640', glow: c });
+  const dim = n => ({ text: String(n), size: 92, top: '#b9a8d8', bot: '#5a4880', near: '#3a2a5c', far: '#140826', glow: '#5a4880', dim: true });
+  const A = game.score[0], B = game.score[1];
+  mqDraw($('overDigits'), [w === 1 ? lit(A, CY, PK) : dim(A), { text: '–', size: 70, top: '#ffffff', bot: '#ffd23f', near: '#8a4a00', far: '#2a0640', glow: '#ffd23f', dim: true }, w === 2 ? lit(B, PK, CY) : dim(B)], 0.22);
+  card.classList.remove('mq-enter'); void card.offsetWidth; card.classList.add('mq-enter');
+}
 function showOver() {
   if (!matchTracked) { track('match_complete', { mode: game.mode, difficulty: game.diff, winner: game.winner }); matchTracked = true; }
   $('resultShareStatus').textContent = ''; $('resultShareUrl').classList.add('hidden');
@@ -3016,6 +3118,7 @@ function showOver() {
     : `Best shared rally: ${rally} hits · run it back when you’re ready.`;
   $('bPause').classList.add('hidden');
   show('over', true);
+  try { mqRender(w); } catch (_) {}
 }
 async function shareChallenge(result) {
   const prefix = result ? 'result' : 'menu';
