@@ -37,3 +37,9 @@ test('Fire Mode: three scoreboard goals in a row ignite it, whoever touched the 
   assert.equal(ctx.game.fire[0], 0);
   assert.doesNotMatch(html.slice(html.indexOf('function scored('), html.indexOf('progress.goal(')), /ownTouch/);
 });
+
+test('How to Play explains Fire Mode and Challenge a friend', () => {
+  const how = html.slice(html.indexOf('<h2>HOW TO PLAY</h2>'), html.indexOf('Add to Home Screen</b>'));
+  assert.match(how, /FIRE MODE:<\/b> score 3 goals in a row/);
+  assert.match(how, /CHALLENGE A FRIEND:<\/b>/);
+});
