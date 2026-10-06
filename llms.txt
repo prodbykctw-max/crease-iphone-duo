@@ -11,6 +11,7 @@
 ## Pages
 
 - [Play CREASE](https://prodbykctw-max.github.io/crease-iphone-duo/): the game
+- [Games for the iPhone Duo](https://prodbykctw-max.github.io/crease-iphone-duo/iphone-duo-games/): what "built for the fold" means, and how CREASE uses the hinge
 - [llms-full.txt](https://prodbykctw-max.github.io/crease-iphone-duo/llms-full.txt): full description, controls, mechanics, FAQ
 
 ## Optional
