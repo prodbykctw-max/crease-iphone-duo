@@ -11,7 +11,7 @@
   "d1_databases": [{
     "binding": "DB",
     "database_name": "crease-metrics",
-    "database_id": "REPLACE_WITH_CREATED_D1_DATABASE_ID",
+    "database_id": "076a922f-5be4-4494-a23e-15eb009fa341",
     "migrations_dir": "migrations"
   }]
 }
