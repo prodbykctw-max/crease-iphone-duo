@@ -39,14 +39,21 @@ test('targets are clamped to the player half and non-finite input ignored',()=>{
 const req=(path,ip)=>new Request('https://crease-online.example'+path,{headers:ip?{'CF-Connecting-IP':ip}:{}});
 const match=async(lobby,ip)=>(await lobby.fetch(req('/match',ip))).json();
 
-test('lobby only offers a code once the host is connected',async()=>{
-  const lobby=new Lobby({});
-  const a=await match(lobby,'1.1.1.1');assert.equal(a.create,true);
-  const b=await match(lobby,'2.2.2.2');
-  assert.equal(b.create,true,'unconfirmed code must not be handed out');assert.notEqual(b.code,a.code);
-  await lobby.fetch(req('/ready?code='+a.code));
-  const c=await match(lobby,'3.3.3.3');assert.deepEqual(c,{code:a.code,create:false});
-  const d=await match(lobby,'4.4.4.4');assert.equal(d.create,true,'a code is handed out once');
+test('lobby prefers confirmed hosts, pairs simultaneous arrivals, never offers stale unconfirmed codes',async()=>{
+  const real=Date.now;
+  try{
+    // two players tapping at the same moment still meet
+    let lobby=new Lobby({});
+    const a=await match(lobby,'1.1.1.1');assert.equal(a.create,true);
+    const b=await match(lobby,'2.2.2.2');assert.deepEqual(b,{code:a.code,create:false},'fresh code should pair');
+    // an abandoned (never confirmed) code goes stale after FRESH_MS and is not handed out
+    lobby=new Lobby({});const t0=real();
+    const dead=await match(lobby,'5.5.5.5');Date.now=()=>t0+9000;
+    const c=await match(lobby,'6.6.6.6');assert.equal(c.create,true,'stale unconfirmed code must not be handed out');assert.notEqual(c.code,dead.code);
+    // a confirmed host is preferred over a fresher unconfirmed one, and handed out once
+    await lobby.fetch(req('/ready?code='+dead.code));
+    const d=await match(lobby,'7.7.7.7');assert.deepEqual(d,{code:dead.code,create:false});
+  }finally{Date.now=real;}
 });
 
 test('lobby never pairs an IP with itself and expires stale codes',async()=>{

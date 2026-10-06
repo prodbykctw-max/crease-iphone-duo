@@ -5,6 +5,8 @@ const CODE=/^[A-Z2-9]{10}$/;
 // A waiting opponent is only offered to the next arrival for this long. If the
 // host closed their tab, the joiner gets a 404 from the room and asks again.
 const HOLD_MS=30000;
+// An unconfirmed code is still offered this soon after it was issued.
+const FRESH_MS=8000;
 // Most waiting rooms the lobby remembers at once (oldest dropped first).
 const MAX_WAITING=32;
 // A room nobody else has joined is closed this long after its first player.
@@ -70,7 +72,14 @@ export class Lobby {
       return new Response(null,{status:204});
     }
     const ip=request.headers.get('CF-Connecting-IP')||'';
-    const i=this.waiting.findIndex(w=>w.ready&&!(ip&&w.ip===ip));
+    // Prefer a host whose socket is confirmed open. Failing that, offer a code
+    // handed out in the last FRESH_MS (its host is most likely still
+    // connecting) so two players who tap at the same moment still meet; a
+    // stale unconfirmed code is never offered, so a flood of abandoned codes
+    // can't strand real players.
+    const other=w=>!(ip&&w.ip===ip);
+    let i=this.waiting.findIndex(w=>w.ready&&other(w));
+    if(i<0)i=this.waiting.findIndex(w=>!w.ready&&now-w.ts<=FRESH_MS&&other(w));
     let body;
     if(i>=0){const [w]=this.waiting.splice(i,1);body={code:w.code,create:false};}
     else{
@@ -99,7 +108,7 @@ export class Room {
       // the host is connected: the lobby may now offer this code
       if(create&&this.env&&this.env.LOBBY){
         const lobby=this.env.LOBBY.get(this.env.LOBBY.idFromName('global'));
-        lobby.fetch('https://lobby/ready?code='+encodeURIComponent(url.pathname.slice(6))).catch(()=>{});
+        try{await lobby.fetch('https://lobby/ready?code='+encodeURIComponent(url.pathname.slice(6)));}catch{}
       }
     }
     server.send(JSON.stringify({type:'joined',player}));
