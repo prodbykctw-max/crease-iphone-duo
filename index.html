@@ -300,6 +300,7 @@ button:focus-visible{outline:2px solid var(--p1);outline-offset:4px}
     <p id="overReflection" class="hint" aria-live="polite"></p>
     <div class="btns">
       <button id="bAgain" class="btn p1"><span>REMATCH</span></button>
+      <button id="bShareCard" class="btn p2"><span>SHARE RESULT</span></button>
       <button id="bMenu" class="btn plain"><span>MENU</span></button>
       <button id="bShareResult" class="btn p2"><span>CHALLENGE A FRIEND</span></button>
     </div>
@@ -2776,9 +2777,234 @@ function pause() {
   $('pauseScore').textContent = `${who[0]} ${game.score[0]} – ${game.score[1]} ${who[1]}`;
   show('pauseM', true);
 }
+// ---------- shareable result card ----------
+// A 1080x1080 PNG drawn client-side the moment a match ends, so a result can go
+// straight into a message or a post without a screenshot.
+const CARD = 1080;
+const CARD_FONT = '-apple-system, "SF Pro Rounded", system-ui, sans-serif';
+let cardSnap = null, cardFile = null, cardJob = null;
+
+function playLink(challenge) {
+  const u = new URL(location.pathname, location.origin);
+  if (challenge) u.searchParams.set('challenge', '1');
+  return u.href;
+}
+function readableLink() {
+  return (location.host + location.pathname).replace(/index\.html$/, '').replace(/\/+$/, '');
+}
+function matchSnapshot() {
+  const solo = game.mode === 'solo';
+  return {
+    title: winText(game.winner), winner: game.winner,
+    left: solo ? 'YOU' : 'CYAN',
+    right: solo ? 'CPU · ' + difficultyLabel(game.diff).toUpperCase() : 'PINK',
+    a: game.score[0], b: game.score[1],
+    arena: ST().name, rally: game.bestRally || 0,
+    p1: COL.p1, p2: COL.p2, grid: ST().grid, base: ST().base.slice(),
+  };
+}
+// Lay a string out with CREASE's wide letter spacing; returns where each glyph sits.
+function cardSpaced(x, str, cx, size, gapF, weight, maxW) {
+  const lay = sz => {
+    x.font = `${weight} ${Math.round(sz)}px ${CARD_FONT}`;
+    const gap = sz * gapF, chars = [...str], w = chars.map(ch => x.measureText(ch).width);
+    const total = w.reduce((s, n) => s + n, 0) + gap * Math.max(0, chars.length - 1);
+    let px = cx - total / 2;
+    return { total, cells: chars.map((ch, i) => { const c = [ch, px + w[i] / 2]; px += w[i] + gap; return c; }) };
+  };
+  let out = lay(size);
+  if (maxW && out.total > maxW) out = lay(Math.max(12, size * (maxW / out.total)));  // long names still fit
+  return out;
+}
+function cardPaddle(x, cx, cy, r, col) {
+  x.save();
+  x.shadowColor = col; x.shadowBlur = r * 1.5;
+  x.fillStyle = 'rgba(8,2,20,.82)';
+  x.beginPath(); x.arc(cx, cy, r, 0, Math.PI * 2); x.fill();
+  x.strokeStyle = col; x.lineWidth = r * 0.22; x.stroke();
+  x.shadowBlur = r * 0.7; x.lineWidth = r * 0.1;
+  x.beginPath(); x.arc(cx, cy, r * 0.55, 0, Math.PI * 2); x.stroke();
+  x.restore();
+}
+function drawResultCard(c, s) {
+  const S = CARD, cx = S / 2;
+  c.width = S; c.height = S;
+  const x = c.getContext('2d');
+  x.textAlign = 'center'; x.textBaseline = 'middle';
+
+  // backdrop: the arena's own sky, lifted by its grid colour
+  const g = x.createLinearGradient(0, 0, 0, S);
+  g.addColorStop(0, s.base[0]); g.addColorStop(0.58, s.base[1]); g.addColorStop(1, s.base[0]);
+  x.fillStyle = g; x.fillRect(0, 0, S, S);
+  const rg = x.createRadialGradient(cx, S * 0.5, 0, cx, S * 0.5, S * 0.66);
+  rg.addColorStop(0, hexA(s.grid, 0.22)); rg.addColorStop(0.6, hexA(s.grid, 0.05)); rg.addColorStop(1, 'rgba(0,0,0,0)');
+  x.fillStyle = rg; x.fillRect(0, 0, S, S);
+  x.globalAlpha = 0.045; x.fillStyle = '#ffffff';
+  for (let y = 0; y < S; y += 4) x.fillRect(0, y, S, 1);
+  x.globalAlpha = 1;
+  const vg = x.createRadialGradient(cx, cx, S * 0.32, cx, cx, S * 0.78);
+  vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,.6)');
+  x.fillStyle = vg; x.fillRect(0, 0, S, S);
+  x.strokeStyle = 'rgba(190,120,255,.30)'; x.lineWidth = 3;
+  const m = 30, r = 44;
+  x.beginPath();
+  x.moveTo(m + r, m); x.lineTo(S - m - r, m); x.quadraticCurveTo(S - m, m, S - m, m + r);
+  x.lineTo(S - m, S - m - r); x.quadraticCurveTo(S - m, S - m, S - m - r, S - m);
+  x.lineTo(m + r, S - m); x.quadraticCurveTo(m, S - m, m, S - m - r);
+  x.lineTo(m, m + r); x.quadraticCurveTo(m, m, m + r, m); x.closePath(); x.stroke();
+
+  // wordmark
+  const wm = 92, word = cardSpaced(x, 'CREASE', cx, wm, 0.14, 900), wy = 132;
+  for (let i = 0; i < word.cells.length; i++) {
+    const [ch, lx] = word.cells[i], tint = i < 2 ? '#2de2e6' : i > 3 ? '#ff2a8a' : '#ffffff';
+    x.globalAlpha = 0.55;
+    x.fillStyle = '#2de2e6'; x.fillText(ch, lx - wm * 0.028, wy);
+    x.fillStyle = '#ff2a8a'; x.fillText(ch, lx + wm * 0.028, wy);
+    x.globalAlpha = 1; x.shadowColor = tint; x.shadowBlur = wm * 0.42;
+    x.fillStyle = '#ffffff'; x.fillText(ch, lx, wy);
+    x.shadowBlur = 0;
+  }
+  const bar = 300, by = 196;
+  x.fillStyle = '#2de2e6'; x.fillRect(cx - bar / 2, by, bar / 2, 7);
+  x.fillStyle = '#ff2a8a'; x.fillRect(cx, by, bar / 2, 7);
+
+  // who won, in the match's own words
+  const wc = s.winner === 1 ? s.p1 : s.p2;
+  const ttl = cardSpaced(x, s.title, cx, 74, 0.06, 900, S - 200);
+  x.shadowColor = wc; x.shadowBlur = 34; x.fillStyle = wc;
+  for (const [ch, lx] of ttl.cells) x.fillText(ch, lx, 300);
+  x.shadowBlur = 0;
+
+  // the score, the thing people actually post
+  const sy = 468, off = 182;
+  x.font = `900 ${220}px ${CARD_FONT}`;
+  x.shadowColor = s.p1; x.shadowBlur = 48; x.fillStyle = s.p1; x.fillText(String(s.a), cx - off, sy);
+  x.shadowColor = s.p2; x.fillStyle = s.p2; x.fillText(String(s.b), cx + off, sy);
+  x.shadowBlur = 0;
+  x.font = `700 ${96}px ${CARD_FONT}`;
+  x.fillStyle = 'rgba(245,234,255,.45)'; x.fillText('–', cx, sy - 6);
+
+  const lbl = (str, lx, col) => {
+    const cells = cardSpaced(x, str, lx, 30, 0.16, 800, 330).cells;
+    x.fillStyle = col; x.globalAlpha = 0.92;
+    for (const [ch, gx] of cells) x.fillText(ch, gx, 602);
+    x.globalAlpha = 1;
+  };
+  lbl(s.left, cx - off, s.p1);
+  lbl(s.right, cx + off, s.p2);
+
+  // the crease: a glowing centre line with a paddle on each side of it, each one
+  // on its own half of the table and under its own score
+  const ly = 726, x1 = 168, x2 = S - 168;
+  x.save(); x.lineCap = 'butt'; x.strokeStyle = '#ffffff'; x.shadowColor = '#ffffff';
+  x.globalAlpha = 0.26; x.lineWidth = 22; x.shadowBlur = 44;
+  x.beginPath(); x.moveTo(x1, ly); x.lineTo(x2, ly); x.stroke();
+  x.globalAlpha = 0.95; x.lineWidth = 5; x.shadowBlur = 18;
+  x.beginPath(); x.moveTo(x1, ly); x.lineTo(x2, ly); x.stroke();
+  x.restore();
+  cardPaddle(x, cx + off, ly - 58, 30, s.p2);
+  cardPaddle(x, cx - off, ly + 58, 30, s.p1);
+
+  // arena played
+  const cap = cardSpaced(x, 'ARENA', cx, 22, 0.3, 700).cells;
+  x.fillStyle = 'rgba(163,145,201,.9)';
+  for (const [ch, gx] of cap) x.fillText(ch, gx, 854);
+  const an = cardSpaced(x, s.arena, cx, 46, 0.14, 900, S - 220).cells;
+  x.shadowColor = s.grid; x.shadowBlur = 26; x.fillStyle = '#f5eaff';
+  for (const [ch, gx] of an) x.fillText(ch, gx, 906);
+  x.shadowBlur = 0;
+
+  // one stat the match actually tracked
+  if (s.rally > 0) {
+    const txt = `BEST RALLY · ${s.rally} ${s.rally === 1 ? 'HIT' : 'HITS'}`;
+    const st = cardSpaced(x, txt, cx, 30, 0.12, 800, S - 220);
+    const pw = st.total + 72, ph = 60, px0 = cx - pw / 2, py0 = 968 - ph / 2, pr = ph / 2;
+    x.beginPath();
+    x.moveTo(px0 + pr, py0); x.lineTo(px0 + pw - pr, py0);
+    x.quadraticCurveTo(px0 + pw, py0, px0 + pw, py0 + pr);
+    x.quadraticCurveTo(px0 + pw, py0 + ph, px0 + pw - pr, py0 + ph);
+    x.lineTo(px0 + pr, py0 + ph); x.quadraticCurveTo(px0, py0 + ph, px0, py0 + pr);
+    x.quadraticCurveTo(px0, py0, px0 + pr, py0); x.closePath();
+    x.fillStyle = 'rgba(255,210,63,.10)'; x.fill();
+    x.strokeStyle = 'rgba(255,210,63,.55)'; x.lineWidth = 2; x.stroke();
+    x.fillStyle = '#ffd23f';
+    for (const [ch, gx] of st.cells) x.fillText(ch, gx, 968);
+  }
+
+  // where to play
+  const ln = cardSpaced(x, readableLink(), cx, 26, 0.07, 700, S - 180).cells;
+  x.fillStyle = 'rgba(245,234,255,.78)';
+  for (const [ch, gx] of ln) x.fillText(ch, gx, 1030);
+  return c;
+}
+function buildResultCard(snap) {
+  cardFile = null;
+  let c;
+  try { c = drawResultCard(document.createElement('canvas'), snap); }
+  catch (_) { return Promise.resolve(null); }
+  return new Promise(res => {
+    try {
+      c.toBlob(b => {
+        if (!b) return res(null);
+        try { cardFile = new File([b], 'crease-result.png', { type: 'image/png' }); } catch (_) { cardFile = null; }
+        res(cardFile);
+      }, 'image/png');
+    } catch (_) { res(null); }
+  });
+}
+function resultShareLine(s) {
+  const stat = s.rally > 0 ? ` · best rally ${s.rally} ${s.rally === 1 ? 'hit' : 'hits'}` : '';
+  return `${s.title} ${s.a}–${s.b} on CREASE · ${s.arena}${stat}.`;
+}
+async function shareResultText(line, link, text) {
+  const status = $('resultShareStatus'), input = $('resultShareUrl');
+  if (navigator.share) {
+    try {
+      await navigator.share({ title: 'CREASE — my result', text: line + ' Play free!', url: link });
+      track('share_handoff', { method: 'native', from: 'result_card' });
+      status.textContent = 'Result handed to your share app.';
+      return;
+    } catch (err) { if (err && err.name === 'AbortError') return; }
+  }
+  try {
+    await navigator.clipboard.writeText(text);
+    track('share_copy', { from: 'result_card' });
+    status.textContent = 'Result copied. Paste it anywhere!';
+    return;
+  } catch (_) {}
+  input.value = text;
+  input.setAttribute('aria-label', 'Your result — select and copy');
+  input.classList.remove('hidden'); input.focus(); input.select();
+  status.textContent = 'Select and copy this to post your result.';
+}
+function shareResultCard() {
+  const s = cardSnap || matchSnapshot();
+  const line = resultShareLine(s), link = playLink(true), text = line + ' Play free: ' + link;
+  const status = $('resultShareStatus'), input = $('resultShareUrl');
+  status.textContent = ''; input.classList.add('hidden');
+  track('share_attempt', { from: 'result_card' });
+  const canFile = f => !!f && !!navigator.canShare && navigator.canShare({ files: [f] });
+  const sendFile = f => navigator.share({ files: [f], text, title: 'CREASE — my result' })
+    .then(() => { track('share_handoff', { method: 'image', from: 'result_card' }); status.textContent = 'Result handed to your share app.'; })
+    .catch(err => { if (err && err.name === 'AbortError') return; return shareResultText(line, link, text); });
+  // The card is already drawn by the time anyone reads the result, so the usual path
+  // shares with no await in between — that keeps the tap alive for browsers with
+  // strict activation rules. If it is not ready yet, wait for it rather than skip it.
+  if (canFile(cardFile)) return sendFile(cardFile);
+  return (cardJob || buildResultCard(s))
+    .then(f => canFile(f) ? sendFile(f) : shareResultText(line, link, text))
+    .catch(() => shareResultText(line, link, text));
+}
+
 function showOver() {
   if (!matchTracked) { track('match_complete', { mode: game.mode, difficulty: game.diff, winner: game.winner }); matchTracked = true; }
   $('resultShareStatus').textContent = ''; $('resultShareUrl').classList.add('hidden');
+  // Snapshot now — a rematch or a trip to the menu resets the score. Encoding the
+  // PNG waits until the card has painted so the result never lands on a stutter.
+  cardFile = null; cardJob = null; cardSnap = matchSnapshot();
+  const snap = cardSnap;
+  const build = () => { if (cardSnap === snap && !cardJob) cardJob = buildResultCard(snap); };
+  if (window.requestIdleCallback) window.requestIdleCallback(build, { timeout: 500 }); else setTimeout(build, 80);
   const w = game.winner;
   $('overTitle').textContent = winText(w);
   $('overTitle').style.color = w === 1 ? COL.p1 : COL.p2;
@@ -2813,12 +3039,14 @@ async function shareChallenge(result) {
     track('share_copy', { from: prefix });
     status.textContent = 'Challenge copied. Paste it into a message!';
   } catch (_) {
-    input.value = url.href; input.classList.remove('hidden'); input.focus(); input.select();
+    input.value = url.href; input.setAttribute('aria-label', 'Challenge link — select and copy');
+    input.classList.remove('hidden'); input.focus(); input.select();
     status.textContent = 'Select and copy this link to send your challenge.';
   }
 }
 $('bShareMenu').onclick = () => shareChallenge(false);
 $('bShareResult').onclick = () => shareChallenge(true);
+$('bShareCard').onclick = () => shareResultCard();
 for (const link of document.querySelectorAll('[data-inquiry]')) {
   link.addEventListener('click', () => track('inquiry_click'));
 }
@@ -2881,6 +3109,7 @@ requestAnimationFrame(t => { last = t; requestAnimationFrame(frame); });
 window.__crease = {
   game, view, layout, newMatch, start, pause, playIntro, endIntro, showBoot, playStudio, endStudio, bootMarkRender, setStage, STAGES, stage: () => stageIx, perf, music, audio: () => ac,
   sim(seconds, step = 1 / 60) { for (let t = 0; t < seconds; t += step) update(step); },
+  matchSnapshot, drawShareCard: snap => drawResultCard(document.createElement('canvas'), snap || matchSnapshot()).toDataURL('image/png'),
   toScreen, toField,
 };
 })();
