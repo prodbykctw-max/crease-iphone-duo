@@ -16,7 +16,12 @@ export default {
       'Access-Control-Allow-Methods': 'POST', 'Access-Control-Allow-Headers': 'Content-Type', 'Access-Control-Max-Age': '600' } });
     if (request.method !== 'POST') return reply('Method not allowed', 405);
     if (!request.headers.get('Content-Type')?.startsWith('application/json')) return reply('JSON required', 415);
-    // Public telemetry is untrusted. Rate limit at Cloudflare before enabling it.
+    // Public telemetry is untrusted. Two Workers rate limits run before any body is read or written:
+    // one per connection (the IP is only a transient limiter key; it is never stored) and one for
+    // the whole Worker, so a flood can't use up the account's shared D1 write quota.
+    const ip = request.headers.get('CF-Connecting-IP') || 'unknown';
+    if (env.PER_IP && !(await env.PER_IP.limit({ key: ip })).success) return reply('Too many requests', 429);
+    if (env.ALL_TRAFFIC && !(await env.ALL_TRAFFIC.limit({ key: 'all' })).success) return reply('Too many requests', 429);
     const reader = request.body?.getReader();
     if (!reader) return reply('Body required', 400);
     const chunks = []; let size = 0;

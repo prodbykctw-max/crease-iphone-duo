@@ -4,6 +4,10 @@
   "compatibility_date": "2026-09-19",
   "workers_dev": true,
   "vars": { "ALLOWED_ORIGINS": "https://prodbykctw-max.github.io" },
+  "ratelimits": [
+    { "name": "PER_IP", "namespace_id": "1001", "simple": { "limit": 20, "period": 60 } },
+    { "name": "ALL_TRAFFIC", "namespace_id": "1002", "simple": { "limit": 60, "period": 60 } }
+  ],
   "d1_databases": [{
     "binding": "DB",
     "database_name": "crease-metrics",
