@@ -2,14 +2,32 @@
   "name":"crease-online",
   "main":"worker.mjs",
   "compatibility_date":"2026-09-22",
-  // Every origin allowed to open a match. Add your custom domain here too.
-  "vars":{"ALLOWED_ORIGINS":"https://prodbykctw-max.github.io,http://localhost:8787,http://127.0.0.1:8787,http://127.0.0.1:8765"},
+  // Every origin allowed to open a match in PRODUCTION. Add your custom domain here too.
+  "vars":{"ALLOWED_ORIGINS":"https://prodbykctw-max.github.io"},
   "durable_objects":{"bindings":[
     {"name":"ROOMS","class_name":"Room"},
     {"name":"LOBBY","class_name":"Lobby"}
   ]},
+  // Per-IP limit on /match and /room/* (20 per 60 s). Optional in the code.
+  "ratelimits":[
+    {"name":"MATCH_LIMIT","namespace_id":"3003","simple":{"limit":20,"period":60}}
+  ],
   "migrations":[
     {"tag":"v1","new_sqlite_classes":["Room"]},
     {"tag":"v2","new_sqlite_classes":["Lobby"]}
-  ]
+  ],
+  // Local development only: `npx wrangler dev --env dev --port 8787 --local`.
+  // Bindings are not inherited by environments, so they are repeated here.
+  "env":{
+    "dev":{
+      "vars":{"ALLOWED_ORIGINS":"http://localhost:8787,http://127.0.0.1:8787,http://127.0.0.1:8765"},
+      "durable_objects":{"bindings":[
+        {"name":"ROOMS","class_name":"Room"},
+        {"name":"LOBBY","class_name":"Lobby"}
+      ]},
+      "ratelimits":[
+        {"name":"MATCH_LIMIT","namespace_id":"3003","simple":{"limit":20,"period":60}}
+      ]
+    }
+  }
 }
