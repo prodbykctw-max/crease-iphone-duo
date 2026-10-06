@@ -71,6 +71,11 @@ export class Lobby {
       if(w)w.ready=true;
       return new Response(null,{status:204});
     }
+    // The room closed (host left or match over): stop offering its code.
+    if(url.pathname==='/gone'){
+      const c=url.searchParams.get('code');this.waiting=this.waiting.filter(w=>w.code!==c);
+      return new Response(null,{status:204});
+    }
     const ip=request.headers.get('CF-Connecting-IP')||'';
     // Prefer a host whose socket is confirmed open. Failing that, offer a code
     // handed out in the last FRESH_MS (its host is most likely still
@@ -94,7 +99,12 @@ export class Lobby {
 export class Room {
   constructor(ctx,env){this.ctx=ctx;this.env=env;this.players=[];this.state=initial();this.targets=[null,null];this.timer=null;this.ticks=0;this.endAt=0;}
   // Ends the match: stops the loop, resets the table, closes both sockets.
-  end(){clearInterval(this.timer);this.timer=null;const peers=this.players;this.players=[];this.state=initial();this.targets=[null,null];this.endAt=0;for(const ws of peers)try{ws.close(1000,'Match ended');}catch{}}
+  end(){
+    if(this.code&&this.env&&this.env.LOBBY){
+      const lobby=this.env.LOBBY.get(this.env.LOBBY.idFromName('global'));
+      this.ctx.waitUntil?.(lobby.fetch('https://lobby/gone?code='+encodeURIComponent(this.code)).catch(()=>{}));
+    }
+    clearInterval(this.timer);this.timer=null;const peers=this.players;this.players=[];this.state=initial();this.targets=[null,null];this.endAt=0;for(const ws of peers)try{ws.close(1000,'Match ended');}catch{}}
   // EMPTY_MS after the first player arrived: nobody joined, so close the room.
   async alarm(){if(this.players.length===1)this.end();}
   async fetch(request){
@@ -104,6 +114,7 @@ export class Room {
     const pair=new WebSocketPair(),[client,server]=Object.values(pair);server.accept();
     const player=this.players.length;this.players.push(server);let last=0;
     if(player===0){
+      this.code=url.pathname.slice(6);
       await this.ctx.storage.setAlarm(Date.now()+EMPTY_MS);
       // the host is connected: the lobby may now offer this code
       if(create&&this.env&&this.env.LOBBY){

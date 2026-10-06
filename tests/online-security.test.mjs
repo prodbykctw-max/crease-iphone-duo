@@ -66,6 +66,13 @@ test('lobby never pairs an IP with itself and expires stale codes',async()=>{
   }finally{Date.now=real;}
 });
 
+test('lobby drops a code once its room reports it gone',async()=>{
+  const lobby=new Lobby({});
+  const a=await match(lobby,'1.1.1.1');await lobby.fetch(req('/ready?code='+a.code));
+  await lobby.fetch(req('/gone?code='+a.code));
+  const b=await match(lobby,'2.2.2.2');assert.equal(b.create,true);assert.notEqual(b.code,a.code);
+});
+
 test('lobby ignores /ready for codes it never issued',async()=>{
   const lobby=new Lobby({});
   await lobby.fetch(req('/ready?code=ABCDEFGHJK'));
