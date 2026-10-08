@@ -19,7 +19,7 @@ Other pages on the same site:
 - First to 7. Drag your paddle and stay on your side of the crease.
 - **SMASH:** flick your paddle hard into the puck. **BUMP:** gold bumpers on the crease kick the puck; score off one for a **BANK SHOT**.
 - **Power-ups** spawn on the crease — knock the puck through one: **BIG** paddle, **MULTI** puck, **WALL** over your goal.
-- **FIRE MODE:** score 3 goals in a row and the puck, rails and grid catch fire for 7 seconds.
+- **FIRE MODE:** score 3 goals in a row and your paddle, the puck and your side of the rails catch fire for 7 seconds.
 - Juiced hits and scoring: freeze-frames, shake, pop-up text, race-to-7 bars on the rails, and a procedural synthwave loop (96 BPM, synthesized in Web Audio — no audio files) whose kick the table pulses to.
 - **Ten arenas** (Midnight, Toxic, Ice, Inferno, Ultraviolet, Miami, Gold Rush, Void, Sakura, prodby KCTW) with photographic plates in `assets/arenas/` and a shared WebGL centerpiece on the crease. Midnight is always available; the rest unlock through play (`assets/progression.js`).
 - **Progress:** achievements and a local Records/leaderboard list, saved per device in `localStorage`.
