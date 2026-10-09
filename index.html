@@ -326,6 +326,7 @@ button:focus-visible{outline:2px solid var(--p1);outline-offset:4px}
         <span class="chip" style="background:#7cff6b"></span><b>MULTI</b> puck ·
         <span class="chip" style="background:#a78bfa"></span><b>WALL</b> over your goal</li>
       <li><b>FIRE MODE:</b> score 3 goals in a row and your paddle, the puck and your side of the rails catch fire for 7 seconds.</li>
+      <li><b>ARENA POWERS:</b> every world drops its own power orb on the centre line. Hit it to claim it: Midnight shooting star (every hit smashes), Toxic acid rain (their paddle shrinks), Ice deep freeze, Inferno lava ball, Ultraviolet blacklight, Miami riptide, Gold Rush golden goal (counts double), Void black hole, Sakura blossom wall, KCTW bass drop.</li>
       <li><b>CHALLENGE A FRIEND:</b> tap it on the menu, or after a match to send your final score, and share the link.</li>
       <li>Tip: Share → <b>Add to Home Screen</b> for true full-screen.</li>
       <li>Your settings and stats stay on this device. Anonymous play data may be used to improve CREASE. No names or contact details are collected.</li>
@@ -585,7 +586,7 @@ function toScreen(u, v) {
 
 // ---------- state ----------
 const game = {
-  bumpers: [], pops: [], board: null, hitstop: 0, beat: 0, surges: [], stageFlash: 0, railHits: [], cornerHits: [],
+  bumpers: [], pops: [], board: null, hitstop: 0, beat: 0, surges: [], stageFlash: 0, railHits: [], cornerHits: [], envOrb: null, envT: 12, env: null,
   introT: 0, introFx: 0, rings: [], shake: 0, flashW: 0, overT: 0, confT: 0,
   state: 'play', resume: 'play', mode: 'demo', diff: 'easy',
 score: [0, 0], pucks: [], paddles: [], pups: [], parts: [], shields: [0, 0],
@@ -614,7 +615,7 @@ function newMatch(mode) {
   game.mode = mode;
   game.score = [0, 0]; game.shields = [0, 0]; game.pups = []; game.parts = []; game.fire=[0,0]; game.streak=[0,0]; game.roundPups=[[],[]]; game.bestRally=0; game.playerReturns=0;
   game.paddles = [mkPaddle(1, mode === 'demo' ? 'cpu' : 'human'), mkPaddle(2, mode === 'duo' ? 'human' : 'cpu')];
-  game.winner = 0; game.overShown = false; game.pupT = rand(6, 9);
+  game.winner = 0; game.overShown = false; game.pupT = rand(6, 9); game.envOrb = null; game.env = null; game.envT = rand(9, 13);
   game.pops = []; game.hitstop = 0; resetBoard();
   ptrs.clear();
   resetRound(0, mode === 'demo' ? 0.6 : 1.8);
@@ -860,14 +861,15 @@ function physics(dt, puckLive) {
   const L = view.L, D = DIFF[game.diff];
   for (const pd of game.paddles) {
     if (pd.big > 0) pd.big -= dt;
-    const R = CFG.padR * (pd.big > 0 ? 1.45 : 1);
+    const R = CFG.padR * (pd.big > 0 ? 1.45 : 1) * (envOn('ACID', 3 - pd.p) ? 0.62 : 1);
     pd.r += (R - pd.r) * Math.min(1, dt * 10);
     if (pd.ctrl === 'cpu') ai(pd, dt, D);
     const lo = pd.p === 1 ? L / 2 + pd.r : pd.r, hi = pd.p === 1 ? L - pd.r : L / 2 - pd.r;
     const tu = clamp(pd.tu, pd.r, 1 - pd.r), tv = clamp(pd.tv, lo, hi);
-    const maxS = pd.ctrl === 'cpu' ? D.spd : 4;
+    const frozen = envOn('ICE', 3 - pd.p);
+    const maxS = (pd.ctrl === 'cpu' ? D.spd : 4) * (frozen ? 0.3 : 1);
     let du = tu - pd.u, dv = tv - pd.v;
-    if (pd.ctrl === 'human') { const follow = 1 - Math.exp(-70 * dt); du *= follow; dv *= follow; }
+    if (pd.ctrl === 'human') { const follow = 1 - Math.exp((frozen ? -7 : -70) * dt); du *= follow; dv *= follow; }
     const d = Math.hypot(du, dv), md = maxS * dt;
     if (d > md) { du *= md / d; dv *= md / d; }
     if (pd.ctrl === 'cpu' && D.acc) {
@@ -940,6 +942,9 @@ function physics(dt, puckLive) {
       if (pu.dead || !pk.last) continue;
       if (Math.hypot(pk.u - pu.u, pk.v - pu.v) < pk.r + pu.r) grant(pu, pk.last);
     }
+    const eo = game.envOrb;
+    if (eo && pk.last && Math.hypot(pk.u - eo.u, pk.v - eo.v) < pk.r + eo.r) grantEnv(pk.last);
+    envPuck(pk, dt, L);
   }
 
   // puck vs puck
@@ -981,7 +986,8 @@ function hitPaddle(pk, pd) {
     const col = pd.p === 1 ? COL.p1 : COL.p2;
     const push = Math.max(0, pd.vu * nu + pd.vv * nv);   // paddle speed driving into the puck
     pd.punch = Math.min(1, (pd.punch || 0) + 0.25 + Math.min(1, j / 3) * 0.5);
-    if (push > CFG.smashNeed && j > 2.2 && pk.smashT < 0.45) {   // one SMASH per strike, not per contact frame
+    const starHit = envOn('STAR', pd.p) && pk.smashT < 0.45;
+    if (starHit || (push > CFG.smashNeed && j > 2.2 && pk.smashT < 0.45)) {   // one SMASH per strike, not per contact frame
       // SMASH: flicked hard into the puck
       pk.smashT = 0.7;
       progress.event('smash',{player:pd.p});
@@ -1149,6 +1155,84 @@ function grant(pu, who) {
   if(CreaseProduct.extendRounds())game.roundPups[who-1].push(pu.type);
   addPop(pu.type === 'BIG' ? 'BIG PADDLE' : pu.type === 'MULTI' ? 'MULTI PUCK' : 'GOAL WALL', pu.u, pu.v, col, who, 0.07);
 }
+// ---------- arena powers: every world has its own power orb ----------
+// One orb at a time spawns on the centre line every 10-16 s of play. The puck that touches it gives the
+// power to whoever hit it last. One arena power is active at a time.
+const ENV_POWERS = [
+  { type: 'STAR',  name: 'SHOOTING STAR', glyph: '★', dur: 6, desc: 'every hit is a SMASH' },            // MIDNIGHT
+  { type: 'ACID',  name: 'ACID RAIN',     glyph: '☣', dur: 6, desc: 'their paddle shrinks' },            // TOXIC
+  { type: 'ICE',   name: 'DEEP FREEZE',   glyph: '❄', dur: 4, desc: 'their paddle freezes up' },         // ICE
+  { type: 'LAVA',  name: 'LAVA BALL',     glyph: '♨', dur: 6, desc: 'your shots stay red-hot fast' },    // INFERNO
+  { type: 'UV',    name: 'BLACKLIGHT',    glyph: '◐', dur: 5, desc: 'the puck goes dark on their side' }, // ULTRAVIOLET
+  { type: 'TIDE',  name: 'RIPTIDE',       glyph: '≈', dur: 5, desc: 'a current drags the puck at their goal' }, // MIAMI
+  { type: 'GOLD',  name: 'GOLDEN GOAL',   glyph: '$', dur: 8, desc: 'your next goal counts double' },    // GOLD RUSH
+  { type: 'HOLE',  name: 'BLACK HOLE',    glyph: '●', dur: 5, desc: 'gravity pulls the puck to their goal' }, // VOID
+  { type: 'BLOOM', name: 'BLOSSOM WALL',  glyph: '✿', dur: 5, desc: 'petals guard your goal' },          // SAKURA
+  { type: 'BASS',  name: 'BASS DROP',     glyph: '♫', dur: 6, desc: 'every beat kicks the puck at them' }, // PRODBY KCTW
+];
+const envPower = () => ENV_POWERS[stageIx % ENV_POWERS.length];
+const envOn = (type, who) => !!(game.env && game.env.type === type && game.env.who === who && game.env.t > 0);
+function envTick(dt) {
+  if (game.mode === 'demo') return;
+  if (game.env) { game.env.t -= dt; if (game.env.t <= 0) game.env = null; }
+  if (game.envOrb) { game.envOrb.life -= dt; if (game.envOrb.life <= 0) game.envOrb = null; return; }
+  game.envT -= dt;
+  if (game.envT <= 0 && !game.env) { game.envT = rand(10, 16); game.envOrb = { u: rand(0.3, 0.7), v: view.L / 2, r: 0.05, life: 9, ...envPower() }; }
+}
+function grantEnv(who) {
+  const o = game.envOrb; if (!o) return; game.envOrb = null;
+  game.env = { type: o.type, who, t: o.dur, dur: o.dur, name: o.name };
+  if (o.type === 'BLOOM') game.shields[who - 1] = Math.max(game.shields[who - 1], o.dur);
+  const col = ST().grid;
+  burst(o.u, o.v, col, 30, 1.8); burst(o.u, o.v, '#ffffff', 12, 1.2); surge(o.u, o.v, col, 1.4);
+  game.stageFlash = 1; juice({ shake: 0.18, flash: 0.1 });
+  addPop(o.name, o.u, o.v, col, who, 0.1, true);
+  toast(o.desc.toUpperCase(), 1.8);
+  tone(520, 0.12, 'triangle', 0.12, 1.5); setTimeout(() => tone(1040, 0.16, 'triangle', 0.1, 1.2), 90);
+  track('arena_power', { mode: game.mode });
+}
+// Per-frame effects on a puck.
+function envPuck(pk, dt, L) {
+  const e = game.env; if (!e || e.t <= 0 || pk.dead) return;
+  const toward = e.who === 1 ? -1 : 1;                    // direction of the opponent's goal along v
+  if (e.type === 'LAVA' && pk.last === e.who) { const sp = Math.hypot(pk.vu, pk.vv); if (sp > 0.05 && sp < 1.15) { pk.vu *= 1.15 / sp; pk.vv *= 1.15 / sp; } }
+  else if (e.type === 'TIDE') pk.vv += toward * 0.75 * dt;
+  else if (e.type === 'HOLE') { const gu = 0.5 - pk.u, gv = (e.who === 1 ? 0.22 : L - 0.22) - pk.v, d = Math.hypot(gu, gv) + 0.05; pk.vu += gu / d * 0.9 * dt; pk.vv += gv / d * 0.9 * dt; }
+  else if (e.type === 'BASS') {
+    const beatNow = Math.floor(game.t / 0.625);
+    if (beatNow !== e.lastBeat) { e.lastBeat = beatNow; pk.vv += toward * 0.32; game.stageFlash = Math.max(game.stageFlash, 0.6); surge(pk.u, pk.v, ST().grid, 0.7); }
+  }
+}
+// The orb on the centre line and the active power's look.
+function drawEnv() {
+  const o = game.envOrb, px = 1 / view.s, col = ST().grid;
+  if (o) {
+    const bob = 1 + 0.1 * Math.sin(game.t * 5), fade = o.life < 2 ? (Math.sin(game.t * 20) > 0 ? 1 : 0.35) : 1;
+    glowCircle(o.u, o.v, o.r * 2.4 * bob, col, 0.18 * fade); glowCircle(o.u, o.v, o.r * 1.3 * bob, '#ffffff', 0.12 * fade);
+    ctx.globalAlpha = fade; ctx.lineWidth = 3 * px; ctx.strokeStyle = col;
+    ctx.beginPath(); ctx.arc(o.u, o.v, o.r * bob, 0, Math.PI * 2); ctx.stroke();
+    ctx.setLineDash([0.012, 0.012]); ctx.lineDashOffset = -game.t * 0.05;
+    ctx.beginPath(); ctx.arc(o.u, o.v, o.r * 1.45 * bob, 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]);
+    ctx.save(); ctx.translate(o.u, o.v); if (view.land) ctx.rotate(-Math.PI / 2);
+    ctx.fillStyle = '#ffffff'; ctx.font = `900 ${o.r * 1.15}px system-ui, sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.shadowColor = col; ctx.shadowBlur = 12 * px; ctx.fillText(o.glyph, 0, o.r * 0.06); ctx.restore();
+    ctx.globalAlpha = 1;
+  }
+  const e = game.env; if (!e) return;
+  const L = view.L, k = Math.min(1, e.t / 0.6), a = 0.16 * k;
+  const victim = e.type === 'BLOOM' || e.type === 'GOLD' || e.type === 'STAR' || e.type === 'LAVA' ? e.who : 3 - e.who;
+  const v0 = victim === 1 ? L / 2 : 0;                     // tint the half the power acts on
+  const g = ctx.createLinearGradient(0, victim === 1 ? L : 0, 0, L / 2);
+  g.addColorStop(0, hexA(col, a * 1.6)); g.addColorStop(1, hexA(col, 0));
+  ctx.fillStyle = g; ctx.fillRect(0, v0, 1, L / 2);
+  if (e.type === 'ACID' || e.type === 'BLOOM' || e.type === 'ICE') {     // falling drips / petals / snow on that half
+    for (let i = 0; i < 14; i++) {
+      const h = Math.sin(i * 12.9898) * 43758.5453, ph = (game.t * (e.type === 'ICE' ? 0.25 : 0.45) + (h - Math.floor(h))) % 1;
+      const u = (i + 0.5) / 14 + Math.sin(game.t + i) * 0.02, v = v0 + (victim === 1 ? ph : 1 - ph) * L / 2;
+      glowCircle(u, v, e.type === 'BLOOM' ? 0.012 : 0.007, e.type === 'ICE' ? '#e8f8ff' : col, 0.5 * k);
+    }
+  }
+}
 function spawnPup() {
   game.pupT = rand(7, 12);
   if (game.pups.length || game.mode === 'demo' && Math.random() < 0.5) return;
@@ -1162,6 +1246,7 @@ function scored(scorer, pk) {
   pk.dead = true;
   const L = view.L;
   game.score[scorer - 1]++;
+  if (envOn('GOLD', scorer) && game.score[scorer - 1] < CFG.win) { game.score[scorer - 1]++; game.env = null; addPop('GOLDEN GOAL ×2', 0.5, view.L / 2, '#ffd23f', scorer, 0.12, true); }
   if (game.daily && game.goalLog) game.goalLog.push(scorer);
   if(countStreak(scorer)){game.fire[scorer-1]=7;addPop('FIRE MODE',.5,scorer===1?L*.58:L*.42,CreaseProduct.paddleStyle().trail,scorer,.1,true);toast('FIRE MODE · 3 GOALS IN A ROW',1.8);}
   progress.goal({scorer,lastTouch:pk.lastTouch,smash:pk.lastTouch===scorer&&pk.smashT>0,bank:pk.lastTouch===scorer&&pk.bumped});
@@ -1210,7 +1295,8 @@ function ai(pd, dt, D) {
   const onMine = pk => me === 2 ? pk.v < L / 2 : pk.v >= L / 2;
   let tgt = null, best = 1e9;
   // The CPU reacts to where the puck was a moment ago, like a person does.
-  const seen = game.pucks.map(pk => ({ u: clamp(pk.u - pk.vu * D.lat, 0, 1), v: clamp(pk.v - pk.vv * D.lat, 0, L), vu: pk.vu, vv: pk.vv, r: pk.r }));
+  const lat = D.lat + (envOn('UV', 3 - me) ? 0.22 : 0);   // BLACKLIGHT blinds the CPU too
+  const seen = game.pucks.map(pk => ({ u: clamp(pk.u - pk.vu * lat, 0, 1), v: clamp(pk.v - pk.vv * lat, 0, L), vu: pk.vu, vv: pk.vv, r: pk.r }));
   for (const pk of seen) {
     const dist = Math.abs(pk.v - (me === 2 ? 0 : L));
     const toward = pk.vv * dir < 0;
@@ -1319,6 +1405,7 @@ function update(dt, raw = dt) {
       progress.event('tick',{dt});
       game.pupT -= dt;
       if (game.pupT <= 0) spawnPup();
+      envTick(dt);
       antiStall(dt);
       break;
     case 'goal':
@@ -2140,6 +2227,7 @@ function drawGame(sx, sy) {
     ctx.globalAlpha = 1;
   }
 
+  drawEnv();
   // pucks
   for (const pk of game.pucks) {
     const tint = pk.last === 1 ? COL.p1 : pk.last === 2 ? COL.p2 : '#ffffff';
@@ -2150,7 +2238,9 @@ function drawGame(sx, sy) {
       glowCircle(pk.u, pk.v, pk.r * 2.6, COL.gold, 0.18 * a);
       if (Math.random() < 0.7) game.parts.push({ u: pk.u, v: pk.v, vu: rand(-0.2, 0.2), vv: rand(-0.2, 0.2), life: 0.3, max: 0.3, col: Math.random() < 0.5 ? COL.gold : COL.orange, sz: rand(0.006, 0.012) });
     }
-    drawPuck(pk, pk.smashT > 0 ? COL.gold : tint);
+    const uvHide = game.env && game.env.type === 'UV' && game.env.t > 0 && (game.env.who === 1 ? pk.v < view.L / 2 : pk.v > view.L / 2);
+    if (game.env && game.env.type === 'LAVA' && pk.last === game.env.who) drawFlames(pk.u, pk.v, pk.r, 0.8, 5);
+    drawPuck(pk, pk.smashT > 0 ? COL.gold : tint, 1, uvHide ? 0.12 : 1);
   }
 
   // paddles

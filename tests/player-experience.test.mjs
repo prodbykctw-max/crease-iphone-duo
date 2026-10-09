@@ -66,3 +66,11 @@ test('corner springs push a still puck back out of the corner', () => {
     assert.ok(toCentre > 0, 'heading back toward the middle');
   }
 });
+
+test('every arena has its own power, and How to Play lists them', () => {
+  const html = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  const stages = (html.match(/\{ name: '[A-Z ]+',\s+base:/g) || []).length;
+  const powers = (html.slice(html.indexOf('const ENV_POWERS'), html.indexOf('const envPower')).match(/type: '/g) || []).length;
+  assert.equal(stages, 10); assert.equal(powers, stages);
+  assert.match(html, /<b>ARENA POWERS:<\/b>/);
+});
