@@ -15,3 +15,16 @@ test('resizing preserves table state, releases touches and skips duplicate work'
   assert.deepEqual(game.score,[3,2]);assert.ok(context.cv.width*context.cv.height<2504000);
   assert.ok(view.ox>=view.safe.l&&view.oy>=view.safe.t);
 });
+test('laptop posture puts the crease on the fold and re-lays out when only the fold changes',()=>{
+  let builds=0;
+  const view={vw:0,vh:0,land:false,L:1.8,safe:{t:0,r:0,b:0,l:0}},game={paddles:[],score:[0,0]};
+  const win={innerWidth:560,innerHeight:760,devicePixelRatio:2};
+  const context=vm.createContext({view,game,window:win,cv:{style:{}},ptrs:new Map(),readSafe(){},clamp:(v,a,b)=>Math.max(a,Math.min(b,v)),rescaleV(){},placeBumpers(){},sceneLayers:{},buildBg(){builds++;},placePause(){},updateHint(){},onFold(){}});
+  vm.runInContext(html.slice(html.indexOf('function layout()'),html.indexOf('function fieldTf(')),context);
+  context.layout();assert.equal(builds,1);
+  win.viewport={segments:[{top:0,bottom:420,left:0,right:560},{top:440,bottom:760,left:0,right:560}]};
+  context.layout();assert.equal(builds,2);
+  assert.deepEqual({...view.fold},{axis:'h',at:430});
+  assert.ok(Math.abs(view.oy+view.L*view.s/2-430)<0.5,'crease on the fold');
+  assert.ok(view.oy>=0&&view.oy+view.L*view.s<=760,'both halves fit');
+});
