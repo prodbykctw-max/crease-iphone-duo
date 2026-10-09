@@ -1,4 +1,4 @@
-const EVENTS = new Set(['visit', 'match_start', 'match_complete', 'rematch', 'share_attempt', 'share_handoff', 'share_copy', 'inquiry_click', 'feedback', 'feedback_reason']);
+const EVENTS = new Set(['visit', 'match_start', 'match_complete', 'rematch', 'share_attempt', 'share_handoff', 'share_copy', 'inquiry_click', 'feedback', 'feedback_reason', 'daily_start', 'daily_complete']);
 const VALUES = {
   mode: ['solo', 'duo'], difficulty: ['easy', 'normal', 'hard'], reason: ['new', 'restart', 'rematch'],
   source: ['direct', 'challenge', 'instagram', 'tiktok', 'youtube', 'x', 'facebook', 'reddit', 'creator', 'store'],

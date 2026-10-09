@@ -51,6 +51,7 @@ h2{margin:0 0 6px;font-size:clamp(30px,8vmin,48px);font-weight:900;font-style:it
   font-family:inherit;font-weight:800;font-size:17px;line-height:1;letter-spacing:.04em;cursor:pointer;position:relative}
 .btn small{display:block;font-size:11px;font-weight:600;opacity:.75;margin-top:5px;letter-spacing:.02em}
 .btn.p1{color:var(--p1)} .btn.p2{color:var(--p2)} .btn.plain{color:var(--ink);border-color:var(--line)}
+.btn.daily{flex-basis:100%;color:#ffd23f;background:rgba(255,210,63,.08)}
 .btn.rec{background:currentColor;box-shadow:0 0 18px currentColor}
 .btn.rec span,.btn.rec small{color:#12002a}
 .btn span{display:block}
@@ -244,6 +245,7 @@ button:focus-visible{outline:2px solid var(--p1);outline-offset:4px}
     <div class="btns">
       <button id="bSolo" class="btn p1"><span>SOLO vs CPU</span><small id="soloSub">one thumb</small></button>
       <button id="bDuo" class="btn p2"><span>2 PLAYERS</span><small id="duoSub">one per half</small></button>
+      <button id="bDaily" class="btn daily"><span>DAILY CHALLENGE</span><small id="dailySub">one try a day vs CTW</small></button>
     </div>
     <div class="stagepick">
       <button id="stagePrev" class="arrow" aria-label="Previous stage">‹</button>
@@ -1076,6 +1078,7 @@ function scored(scorer, pk) {
   pk.dead = true;
   const L = view.L;
   game.score[scorer - 1]++;
+  if (game.daily && game.goalLog) game.goalLog.push(scorer);
   if(countStreak(scorer)){game.fire[scorer-1]=7;addPop('FIRE MODE',.5,scorer===1?L*.58:L*.42,CreaseProduct.paddleStyle().trail,scorer,.1,true);toast('FIRE MODE · 3 GOALS IN A ROW',1.8);}
   progress.goal({scorer,lastTouch:pk.lastTouch,smash:pk.lastTouch===scorer&&pk.smashT>0,bank:pk.lastTouch===scorer&&pk.bumped});
   game.flash[scorer - 1] = 1;
@@ -2907,8 +2910,8 @@ $('arenas').addEventListener('keydown',e=>{
   }
 });
 function show(id, on) { $(id).classList.toggle('hidden', !on); }
-function start(mode, reason = 'new') { if(!progress.canPlay(stageIx)){$('bArenas').click();return;} matchTracked = false; track('match_start', { mode, difficulty: game.diff, reason }); if (reason === 'rematch') track('rematch', { mode }); unlockAudio(); booted = true; music.start(); show('menu', false); show('over', false); show('pauseM', false); newMatch(mode); }
-function toMenu() { show('pauseM', false); show('over', false); show('menu', true); newMatch('demo'); }
+function start(mode, reason = 'new', daily = false) { if(!progress.canPlay(stageIx)){$('bArenas').click();return;} if (!daily) restoreDailyDiff(); matchTracked = false; track('match_start', { mode, difficulty: game.diff, reason }); if (reason === 'rematch') track('rematch', { mode }); unlockAudio(); booted = true; music.start(); show('menu', false); show('over', false); show('pauseM', false); newMatch(mode); game.daily = daily; game.goalLog = []; game.dailyDone = false; }
+function toMenu() { show('pauseM', false); show('over', false); show('menu', true); restoreDailyDiff(); refreshDaily(); newMatch('demo'); game.daily = false; }
 function pause() {
   if (game.mode === 'demo' || game.mode === 'intro' || game.state === 'paused' || game.state === 'over') return;
   const st = game.state;
@@ -3181,6 +3184,9 @@ function showOver() {
   $('overScore').textContent = `${who[0]} ${game.score[0]} – ${game.score[1]} ${who[1]}`;
   const rally = game.bestRally || 0;
   $('overReflection').textContent = reflectionText(w, rally);
+  const dr = game.daily ? recordDaily() : null;
+  if (dr) $('overReflection').textContent = `Daily #${dr.no} · streak ${dr.streak} · best rally ${dr.rally}`;
+  $('bShareResult').querySelector('span').textContent = dr ? 'SHARE DAILY RESULT' : 'CHALLENGE A FRIEND';
   $('bPause').classList.add('hidden');
   show('over', true);
   try { mqRender(w); } catch (_) {}
@@ -3213,7 +3219,62 @@ async function shareChallenge(result) {
   }
 }
 $('bShareMenu').onclick = () => shareChallenge(false);
-$('bShareResult').onclick = () => shareChallenge(true);
+$('bShareResult').onclick = () => (game.daily ? shareDaily(true) : shareChallenge(true));
+// ---------- Daily Challenge: one try a day against CTW, shared as a spoiler-free line ----------
+const DAILY_KEY = 'crease.daily.v1', DAILY_EPOCH = '2026-10-09';
+const nyDay = (d = new Date()) => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York' }).format(d);
+const dailyNo = (day = nyDay()) => Math.round((Date.parse(day + 'T12:00:00Z') - Date.parse(DAILY_EPOCH + 'T12:00:00Z')) / 864e5) + 1;
+function dailyState() { try { const v = JSON.parse(storage.get(DAILY_KEY) || '{}'); return v && typeof v === 'object' && !Array.isArray(v) ? v : {}; } catch (_) { return {}; } }
+let dailyPrevDiff = null;
+function setDiff(d) { game.diff = d; for (const o of $('diff').querySelectorAll('button')) o.classList.toggle('on', o.dataset.d === d); }
+function restoreDailyDiff() { if (dailyPrevDiff) { setDiff(dailyPrevDiff); dailyPrevDiff = null; } }
+function refreshDaily() {
+  const st = dailyState(), today = nyDay(), done = st.last && st.last.day === today;
+  $('dailySub').textContent = done ? `#${dailyNo()} played · ${st.last.a}–${st.last.b} · tap to share` : `#${dailyNo()} · one try a day vs CTW`;
+}
+function startDaily() {
+  const st = dailyState();
+  if (st.last && st.last.day === nyDay()) { shareDaily(false); return; }
+  if (!dailyPrevDiff) dailyPrevDiff = game.diff;
+  setDiff('hard'); track('daily_start');
+  start('solo', 'new', true);
+}
+function recordDaily() {
+  if (game.dailyDone) return dailyState().last;
+  game.dailyDone = true;
+  const st = dailyState(), day = nyDay();
+  if (st.last && st.last.day === day) return st.last;   // one try a day
+  const y = nyDay(new Date(Date.parse(day + 'T12:00:00Z') - 864e5));
+  const streak = st.last && st.last.day === y ? (st.last.streak || 1) + 1 : 1;
+  const last = { day, no: dailyNo(day), a: game.score[0], b: game.score[1], win: game.winner === 1, goals: (game.goalLog || []).join(''), rally: game.bestRally || 0, streak };
+  storage.set(DAILY_KEY, JSON.stringify({ ...st, last, best: Math.max(st.best || 0, streak) }));
+  track('daily_complete', { winner: game.winner });
+  refreshDaily();
+  return last;
+}
+function dailyText(r) {
+  const row = [...String(r.goals || '')].map(g => (g === '1' ? '🟦' : '🟥')).join('');
+  const url = new URL(location.pathname, location.origin); url.searchParams.set('challenge', 'daily');
+  return { text: `CREASE Daily #${r.no} ${r.win ? 'beat' : 'lost to'} CTW ${r.a}–${r.b}\n${row}\nbest rally ${r.rally} · streak ${r.streak}`, url: url.href };
+}
+async function shareDaily(result) {
+  const r = dailyState().last; if (!r) return;
+  const prefix = result ? 'result' : 'menu', status = $(prefix + 'ShareStatus');
+  const { text, url } = dailyText(r);
+  track('share_attempt', { from: prefix });
+  if (navigator.share) {
+    try { await navigator.share({ title: 'CREASE Daily #' + r.no, text: text + '\n' + url }); track('share_handoff', { method: 'native', from: prefix }); if (status) status.textContent = 'Daily result handed to your share app.'; return; }
+    catch (err) { if (err.name === 'AbortError') return; }
+  }
+  try { await navigator.clipboard.writeText(text + '\n' + url); track('share_copy', { from: prefix }); if (status) status.textContent = 'Daily result copied. Paste it anywhere!'; }
+  catch (_) { if (status) status.textContent = text.replace(/\n/g, ' · ') + ' · ' + url; }
+}
+$('bDaily').onclick = startDaily;
+refreshDaily();
+if (new URLSearchParams(location.search).get('challenge') === 'daily') {
+  $('challengeHint').textContent = `Daily Challenge #${dailyNo()}: one try to beat CTW. Tap DAILY CHALLENGE.`;
+  $('challengeHint').classList.remove('hidden');
+}
 $('bShareCard').onclick = () => shareResultCard();
 for (const link of document.querySelectorAll('[data-inquiry]')) {
   link.addEventListener('click', () => track('inquiry_click'));
