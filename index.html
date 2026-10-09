@@ -157,6 +157,14 @@ button:focus-visible{outline:2px solid var(--p1);outline-offset:4px}
 .achievement-item h3{font-size:14px;margin:0 0 7px}.achievement-item p{font-size:12px;color:#c2b5d4;margin:0 0 8px;line-height:1.5}
 .achievement-item progress{width:100%;accent-color:#34d9ca}
 #achievementToast{position:fixed;bottom:max(18px,env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);z-index:12;max-width:90vw;padding:12px 18px;border:1px solid #58ebc0;background:#0c1821;color:#fff;border-radius:12px;pointer-events:none;text-align:center;font-size:13px}
+.studio-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin:12px 0}
+.studio-grid fieldset{border:1px solid #372c46;border-radius:10px;background:#171122;padding:10px 12px;display:flex;flex-direction:column;gap:8px}
+.studio-grid legend{font-weight:800;letter-spacing:.06em;font-size:13px;padding:0 6px}
+.studio-grid label{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:13px;color:#d9ccec}
+.studio-grid input[type=color]{width:46px;height:30px;border:0;background:none;padding:0}
+.studio-grid .sd-file{flex-direction:column;align-items:stretch}.studio-grid .sd-check{justify-content:flex-start}
+#studioPreview{width:100%;height:auto;border-radius:12px;background:#05060f;display:block}
+#designStudio.locked .studio-grid{opacity:.45;pointer-events:none}
 .product-dialog{color:#f5eaff;background:#0b0914;border:1px solid #554467;border-radius:18px;width:min(780px,92vw);max-height:88dvh;padding:20px;overflow:auto;touch-action:pan-y}
 .product-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;margin:14px 0}.product-card{border:1px solid #372c46;border-radius:10px;background:#171122;padding:14px}.product-card.locked{opacity:.62}.product-card h3{margin:0 0 7px;font-size:15px}.product-card p{margin:0;color:#c2b5d4;font-size:12px;line-height:1.5}.product-card button{margin-top:10px;width:100%;min-height:42px}
 .leaderboard-list{margin:14px 0;padding:0;list-style:none}.leaderboard-list li{display:grid;grid-template-columns:32px 1fr auto;gap:10px;padding:12px 8px;border-bottom:1px solid #2b2337}.leaderboard-list small{color:#a99fba}
@@ -271,6 +279,7 @@ button:focus-visible{outline:2px solid var(--p1);outline-offset:4px}
     <dialog id="garageHub" class="product-dialog"><h2>GARAGE</h2><p class="hint">Your worlds. Your style.</p><div class="row">
       <button id="bArenas" class="link">Arenas</button>
       <button id="bPremium" class="link">Paddles &amp; pass</button>
+      <button id="bStudio" class="link">Design studio</button>
     </div><button class="link" data-close-hub="garageHub">Back</button></dialog>
     <dialog id="progressHub" class="product-dialog"><h2>PROGRESS</h2><div class="row">
       <button id="bAchievements" class="link">Achievements</button>
@@ -309,6 +318,25 @@ button:focus-visible{outline:2px solid var(--p1);outline-offset:4px}
 </dialog>
 <div id="achievementToast" class="hidden" role="status" aria-live="polite"></div>
 <dialog id="leaderboard" class="product-dialog" aria-labelledby="leaderboardTitle"><div class="arena-heading"><h2 id="leaderboardTitle">LEADERBOARD</h2><button id="bLeaderboardClose" class="link">Close</button></div><p class="hint">Your best matches, saved on this device.</p><label class="field">Display name<input id="leaderboardName" maxlength="24" autocomplete="nickname" placeholder="Player 1"></label><button id="saveLeaderboardName" class="btn plain">SAVE NAME</button><ol id="leaderboardList" class="leaderboard-list"></ol></dialog>
+<dialog id="designStudio" class="product-dialog" aria-labelledby="studioTitle"><div class="arena-heading"><h2 id="studioTitle">DESIGN STUDIO</h2><button id="bStudioClose" class="link">Close</button></div>
+<p id="studioStatus" class="hint">Make your own paddle, puck and stage. Your designs stay on this device.</p>
+<p id="studioLock" class="hint hidden"><b>Locked:</b> Design Studio is part of the Premium Pass (the unlocked version).</p>
+<canvas id="studioPreview" width="640" height="360" aria-label="Preview of your designs"></canvas>
+<div class="studio-grid">
+  <fieldset><legend>Your paddle</legend>
+    <label>Ring <input type="color" id="sdRing" value="#2de2e6"></label><label>Core <input type="color" id="sdCore" value="#ffffff"></label><label>Trail <input type="color" id="sdTrail" value="#2de2e6"></label>
+    <label class="sd-file">Image on paddle <input type="file" id="sdPadImg" accept="image/*"></label><button type="button" class="link" data-clear="pad">Remove image</button>
+    <label class="sd-check"><input type="checkbox" id="sdPadOn"> Use my paddle</label></fieldset>
+  <fieldset><legend>Your puck</legend>
+    <label>Color <input type="color" id="sdPuck" value="#ffffff"></label>
+    <label class="sd-file">Image on puck <input type="file" id="sdPuckImg" accept="image/*"></label><button type="button" class="link" data-clear="puck">Remove image</button>
+    <label class="sd-check"><input type="checkbox" id="sdPuckOn"> Use my puck</label></fieldset>
+  <fieldset><legend>Your stage</legend>
+    <label>Sky <input type="color" id="sdSkyA" value="#0a0118"></label><label>Horizon <input type="color" id="sdSkyB" value="#1b0536"></label><label>Grid <input type="color" id="sdGrid" value="#ff2a8a"></label>
+    <label class="sd-file">Stage picture <input type="file" id="sdStageImg" accept="image/*"></label><button type="button" class="link" data-clear="stage">Remove picture</button>
+    <label class="sd-check"><input type="checkbox" id="sdStageOn"> Use my stage</label></fieldset>
+</div>
+</dialog>
 <dialog id="premium" class="product-dialog" aria-labelledby="premiumTitle"><div class="arena-heading"><h2 id="premiumTitle">PREMIUM GARAGE</h2><button id="bPremiumClose" class="link">Close</button></div><p id="premiumStatus" class="hint"></p><div id="premiumGrid" class="product-grid"></div><a id="premiumCheckout" class="btn p1" target="_blank" rel="noopener noreferrer">GET PREMIUM PASS</a></dialog>
 
 <div id="how" class="overlay hidden">
@@ -477,7 +505,21 @@ const STAGES = [
   { name: 'PRODBY KCTW', base: ['#02090c', '#041a20'], grid: '#34edb0', horizon: '#71caff', sun: ['#12ad69', '#26aaff', '#b7f5e7'], mtn: ['#073c38', '#021214'], wire: '#42c2ff', win: ['#7dffbe', '#46baff'], rail: '#35bfef', p1: '#55d9ff', p2: '#51f4a0' },
 ];
 let stageIx = 0;
-const ST = () => STAGES[stageIx];
+// Design Studio (Premium Pass): your own paddle, puck and stage, stored on this device.
+const STUDIO_KEY = 'crease.studio.v1';
+const studio = (() => { let d = {}; try { d = JSON.parse(localStorage.getItem(STUDIO_KEY) || '{}') || {}; } catch (_) {} return { d, img: {} }; })();
+function studioImg(k) {
+  const src = studio.d[k + 'Img']; if (!src) return null;
+  const c = studio.img[k]; if (c && c.src === src) return c.el.complete ? c.el : null;
+  const el = new Image(); el.src = src; studio.img[k] = { src, el }; return null;
+}
+const studioOn = k => !!(studio.d[k + 'On'] && window.CreaseProduct && CreaseProduct.isPremium());
+const ST = () => {
+  const base = STAGES[stageIx];
+  if (!studioOn('stage')) return base;
+  const d = studio.d;
+  return { ...base, name: 'MY STAGE', base: [d.skyA || base.base[0], d.skyB || base.base[1]], grid: d.grid || base.grid, rail: d.grid || base.rail };
+};
 const hexA = (hex, a) => { const n = parseInt(hex.slice(1), 16); return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`; };
 function setStage(i, rebuild = true) {
   stageIx = ((i % STAGES.length) + STAGES.length) % STAGES.length;
@@ -1704,6 +1746,15 @@ function buildScene() {
 }
 // live scenery: parallax drift + per-stage effects, drawn for each player's half
 function drawScenery(t) {
+  const sImg = studioOn('stage') && studioImg('stage');
+  if (sImg) {                                     // your stage picture fills the table, with a slow tilt parallax
+    const L = view.L, tf = typeof tiltField === 'function' ? tiltField() : { u: 0, v: 0 };
+    ctx.save(); fieldTf(); rr(ctx, 0, 0, 1, L, 0.06); ctx.clip();
+    const k = Math.max(1.1 / sImg.width, (L * 1.1) / sImg.height), w = sImg.width * k, h = sImg.height * k;
+    ctx.globalAlpha = 0.85; ctx.drawImage(sImg, 0.5 - w / 2 - tf.u * 0.03, L / 2 - h / 2 - tf.v * 0.03, w, h);
+    ctx.globalAlpha = 0.35; ctx.fillStyle = '#05060f'; ctx.fillRect(0, 0, 1, L);   // keep the puck readable
+    ctx.restore(); ctx.globalAlpha = 1; return;
+  }
   if (!sceneLayers.far) return;
   ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
   const L = view.L, s = view.s, dpr = view.dpr, H = HORIZON, sc = SCENES[stageIx];
@@ -2120,7 +2171,9 @@ function drawRings() {
 function drawPaddle(pd, glowA) {
   const px = 1 / view.s;
   const col = pd.p === 1 ? COL.p1 : COL.p2;
-  const style=CreaseProduct.paddleStyle();
+  let style=CreaseProduct.paddleStyle();
+  const mine=pd.p===1&&studioOn('pad');
+  if(mine)style={...style,ring:studio.d.ring||style.ring,core:studio.d.core||style.core,trail:studio.d.trail||style.trail};
   const ring = pd.big > 0 ? COL.BIG : col;
   glowCircle(pd.u, pd.v, pd.r * 1.7, style.trail, glowA+(game.fire[pd.p-1]>0?.18:0));
   drawFlames(pd.u, pd.v, pd.r, fireAmt(pd.p), pd.p);
@@ -2133,6 +2186,8 @@ function drawPaddle(pd, glowA) {
   ctx.beginPath(); ctx.arc(pd.u, pd.v-pd.r*.035, pd.r * 0.84, 0, Math.PI * 2); ctx.stroke();
   const glass=ctx.createRadialGradient(pd.u-pd.r*.17,pd.v-pd.r*.22,pd.r*.02,pd.u,pd.v,pd.r*.52);glass.addColorStop(0,'#fff');glass.addColorStop(.16,hexA(col,.95));glass.addColorStop(.65,style.core);glass.addColorStop(1,'#101427');ctx.fillStyle=glass;
   ctx.beginPath(); ctx.arc(pd.u, pd.v-pd.r*.025, pd.r * .47, 0, Math.PI * 2); ctx.fill();
+  const pImg=mine&&studioImg('pad');
+  if(pImg){ctx.save();ctx.beginPath();ctx.arc(pd.u,pd.v-pd.r*.025,pd.r*.62,0,Math.PI*2);ctx.clip();const w=pd.r*1.24;ctx.drawImage(pImg,pd.u-w/2,pd.v-pd.r*.025-w/2,w,w);ctx.restore();}
   const tfp=tiltField(),hu=pd.u-pd.r*(.26+tfp.u*.18),hv=pd.v-pd.r*(.30+tfp.v*.18);
   ctx.globalAlpha=.42;ctx.fillStyle='#fff';ctx.beginPath();ctx.ellipse(hu,hv,pd.r*.23,pd.r*.10,-.55,0,Math.PI*2);ctx.fill();
   // glossy rim: a bright arc that swings toward the light as the phone tilts
@@ -2157,8 +2212,11 @@ function drawPuck(pk, tint, scale = 1, alpha = 1) {
   const tk=tiltField();
   ctx.fillStyle='rgba(0,0,0,.48)';ctx.beginPath();ctx.ellipse(pk.u+r*(.12+tk.u*.3),pk.v+r*(.19+tk.v*.3),r*.98,r*.54,0,0,Math.PI*2);ctx.fill();
   const body=ctx.createRadialGradient(pk.u-r*(.32+tk.u*.25),pk.v-r*(.38+tk.v*.25),r*.07,pk.u,pk.v,r*1.05);
-  body.addColorStop(0,'#fff');body.addColorStop(.17,tint);body.addColorStop(.56,COL.puck);body.addColorStop(1,'#07091b');ctx.fillStyle=body;
+  const myPuck=studioOn('puck');
+  body.addColorStop(0,'#fff');body.addColorStop(.17,tint);body.addColorStop(.56,myPuck&&studio.d.puck||COL.puck);body.addColorStop(1,'#07091b');ctx.fillStyle=body;
   ctx.beginPath(); ctx.arc(pk.u, pk.v, r, 0, Math.PI * 2); ctx.fill();
+  const kImg=myPuck&&studioImg('puck');
+  if(kImg){ctx.save();ctx.beginPath();ctx.arc(pk.u,pk.v,r*.9,0,Math.PI*2);ctx.clip();ctx.drawImage(kImg,pk.u-r*.9,pk.v-r*.9,r*1.8,r*1.8);ctx.restore();}
   ctx.lineWidth = 3 * px; ctx.strokeStyle = tint === '#ffffff' ? '#9aa4c7' : tint;
   ctx.beginPath(); ctx.arc(pk.u, pk.v, r * 0.62, 0, Math.PI * 2); ctx.stroke();
   ctx.globalAlpha = 0.85 * alpha; ctx.fillStyle = '#fff';   // glossy specular dot
@@ -3040,7 +3098,53 @@ function renderPremium(){
   const fire=document.createElement('article');fire.className='product-card';fire.innerHTML='<h3>Fire Mode</h3><p>Free gameplay feature: score three goals in a row to set your paddle, the puck and your side of the rails on fire for seven seconds.</p>';grid.append(fire);
 }
 $('bLeaderboard').onclick=()=>{renderLeaderboard();$('leaderboard').showModal();};$('bLeaderboardClose').onclick=()=>$('leaderboard').close();$('saveLeaderboardName').onclick=()=>{CreaseProduct.setName($('leaderboardName').value);renderLeaderboard();};
-$('bPremium').onclick=()=>{renderPremium();$('premium').showModal();};$('bPremiumClose').onclick=()=>$('premium').close();
+$('bPremium').onclick=()=>{renderPremium();$('premium').showModal();};
+// ---------- Design Studio UI ----------
+function studioSave() { try { localStorage.setItem(STUDIO_KEY, JSON.stringify(studio.d)); } catch (_) { $('studioStatus').textContent = 'Couldn’t save on this device (storage is full or blocked). Try a smaller picture.'; } sceneLayers.key = ''; buildBg(); studioPreview(); }
+// Shrink an uploaded picture to a square (paddle, puck) or 3:4 (stage) JPEG/PNG data URL so it fits in storage.
+function studioLoad(file, key, w, h) {
+  if (!file || !/^image\//.test(file.type)) return;
+  const url = URL.createObjectURL(file), im = new Image();
+  im.onload = () => {
+    const c = document.createElement('canvas'); c.width = w; c.height = h; const x = c.getContext('2d');
+    const k = Math.max(w / im.width, h / im.height), dw = im.width * k, dh = im.height * k;
+    x.drawImage(im, (w - dw) / 2, (h - dh) / 2, dw, dh); URL.revokeObjectURL(url);
+    studio.d[key + 'Img'] = c.toDataURL(key === 'stage' ? 'image/jpeg' : 'image/png', 0.82); studio.d[key + 'On'] = true; studioFill(); studioSave();
+  };
+  im.onerror = () => URL.revokeObjectURL(url); im.src = url;
+}
+const SD = { sdRing: 'ring', sdCore: 'core', sdTrail: 'trail', sdPuck: 'puck', sdSkyA: 'skyA', sdSkyB: 'skyB', sdGrid: 'grid' };
+function studioFill() {
+  for (const [id, k] of Object.entries(SD)) if (studio.d[k]) $(id).value = studio.d[k];
+  $('sdPadOn').checked = !!studio.d.padOn; $('sdPuckOn').checked = !!studio.d.puckOn; $('sdStageOn').checked = !!studio.d.stageOn;
+  const paid = CreaseProduct.isPremium(); $('designStudio').classList.toggle('locked', !paid); $('studioLock').classList.toggle('hidden', paid);
+}
+function studioPreview() {
+  const c = $('studioPreview'), x = c.getContext('2d'), d = studio.d, W = c.width, H = c.height;
+  const g = x.createLinearGradient(0, 0, 0, H); g.addColorStop(0, d.skyA || '#0a0118'); g.addColorStop(1, d.skyB || '#1b0536'); x.fillStyle = g; x.fillRect(0, 0, W, H);
+  const si = studioImg('stage'); if (si) { x.globalAlpha = 0.85; const k = Math.max(W / si.width, H / si.height); x.drawImage(si, (W - si.width * k) / 2, (H - si.height * k) / 2, si.width * k, si.height * k); x.globalAlpha = 1; }
+  x.strokeStyle = d.grid || '#ff2a8a'; x.globalAlpha = 0.5; x.lineWidth = 2; for (let i = 1; i < 8; i++) { x.beginPath(); x.moveTo(0, H * i / 8); x.lineTo(W, H * i / 8); x.stroke(); } x.globalAlpha = 1;
+  const disc = (cx, cy, r, ring, core, img) => {
+    x.save(); x.shadowColor = ring; x.shadowBlur = 24; x.fillStyle = '#070916'; x.beginPath(); x.arc(cx, cy, r, 0, 7); x.fill(); x.restore();
+    x.lineWidth = r * 0.2; x.strokeStyle = ring; x.beginPath(); x.arc(cx, cy, r * 0.84, 0, 7); x.stroke();
+    x.fillStyle = core; x.beginPath(); x.arc(cx, cy, r * 0.47, 0, 7); x.fill();
+    if (img) { x.save(); x.beginPath(); x.arc(cx, cy, r * 0.62, 0, 7); x.clip(); x.drawImage(img, cx - r * 0.62, cy - r * 0.62, r * 1.24, r * 1.24); x.restore(); }
+  };
+  disc(W * 0.3, H * 0.55, 80, d.ring || '#2de2e6', d.core || '#ffffff', studioImg('pad'));
+  const pr = 36; x.fillStyle = d.puck || '#ffffff'; x.beginPath(); x.arc(W * 0.68, H * 0.5, pr, 0, 7); x.fill();
+  const pi = studioImg('puck'); if (pi) { x.save(); x.beginPath(); x.arc(W * 0.68, H * 0.5, pr * 0.9, 0, 7); x.clip(); x.drawImage(pi, W * 0.68 - pr * 0.9, H * 0.5 - pr * 0.9, pr * 1.8, pr * 1.8); x.restore(); }
+  const waiting = (d.padImg && !studioImg('pad')) || (d.puckImg && !studioImg('puck')) || (d.stageImg && !studioImg('stage'));
+  if (waiting) setTimeout(() => { if ($('designStudio').open) studioPreview(); }, 150);   // a picture is still decoding
+}
+for (const [id, k] of Object.entries(SD)) $(id).addEventListener('input', () => { studio.d[k] = $(id).value; studio.d[(id === 'sdPuck' ? 'puck' : /Sky|Grid/.test(id) ? 'stage' : 'pad') + 'On'] = true; studioFill(); studioSave(); });
+for (const [id, k] of [['sdPadOn', 'padOn'], ['sdPuckOn', 'puckOn'], ['sdStageOn', 'stageOn']]) $(id).addEventListener('change', () => { studio.d[k] = $(id).checked; studioSave(); });
+$('sdPadImg').addEventListener('change', e => studioLoad(e.target.files[0], 'pad', 256, 256));
+$('sdPuckImg').addEventListener('change', e => studioLoad(e.target.files[0], 'puck', 192, 192));
+$('sdStageImg').addEventListener('change', e => studioLoad(e.target.files[0], 'stage', 600, 800));
+for (const b of document.querySelectorAll('#designStudio [data-clear]')) b.addEventListener('click', () => { delete studio.d[b.dataset.clear + 'Img']; studioSave(); });
+$('bStudio').onclick = () => { studioFill(); $('designStudio').showModal(); studioPreview(); };
+$('bStudioClose').onclick = () => $('designStudio').close();
+$('designStudio').addEventListener('keydown', e => e.stopPropagation());$('bPremiumClose').onclick=()=>$('premium').close();
 $('leaderboard').addEventListener('keydown',e=>e.stopPropagation());$('premium').addEventListener('keydown',e=>e.stopPropagation());
 let arenaRaf = 0, arenaLastFrame = -Infinity;
 function updateArenaSelection() {
