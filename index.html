@@ -417,8 +417,8 @@ button:focus-visible{outline:2px solid var(--p1);outline-offset:4px}
 <script src="analytics-config.js"></script>
 <script src="analytics.js"></script>
 <script src="assets/arena-engine.js?v=839de2dcf7"></script>
-<script src="assets/progression.js?v=da90ce5c11"></script>
-<script src="assets/monetization.js?v=75092ba24a"></script>
+<script src="assets/progression.js?v=cba130d647"></script>
+<script src="assets/monetization.js?v=2edb24d735"></script>
 <script>
 (() => {
 'use strict';
@@ -1026,6 +1026,8 @@ function hitPaddle(pk, pd) {
       if (pk.rallyHits === 5) toast('RALLY · KEEP IT CLEAN', 1.15);
     }
     const col = pd.p === 1 ? COL.p1 : COL.p2;
+    const sig = pd.p === 1 && CreaseProduct.paddleStyle().fx;   // premium paddle signature sparks
+    if (sig) for (let i = 0; i < sig.length; i++) sparks(pk.u, pk.v, nu, nv, sig[i], 3, 0.9 + i * 0.15);
     const push = Math.max(0, pd.vu * nu + pd.vv * nv);   // paddle speed driving into the puck
     pd.punch = Math.min(1, (pd.punch || 0) + 0.25 + Math.min(1, j / 3) * 0.5);
     const starHit = envOn('STAR', pd.p) && pk.smashT < 0.45;
@@ -1294,6 +1296,8 @@ function scored(scorer, pk) {
   progress.goal({scorer,lastTouch:pk.lastTouch,smash:pk.lastTouch===scorer&&pk.smashT>0,bank:pk.lastTouch===scorer&&pk.bumped});
   game.flash[scorer - 1] = 1;
   const col = scorer === 1 ? COL.p1 : COL.p2, gv = scorer === 1 ? 0 : L;
+  const sigGoal = scorer === 1 && CreaseProduct.paddleStyle().fx;   // premium paddle goal explosion
+  if (sigGoal) { sigGoal.forEach((c, i) => { burst(0.5, gv, c, 26, 2.4 + i * 0.3); surge(0.5, gv, c, 1.6 + i * 0.2); }); game.rings.push({ u: 0.5, v: gv, age: 0, life: 0.7, col: sigGoal[0], max: 0.45 }); }
   burst(0.5, gv, col, 40, 2); burst(0.5, gv, '#ffffff', 16, 1.4);
   game.rings.push({ u: 0.5, v: gv, age: 0, life: 0.6, col, max: 0.4 });
   const label = pk.smashT > 0 ? 'SMASH GOAL' : pk.bumped ? 'BANK SHOT' : 'GOAL';
@@ -3048,7 +3052,7 @@ function refreshStageLock(){
   const playable=progress.canPlay(stageIx);
   $('bSolo').disabled=$('bDuo').disabled=!playable;
   $('bArenaUse').disabled=!playable;$('bArenaUse').textContent=playable?'USE THIS ARENA':'ARENA LOCKED';
-  if(!playable)$('screenHint').textContent='Locked · '+progress.requirement(stageIx);else updateHint();
+  if(!playable)$('screenHint').textContent='Locked · '+progress.requirement(stageIx)+' · or unlock every arena with the Premium Pass';else updateHint();
   for(const el of document.querySelectorAll('[data-lock]'))el.textContent=progress.canPlay(+el.dataset.lock)?'Unlocked':progress.requirement(+el.dataset.lock);
   [...$('stageDots').children].forEach((el,i)=>{el.hidden=!progress.canPlay(i);});
 }
@@ -3086,13 +3090,14 @@ function renderLeaderboard(){
     w.append((Number(row.wins)||0)+' W ',sm);li.append(n,who,w);list.append(li);});
 }
 function renderPremium(){
-  const paid=CreaseProduct.isPremium();$('premiumStatus').textContent=paid?'Premium Pass active on this device.':'Classic Cyan is free. The one-time pass unlocks every paddle and modifier.';
+  const paid=CreaseProduct.isPremium();$('premiumStatus').textContent=paid?'Premium Pass active on this device.'+(CreaseProduct.isFounder()?' Founder: Founder’s Gold is yours.':''):'One-time Premium Pass: every arena unlocked now, the Design Studio, three signature paddles with their own hit sparks and goal explosions, round carry-over, and Founder’s Gold if you buy before Nov 1, 2026. Everything you can buy is cosmetic or convenience; matches stay fair.';
   $('premiumCheckout').href=CreaseProduct.checkout();$('premiumCheckout').textContent=paid?'Creator contact / manage pass':'GET PREMIUM PASS';
   const grid=$('premiumGrid');grid.replaceChildren();
   for(const [id,s] of Object.entries(CreaseProduct.styles)){
-    const card=document.createElement('article');card.className='product-card'+(s.premium&&!paid?' locked':'');
-    const h=document.createElement('h3');h.textContent=s.name;const p=document.createElement('p');p.textContent=s.premium?'Premium paddle appearance with distinct trail and arena lighting.':'Included with every game.';
-    const b=document.createElement('button');b.className='btn plain';b.textContent=s.premium&&!paid?'LOCKED':(CreaseProduct.paddleStyle()===s?'EQUIPPED':'EQUIP');b.disabled=s.premium&&!paid;b.onclick=()=>{if(CreaseProduct.setPaddleStyle(id))renderPremium();};card.append(h,p,b);grid.append(card);
+    const can=CreaseProduct.canUse(id);
+    const card=document.createElement('article');card.className='product-card'+(!can?' locked':'');
+    const h=document.createElement('h3');h.textContent=s.name+(s.founder?' · FOUNDER':'');const p=document.createElement('p');p.textContent=s.desc||'';
+    const b=document.createElement('button');b.className='btn plain';b.textContent=!can?(s.founder?'FOUNDERS ONLY':'LOCKED'):(CreaseProduct.paddleStyle()===s?'EQUIPPED':'EQUIP');b.disabled=!can;b.onclick=()=>{if(CreaseProduct.setPaddleStyle(id))renderPremium();};card.append(h,p,b);grid.append(card);
   }
   const extra=document.createElement('article');extra.className='product-card'+(paid?'':' locked');extra.innerHTML='<h3>Round Carryover</h3><p>Collected BIG and WALL power-ups persist into the next round. MULTI remains a round pickup.</p>';grid.append(extra);
   const fire=document.createElement('article');fire.className='product-card';fire.innerHTML='<h3>Fire Mode</h3><p>Free gameplay feature: score three goals in a row to set your paddle, the puck and your side of the rails on fire for seven seconds.</p>';grid.append(fire);
@@ -3240,6 +3245,7 @@ function matchSnapshot() {
     p1: COL.p1, p2: COL.p2, grid: ST().grid, base: ST().base.slice(),
     names: solo ? `You ${game.score[0]} – ${game.score[1]} CPU (${difficultyLabel(game.diff)})` : `Cyan ${game.score[0]} – ${game.score[1]} Pink`,
     reflection: reflectionText(game.winner, game.bestRally || 0),
+    skin: CreaseProduct.paddleStyle().premium ? CreaseProduct.paddleStyle() : null,
   };
 }
 // Lay a string out with CREASE's wide letter spacing; returns where each glyph sits.
@@ -3309,7 +3315,7 @@ function drawResultCard(c, s) {
   const cta = cardSpaced(x, 'CAN YOU BEAT IT?', cx, 50, 0.08, 900, kw - 60);
   x.fillStyle = '#14002c'; for (const [ch, gx] of cta.cells) x.fillText(ch, gx, ty + 2);
   // arena played
-  ty += 112; const arena = cardSpaced(x, 'ARENA · ' + s.arena, cx, 28, 0.22, 800, sw - 120).cells;
+  ty += 112; const arena = cardSpaced(x, 'ARENA · ' + s.arena + (s.skin ? ' · ' + s.skin.name.toUpperCase() : ''), cx, 28, 0.22, 800, sw - 120).cells;
   x.fillStyle = 'rgba(163,145,201,.95)'; for (const [ch, gx] of arena) x.fillText(ch, gx, ty);
   // wordmark and where to play, under the slab
   const wm = 78, word = cardSpaced(x, 'CREASE', cx, wm, 0.14, 900), wy = sy + sh + 92;

@@ -60,7 +60,7 @@
     if(Array.isArray(raw.unlocked))state.unlocked=[...new Set([0,...raw.unlocked.filter(x=>Number.isInteger(x)&&x>=0&&x<10)])];
     let match=null,saveOkay=true;
     const totals=()=>Object.keys(metrics).reduce((o,k)=>(o[k]=state.stages.reduce((n,s)=>n+s[k],0),o),{});
-    const rules=[['Always available',()=>true],['Finish 3 matches',t=>t.matches>=3],['Finish 5 matches',t=>t.matches>=5],['Win 5 matches',t=>t.wins>=5],['Score 75 goals',t=>t.goals>=75],['Finish 10 matches',t=>t.matches>=10],['Score 10 bumper-bank goals',t=>t.bankGoals>=10],['Perform 20 smashes',t=>t.smashes>=20],['Win 20 matches',t=>t.wins>=20],['Finish 30 matches and earn 100 achievements',t=>t.matches>=30&&Object.keys(state.earned).length>=100]];
+    const rules=[['Always available',()=>true],['Finish 3 matches',t=>t.matches>=3],['Win 5 matches',t=>t.wins>=5],['Win 12 matches',t=>t.wins>=12],['Score 200 goals',t=>t.goals>=200],['Finish 40 matches',t=>t.matches>=40],['Score 30 bumper-bank goals',t=>t.bankGoals>=30],['Perform 75 smashes',t=>t.smashes>=75],['Win 50 matches',t=>t.wins>=50],['Finish 100 matches and earn 150 achievements',t=>t.matches>=100&&Object.keys(state.earned).length>=150]];
     function save(){try{storage.setItem('crease.progress.v1',JSON.stringify(state));saveOkay=true;}catch{saveOkay=false;}}
     function unlock(id){if(state.earned[id]!==undefined)return;state.earned[id]=Date.now();notify({type:'achievement',item:catalog.find(a=>a.id===id)});}
     function check(){
@@ -101,7 +101,7 @@
       try{window.CreaseProduct?.record({name:window.CreaseProduct.name?.()||state.profileName||'Player 1',wins:match.win?1:0,streak:state.streak,achievements:Object.keys(state.earned).length,stage:match.stage});}catch{}
       state.previous=match.win?'win':match.lastOwn?'own-loss':'loss';match=null;check();save();
     }
-    return {catalog,begin,event,goal,save,canPlay:i=>state.unlocked.includes(i),requirement:i=>rules[i]?.[0]||'',get state(){return state;},get saved(){return saveOkay;},progress:a=>a.metric?state.stages[a.stage][a.metric]:(state.earned[a.id]!==undefined?1:0)};
+    return {catalog,begin,event,goal,save,canPlay:i=>state.unlocked.includes(i)||!!(root.CreaseProduct&&root.CreaseProduct.isPremium()),requirement:i=>rules[i]?.[0]||'',get state(){return state;},get saved(){return saveOkay;},progress:a=>a.metric?state.stages[a.stage][a.metric]:(state.earned[a.id]!==undefined?1:0)};
   }
   const api={create,catalog,names};
   if(typeof module!=='undefined'&&module.exports)module.exports=api;
