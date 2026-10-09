@@ -2352,6 +2352,11 @@ function drawGame(sx, sy) {
     msg = game.msg; size = msg.length > 8 ? 0.085 : 0.16;
   }
   if (msg) {
+    if (duo || !view.land) {                 // keep the whole message (and its backing pill) inside the table width
+      ctx.save(); ctx.font = '900 100px -apple-system, "SF Pro Rounded", system-ui, sans-serif';
+      const wEm = ctx.measureText(msg).width / 100; ctx.restore();
+      size = Math.min(size, 0.8 / (wEm + 0.9));   // clears the pause button on the left
+    }
     const a = game.state === 'countdown' || game.state === 'fold' ? 1 : Math.min(1, game.msgT * 3);
     if (duo) {
       ftext(msg, 0.5, L * 0.62, size, 0, '#ffffff', a, 900, true);
