@@ -43,3 +43,11 @@ test('How to Play explains Fire Mode and Challenge a friend', () => {
   assert.match(how, /FIRE MODE:<\/b> score 3 goals in a row/);
   assert.match(how, /CHALLENGE A FRIEND:<\/b>/);
 });
+
+test('Daily Challenge: one try a day against CTW, shared as a spoiler-free line', () => {
+  const html = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  assert.match(html, /id="bDaily"/);
+  assert.match(html, /DAILY_EPOCH = '2026-10-09'/);
+  assert.match(html, /if \(st\.last && st\.last\.day === day\) return st\.last;   \/\/ one try a day/);
+  assert.match(html, /searchParams\.set\('challenge', 'daily'\)/);
+});
