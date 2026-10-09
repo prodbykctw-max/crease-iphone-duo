@@ -74,3 +74,11 @@ test('every arena has its own power, and How to Play lists them', () => {
   assert.equal(stages, 10); assert.equal(powers, stages);
   assert.match(html, /<b>ARENA POWERS:<\/b>/);
 });
+
+test('Design Studio is Premium-only and only changes your own paddle', () => {
+  const html = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  assert.match(html, /<dialog id="designStudio"/);
+  assert.match(html, /const studioOn = k => !!\(studio\.d\[k \+ 'On'\] && window\.CreaseProduct && CreaseProduct\.isPremium\(\)\);/);
+  assert.match(html, /const mine=pd\.p===1&&studioOn\('pad'\);/);
+  assert.equal((html.match(/id="studio"/g) || []).length, 1, 'one element per id');
+});
