@@ -311,7 +311,7 @@ button:focus-visible{outline:2px solid var(--p1);outline-offset:4px}
         <span class="chip" style="background:#ffd23f"></span><b>BIG</b> paddle ·
         <span class="chip" style="background:#7cff6b"></span><b>MULTI</b> puck ·
         <span class="chip" style="background:#a78bfa"></span><b>WALL</b> over your goal</li>
-      <li><b>FIRE MODE:</b> score 3 goals in a row and the puck, rails and grid catch fire for 7 seconds.</li>
+      <li><b>FIRE MODE:</b> score 3 goals in a row and your paddle, the puck and your side of the rails catch fire for 7 seconds.</li>
       <li><b>CHALLENGE A FRIEND:</b> tap it on the menu, or after a match to send your final score, and share the link.</li>
       <li>Tip: Share → <b>Add to Home Screen</b> for true full-screen.</li>
       <li>Your settings and stats stay on this device. Anonymous play data may be used to improve CREASE. No names or contact details are collected.</li>
@@ -439,9 +439,10 @@ const COL = { p1: '#2de2e6', p2: '#ff2a8a', puck: '#ffffff', BIG: '#ffd23f', MUL
 // Mobile/tabletop: calmer rallies with sustained air-table glide, not heavy braking.
 const CFG = { padR: 0.085, puckR: 0.042, goalW: 0.38, maxSpd: 1.65, smashSpd: 2.2, smashNeed: 2.8, bumpR: 0.05, bumpKick: 1.05, fric: 0.08, rest: 0.94, padRest: 0.7, win: 7, maxPucks: 3 };
 const DIFF = {
-  easy:   { spd: 0.65, react: 0.36, err: 0.15, aggr: 0.35 },
-  normal: { spd: 1.2, react: 0.2, err: 0.075, aggr: 0.65 },
-  hard:   { spd: 2.75, react: 0.04, err: 0.015, aggr: 1.0 },
+  // lat: how stale the CPU's read of the puck is (s). acc: how fast its hand can speed up or stop (table widths/s²).
+  easy:   { spd: 0.65, react: 0.36, err: 0.15, aggr: 0.35, lat: 0.2, acc: 5 },
+  normal: { spd: 1.2, react: 0.2, err: 0.075, aggr: 0.65, lat: 0.14, acc: 9 },
+  hard:   { spd: 2.75, react: 0.08, err: 0.03, aggr: 1.0, lat: 0.09, acc: 15 },
 };
 const PUPS = ['BIG', 'MULTI', 'WALL'];
 const difficultyLabel = key => ({easy:'Normal',normal:'Hard',hard:'CTW'})[key] || 'Normal';
@@ -518,7 +519,7 @@ let muted = false;
 
 function mkPaddle(p, ctrl) {
   const hv = p === 1 ? view.L - 0.2 : 0.2;
-  return { p, ctrl, u: 0.5, v: hv, vu: 0, vv: 0, tu: 0.5, tv: hv, r: CFG.padR, big: 0, aiT: 0, ptr: null };
+  return { p, ctrl, u: 0.5, v: hv, vu: 0, vv: 0, cvu: 0, cvv: 0, tu: 0.5, tv: hv, r: CFG.padR, big: 0, aiT: 0, ptr: null };
 }
 function mkPuck(u, v, vu = 0, vv = 0) {
   return { u, v, vu, vv, r: CFG.puckR, last: 0, trail: [], side: Math.sign(v - view.L / 2), dead: false, smashT: 0, bumped: false };
@@ -547,7 +548,7 @@ function resetRound(servTo, cd = 0.9) {
   const v = servTo === 1 ? L / 2 + 0.2 : servTo === 2 ? L / 2 - 0.2 : L / 2;
   // Paddles stay exactly where the player left them between rounds — they are
   // never snapped back to the goal. Only motion and round power-ups are cleared.
-  for (const pd of game.paddles) { pd.vu = pd.vv = 0; pd.big = 0; pd.r = CFG.padR; pd.tu = pd.u; pd.tv = pd.v; }
+  for (const pd of game.paddles) { pd.vu = pd.vv = pd.cvu = pd.cvv = 0; pd.big = 0; pd.r = CFG.padR; pd.tu = pd.u; pd.tv = pd.v; }
   // If a paddle happens to be sitting on the serve spot, the SERVE moves aside,
   // not the paddle.
   let su = 0.5;
@@ -792,6 +793,15 @@ function physics(dt, puckLive) {
     if (pd.ctrl === 'human') { const follow = 1 - Math.exp(-70 * dt); du *= follow; dv *= follow; }
     const d = Math.hypot(du, dv), md = maxS * dt;
     if (d > md) { du *= md / d; dv *= md / d; }
+    if (pd.ctrl === 'cpu' && D.acc) {
+      // A hand has mass: the CPU ramps up, can't stop on a dime, and brakes ahead of its target.
+      const dist = Math.hypot(tu - pd.u, tv - pd.v), want = Math.min(maxS, Math.sqrt(2 * D.acc * dist));
+      const wu = dist > 1e-6 ? (tu - pd.u) / dist * want : 0, wv = dist > 1e-6 ? (tv - pd.v) / dist * want : 0;
+      let au = wu - (pd.cvu || 0), av = wv - (pd.cvv || 0); const al = Math.hypot(au, av), am = D.acc * dt;
+      if (al > am) { au *= am / al; av *= am / al; }
+      pd.cvu = (pd.cvu || 0) + au; pd.cvv = (pd.cvv || 0) + av;
+      du = pd.cvu * dt; dv = pd.cvv * dt;
+    }
     pd.vu = du / dt; pd.vv = dv / dt;
     pd.u += du; pd.v += dv;
     for (const b of game.bumpers) {
@@ -1069,13 +1079,16 @@ function ai(pd, dt, D) {
   const dir = me === 2 ? 1 : -1; // toward the opponent
   const onMine = pk => me === 2 ? pk.v < L / 2 : pk.v >= L / 2;
   let tgt = null, best = 1e9;
-  for (const pk of game.pucks) {
+  // The CPU reacts to where the puck was a moment ago, like a person does.
+  const seen = game.pucks.map(pk => ({ u: clamp(pk.u - pk.vu * D.lat, 0, 1), v: clamp(pk.v - pk.vv * D.lat, 0, L), vu: pk.vu, vv: pk.vv, r: pk.r }));
+  for (const pk of seen) {
     const dist = Math.abs(pk.v - (me === 2 ? 0 : L));
     const toward = pk.vv * dir < 0;
     const sc = dist - (toward ? 0.3 : 0) - (onMine(pk) ? 0.5 : 0);
     if (sc < best) { best = sc; tgt = pk; }
   }
-  const err = () => (Math.random() - 0.5) * 2 * D.err;
+  const sp = tgt ? Math.hypot(tgt.vu, tgt.vv) : 0;
+  const err = () => (Math.random() - 0.5) * 2 * D.err * (1 + sp * 0.35);
   if (tgt && onMine(tgt) && game.state !== 'countdown') {
     const lead = 0.08;
     const pu = tgt.u + tgt.vu * lead, pv = tgt.v + tgt.vv * lead;
@@ -1789,6 +1802,37 @@ function glowCircle(u, v, r, col, a) {
   ctx.beginPath(); ctx.arc(u, v, r, 0, Math.PI * 2); ctx.fill();
   ctx.globalAlpha = 1;
 }
+// FIRE MODE: 0..1 strength for a player (ignite burst at the start, fade over the last half second).
+function fireAmt(p){const f=game.fire[p-1]||0;if(f<=0)return 0;return Math.min(1,f*2)*(f>6.5?1+(f-6.5)*1.2:1);}
+// Flames licking off a disc (paddle or puck), drawn additively; embers rise and fade.
+function drawFlames(u,v,r,amt,seed){
+  if(amt<=0)return;
+  const t=game.t,reduced=matchMedia('(prefers-reduced-motion: reduce)').matches,T=reduced?0:t;
+  ctx.save();ctx.globalCompositeOperation='lighter';
+  glowCircle(u,v,r*2.5,'#ff5a14',.16*Math.min(1,amt));
+  glowCircle(u,v,r*1.6,'#ff7a1e',.18*Math.min(1,amt));
+  const n=18;
+  for(let i=0;i<n;i++){
+    const a=i/n*Math.PI*2+seed*1.7+Math.sin(T*1.3+i)*.08;
+    const fl=.5+.5*Math.sin(T*15+i*2.31+seed*5)*Math.sin(T*8.3+i*1.37);
+    const ca=Math.cos(a),sa=Math.sin(a),base=r*.88;
+    const len=r*(.35+.8*fl)*amt*(1+.9*Math.max(0,-sa));   // flames burn longer on the side facing up the screen
+    const bu=u+ca*base,bv=v+sa*base,tu=u+ca*(base+len*.55),tv=v+sa*(base+len*.55)-len*.85;
+    const w=r*(.22+.08*fl),nu=-sa*w,nv=ca*w,sway=Math.sin(T*11+i*3.1)*r*.18;
+    const mu=(bu+tu)/2+(-sa)*sway,mv=(bv+tv)/2+ca*sway;
+    const g=ctx.createLinearGradient(bu,bv,tu,tv);
+    g.addColorStop(0,'rgba(255,226,140,.85)');g.addColorStop(.3,'rgba(255,150,36,.75)');g.addColorStop(.7,'rgba(255,72,24,.45)');g.addColorStop(1,'rgba(200,20,10,0)');
+    ctx.fillStyle=g;ctx.beginPath();ctx.moveTo(bu+nu,bv+nv);
+    ctx.quadraticCurveTo(mu+nu*.8,mv+nv*.8,tu,tv);ctx.quadraticCurveTo(mu-nu*.8,mv-nv*.8,bu-nu,bv-nv);ctx.closePath();ctx.fill();
+  }
+  if(!reduced)for(let i=0;i<12;i++){
+    const h=Math.sin(i*91.7+seed*13.1)*43758.5453,ph=(t*.85+(h-Math.floor(h)))%1;
+    const a=i/12*Math.PI*2+seed+Math.sin(i*7.3)*.5,d=r*(1.05+ph*1.9);
+    const eu=u+Math.cos(a)*d+Math.sin(t*6+i)*r*.12,ev=v+Math.sin(a)*d-ph*r*1.6;
+    glowCircle(eu,ev,r*(.075+.04*(1-ph)),i%3?'#ffb340':'#fff1b0',(1-ph)*.85*Math.min(1,amt));
+  }
+  ctx.restore();
+}
 function drawFxFragment(p, alpha) {
   const depth=clamp(1+(p.z||0)*1.7,.45,1.9),r=p.sz*depth;
   const g=ctx.createRadialGradient(p.u-r*.38,p.v-r*.48,r*.07,p.u,p.v,r);
@@ -1860,6 +1904,7 @@ function drawPaddle(pd, glowA) {
   const style=CreaseProduct.paddleStyle();
   const ring = pd.big > 0 ? COL.BIG : col;
   glowCircle(pd.u, pd.v, pd.r * 1.7, style.trail, glowA+(game.fire[pd.p-1]>0?.18:0));
+  drawFlames(pd.u, pd.v, pd.r, fireAmt(pd.p), pd.p);
   // Raised glossy body: shadow, outer bevel, metallic rim, glass core.
   ctx.fillStyle = 'rgba(0,0,0,.52)';ctx.beginPath();ctx.ellipse(pd.u+pd.r*.15,pd.v+pd.r*.22,pd.r*.98,pd.r*.70,0,0,Math.PI*2);ctx.fill();
   const body=ctx.createRadialGradient(pd.u-pd.r*.34,pd.v-pd.r*.48,pd.r*.06,pd.u,pd.v,pd.r*1.16);
@@ -1870,7 +1915,7 @@ function drawPaddle(pd, glowA) {
   const glass=ctx.createRadialGradient(pd.u-pd.r*.17,pd.v-pd.r*.22,pd.r*.02,pd.u,pd.v,pd.r*.52);glass.addColorStop(0,'#fff');glass.addColorStop(.16,hexA(col,.95));glass.addColorStop(.65,style.core);glass.addColorStop(1,'#101427');ctx.fillStyle=glass;
   ctx.beginPath(); ctx.arc(pd.u, pd.v-pd.r*.025, pd.r * .47, 0, Math.PI * 2); ctx.fill();
   ctx.globalAlpha=.42;ctx.fillStyle='#fff';ctx.beginPath();ctx.ellipse(pd.u-pd.r*.26,pd.v-pd.r*.30,pd.r*.23,pd.r*.10,-.55,0,Math.PI*2);ctx.fill();ctx.globalAlpha=1;
-  if(game.fire[pd.p-1]>0){ctx.strokeStyle=style.trail;ctx.lineWidth=2*px;ctx.beginPath();ctx.arc(pd.u,pd.v,pd.r*1.25+Math.sin(game.t*12)*px,pd.v*.0,Math.PI*2);ctx.stroke();}
+  if(game.fire[pd.p-1]>0){ctx.strokeStyle='#ff8a1e';ctx.lineWidth=Math.max(3*px,pd.r*.12);ctx.beginPath();ctx.arc(pd.u,pd.v-pd.r*.035,pd.r*.84,0,Math.PI*2);ctx.stroke();ctx.strokeStyle='rgba(255,236,170,.9)';ctx.lineWidth=Math.max(1.5*px,pd.r*.04);ctx.stroke();}
   ctx.fillStyle = 'rgba(255,255,255,.55)';
   ctx.beginPath(); ctx.arc(pd.u - pd.r * 0.12, pd.v - pd.r * 0.12, pd.r * 0.14, 0, Math.PI * 2); ctx.fill();
 }
@@ -1883,7 +1928,7 @@ function drawPuck(pk, tint, scale = 1, alpha = 1) {
   }
   const r = pk.r * scale;
   const fire=pk.last&&game.fire[pk.last-1]>0;
-  if(fire){for(let i=0;i<9;i++){const a=game.t*9+i*.7;glowCircle(pk.u+Math.cos(a)*r*(1.35+(i%3)*.28),pk.v+Math.sin(a)*r*(1.35+(i%3)*.28),r*(.16+.1*Math.sin(a)),i%2? '#ffb52e':'#ff4e24',.24);}}
+  if(fire)drawFlames(pk.u,pk.v,r,fireAmt(pk.last)*.9,3+pk.last);
   glowCircle(pk.u, pk.v, r * 2.2, tint, 0.2 * alpha);
   ctx.globalAlpha = alpha;
   ctx.fillStyle='rgba(0,0,0,.48)';ctx.beginPath();ctx.ellipse(pk.u+r*.12,pk.v+r*.19,r*.98,r*.54,0,0,Math.PI*2);ctx.fill();
@@ -2678,10 +2723,14 @@ function drawDepthRails(){
       for(const p of game.pucks){const u=side?1-p.u:p.u,pv=side?L-p.v:p.v;charge=Math.max(charge,Math.max(0,1-Math.hypot(u,pv-v-h/2)/.19));}
       for(const hit of game.railHits){const u=side?1-hit.u:hit.u,hv=side?L-hit.v:hit.v;if(u<.09)charge=Math.max(charge,Math.max(0,1-Math.abs(hv-v)/.22)*(1-Math.min(1,hit.t*3)));}
       if(reduced)charge=.15;
+      const wv=side?L-v-h/2:v+h/2,burn=Math.max(wv>L/2?fireAmt(1):0,wv<L/2?fireAmt(2):0);
       ctx.fillStyle='#070a13';ctx.fillRect(-.028,v,.026,h);
       const bevel=ctx.createLinearGradient(-.028,0,.006,0);bevel.addColorStop(0,'#070911');bevel.addColorStop(.6,'#343a48');bevel.addColorStop(1,'#0b0e17');
       ctx.fillStyle=bevel;ctx.beginPath();ctx.moveTo(-.028,v);ctx.lineTo(-.012,v-.013);ctx.lineTo(.006,v-.013);ctx.lineTo(-.002,v);ctx.closePath();ctx.fill();
       ctx.fillStyle=hexA(ST().grid,.2+charge*.65);ctx.fillRect(-.018,v+.008,.005,h-.016);
+      if(burn>0){const fl=.6+.4*Math.sin(game.t*13+i*1.9)*Math.sin(game.t*7.1+i);ctx.save();ctx.globalCompositeOperation='lighter';
+        const fg=ctx.createLinearGradient(-.002,0,.05*fl+.01,0);fg.addColorStop(0,'rgba(255,190,70,'+(.75*Math.min(1,burn))+')');fg.addColorStop(.5,'rgba(255,80,20,'+(.35*Math.min(1,burn))+')');fg.addColorStop(1,'rgba(255,40,10,0)');
+        ctx.fillStyle=fg;ctx.fillRect(-.002,v,.06,h);ctx.fillStyle='rgba(255,170,50,'+(.85*Math.min(1,burn))+')';ctx.fillRect(-.018,v+.008,.005,h-.016);ctx.restore();}
       ctx.strokeStyle=hexA(ST().horizon,.15+charge*.55);ctx.lineWidth=px;ctx.beginPath();ctx.moveTo(-.002,v);ctx.lineTo(-.002,v+h);ctx.stroke();
       for(let j=1;j<4;j++){ctx.fillStyle='rgba(255,255,255,.08)';ctx.fillRect(-.026,v+h*j/4,.011,px*.6);}
     }
@@ -2751,7 +2800,7 @@ function renderPremium(){
     const b=document.createElement('button');b.className='btn plain';b.textContent=s.premium&&!paid?'LOCKED':(CreaseProduct.paddleStyle()===s?'EQUIPPED':'EQUIP');b.disabled=s.premium&&!paid;b.onclick=()=>{if(CreaseProduct.setPaddleStyle(id))renderPremium();};card.append(h,p,b);grid.append(card);
   }
   const extra=document.createElement('article');extra.className='product-card'+(paid?'':' locked');extra.innerHTML='<h3>Round Carryover</h3><p>Collected BIG and WALL power-ups persist into the next round. MULTI remains a round pickup.</p>';grid.append(extra);
-  const fire=document.createElement('article');fire.className='product-card';fire.innerHTML='<h3>Fire Mode</h3><p>Free gameplay feature: score three goals in a row to ignite the puck, rails and grid for seven seconds.</p>';grid.append(fire);
+  const fire=document.createElement('article');fire.className='product-card';fire.innerHTML='<h3>Fire Mode</h3><p>Free gameplay feature: score three goals in a row to set your paddle, the puck and your side of the rails on fire for seven seconds.</p>';grid.append(fire);
 }
 $('bLeaderboard').onclick=()=>{renderLeaderboard();$('leaderboard').showModal();};$('bLeaderboardClose').onclick=()=>$('leaderboard').close();$('saveLeaderboardName').onclick=()=>{CreaseProduct.setName($('leaderboardName').value);renderLeaderboard();};
 $('bPremium').onclick=()=>{renderPremium();$('premium').showModal();};$('bPremiumClose').onclick=()=>$('premium').close();
