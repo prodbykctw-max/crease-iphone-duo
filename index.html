@@ -52,6 +52,14 @@ h2{margin:0 0 6px;font-size:clamp(30px,8vmin,48px);font-weight:900;font-style:it
 .btn small{display:block;font-size:11px;font-weight:600;opacity:.75;margin-top:5px;letter-spacing:.02em}
 .btn.p1{color:var(--p1)} .btn.p2{color:var(--p2)} .btn.plain{color:var(--ink);border-color:var(--line)}
 .btn.daily{flex-basis:100%;color:#ffd23f;background:rgba(255,210,63,.08)}
+/* Gloss: a light streak that slides across buttons as the phone tilts */
+.btn,#over .key{position:relative;overflow:hidden;isolation:isolate}
+.btn::after,#over .key::after{content:"";position:absolute;inset:-40% -60%;z-index:-1;pointer-events:none;
+  background:linear-gradient(115deg,transparent 38%,rgba(255,255,255,.30) 47%,rgba(255,255,255,.08) 52%,transparent 60%);
+  transform:translateX(calc(var(--tilt-x,0) * 22%)) translateY(calc(var(--tilt-y,0) * 10%));mix-blend-mode:screen}
+.btn{box-shadow:inset 0 1px 0 rgba(255,255,255,.22),inset 0 -2px 0 rgba(0,0,0,.35)}
+#menu .card{transform:perspective(900px) rotateY(calc(var(--tilt-x,0) * 6deg)) rotateX(calc(var(--tilt-y,0) * -5deg));transition:transform .08s linear}
+@media (prefers-reduced-motion:reduce){#menu .card{transform:none}.btn::after,#over .key::after{transform:none}}
 .btn.rec{background:currentColor;box-shadow:0 0 18px currentColor}
 .btn.rec span,.btn.rec small{color:#12002a}
 .btn span{display:block}
@@ -157,7 +165,7 @@ button:focus-visible{outline:2px solid var(--p1);outline-offset:4px}
 /* ---- end-game marquee: a 3D slab over the frozen table ---- */
 .sr-only{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;overflow:hidden!important;clip:rect(0 0 0 0)!important;white-space:nowrap!important;border:0!important}
 #over{perspective:1100px}
-#over .marquee{max-width:460px;padding:16px 18px 16px;border:1px solid rgba(255,120,220,.32);border-radius:26px;transform:rotateX(6deg);transform-origin:50% 100%;
+#over .marquee{max-width:460px;padding:16px 18px 16px;border:1px solid rgba(255,120,220,.32);border-radius:26px;transform:rotateX(calc(6deg - var(--tilt-y,0) * 5deg)) rotateY(calc(var(--tilt-x,0) * 7deg));transform-origin:50% 100%;
   background:linear-gradient(180deg,#22073f 0%,#14022c 58%,#0c011f 100%);
   box-shadow:inset 0 1px 0 rgba(255,255,255,.10),0 9px 0 #2b0852,0 12px 0 #12022a,0 0 0 1px rgba(255,42,138,.18),0 0 56px rgba(176,38,255,.32),0 42px 80px rgba(0,0,0,.72)}
 #over .marquee::after{content:"";position:absolute;inset:0;z-index:0;pointer-events:none;border-radius:inherit;opacity:.5;mix-blend-mode:overlay;
@@ -185,7 +193,7 @@ button:focus-visible{outline:2px solid var(--p1);outline-offset:4px}
 #over .key:active{transform:translateY(5px);box-shadow:0 1px 0 var(--kd),0 2px 6px rgba(0,0,0,.5),0 0 18px var(--kg)}
 #over .key-sm:active{transform:translateY(3px);box-shadow:inset 0 0 0 2px var(--kc),0 1px 0 var(--kd)}
 #over .key:focus-visible{outline:3px solid #ffd23f;outline-offset:3px}
-#over .marquee.mq-enter{animation:mqDrop .62s cubic-bezier(.2,1.25,.35,1) both}
+#over .marquee.mq-enter{animation:mqDrop .62s cubic-bezier(.2,1.25,.35,1) backwards}
 #over .marquee.mq-enter .mq-title{animation:mqStamp .5s .22s cubic-bezier(.2,1.6,.4,1) both}
 #over .marquee.mq-enter .mq-digits{animation:mqStamp .45s .36s cubic-bezier(.2,1.6,.4,1) both}
 @keyframes mqDrop{from{opacity:0;transform:translateY(-36px) rotateX(64deg)}to{opacity:1;transform:rotateX(6deg)}}
@@ -416,6 +424,35 @@ function track(name, props = {}) {
   storage.set('crease.metrics.v1', JSON.stringify(totals));
   window.dispatchEvent(new CustomEvent('crease:metric', { detail: { name, props } }));
 }
+// ---------- phone tilt: smoothed gyroscope (mouse on desktop) drives depth, gloss and parallax ----------
+// tilt.x = lean right, tilt.y = lean toward you, both -1..1. Mirrored into CSS --tilt-x / --tilt-y.
+// iOS asks for motion permission, which needs a tap, so it's requested on the first touch.
+const tilt = { x: 0, y: 0, tx: 0, ty: 0, live: false, base: null, css: '' };
+const tiltReduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+function tiltOrient(e) {
+  if (e.gamma == null || e.beta == null) return;
+  if (!tilt.base) tilt.base = { b: e.beta, g: e.gamma };
+  tilt.base.b += (e.beta - tilt.base.b) * 0.004; tilt.base.g += (e.gamma - tilt.base.g) * 0.004;   // however it's held becomes neutral
+  const o = (screen.orientation && screen.orientation.angle) || window.orientation || 0;
+  let gx = (e.gamma - tilt.base.g) / 22, by = (e.beta - tilt.base.b) / 22;
+  if (o === 90) [gx, by] = [by, -gx]; else if (o === -90 || o === 270) [gx, by] = [-by, gx];
+  tilt.tx = clamp(gx, -1, 1); tilt.ty = clamp(by, -1, 1); tilt.live = true;
+}
+function tiltListen() { window.addEventListener('deviceorientation', tiltOrient, { passive: true }); }
+if (!tiltReduced) {
+  const D = window.DeviceOrientationEvent;
+  if (D && typeof D.requestPermission === 'function') window.addEventListener('touchend', () => D.requestPermission().then(r => { if (r === 'granted') tiltListen(); }).catch(() => {}), { once: true, passive: true });
+  else if (D) tiltListen();
+  window.addEventListener('pointermove', e => { if (e.pointerType !== 'mouse' || tilt.live) return; tilt.tx = clamp((e.clientX / innerWidth - 0.5) * 1.6, -1, 1); tilt.ty = clamp((e.clientY / innerHeight - 0.5) * 1.6, -1, 1); }, { passive: true });
+}
+function tiltTick() {
+  if (tiltReduced) return;
+  tilt.x += (tilt.tx - tilt.x) * 0.12; tilt.y += (tilt.ty - tilt.y) * 0.12;
+  const css = tilt.x.toFixed(3) + ',' + tilt.y.toFixed(3);
+  if (css !== tilt.css) { tilt.css = css; const r = document.documentElement.style; r.setProperty('--tilt-x', tilt.x.toFixed(3)); r.setProperty('--tilt-y', tilt.y.toFixed(3)); }
+}
+// The same tilt in table coordinates (u across, v along the table), for shadows and highlights.
+function tiltField() { return view.land ? { u: tilt.y, v: -tilt.x } : { u: tilt.x, v: tilt.y }; }
 let matchTracked = false;
 const challenged = new URLSearchParams(location.search).get('challenge') === '1';
 $('challengeHint').classList.toggle('hidden', !challenged);
@@ -548,7 +585,7 @@ function toScreen(u, v) {
 
 // ---------- state ----------
 const game = {
-  bumpers: [], pops: [], board: null, hitstop: 0, beat: 0, surges: [], stageFlash: 0, railHits: [],
+  bumpers: [], pops: [], board: null, hitstop: 0, beat: 0, surges: [], stageFlash: 0, railHits: [], cornerHits: [],
   introT: 0, introFx: 0, rings: [], shake: 0, flashW: 0, overT: 0, confT: 0,
   state: 'play', resume: 'play', mode: 'demo', diff: 'easy',
 score: [0, 0], pucks: [], paddles: [], pups: [], parts: [], shields: [0, 0],
@@ -866,6 +903,7 @@ function physics(dt, puckLive) {
     for (const pd of game.paddles) hitPaddle(pk, pd);
     for (const b of game.bumpers) hitBumper(pk, b);
 
+    cornerSpring(pk, L);
     // side rails
     if (pk.u < pk.r) { pk.u = pk.r; if (pk.vu < 0) { pk.vu = -pk.vu * CFG.rest; railFx(pk, 1, 0); } }
     else if (pk.u > 1 - pk.r) { pk.u = 1 - pk.r; if (pk.vu > 0) { pk.vu = -pk.vu * CFG.rest; railFx(pk, -1, 0); } }
@@ -966,6 +1004,52 @@ function hitPaddle(pk, pd) {
       }
     }
   }
+}
+// Corner springs. Real tables have rounded corners; here each corner is a quarter-circle spring.
+// A puck that reaches it is pushed back along the curve and kicked out toward the middle with at
+// least a minimum speed, so it never sits wedged where a paddle can't reach.
+const CORNER_R = 0.15;
+function cornerSpring(pk, L) {
+  const R = CORNER_R;
+  const cu = pk.u < R ? R : pk.u > 1 - R ? 1 - R : null, cv = pk.v < R ? R : pk.v > L - R ? L - R : null;
+  if (cu === null || cv === null) return;
+  const du = pk.u - cu, dv = pk.v - cv, d = Math.hypot(du, dv), lim = R - pk.r;
+  if (d <= lim || d < 1e-6) return;
+  const nu = du / d, nv = dv / d;                       // outward normal (into the corner)
+  pk.u = cu + nu * lim; pk.v = cv + nv * lim;
+  const vn = pk.vu * nu + pk.vv * nv;
+  if (vn > 0) { pk.vu -= (1 + CFG.rest) * vn * nu; pk.vv -= (1 + CFG.rest) * vn * nv; }
+  const out = -(pk.vu * nu + pk.vv * nv);               // speed leaving the corner
+  if (out < 0.55) { pk.vu += (0.55 - out) * -nu; pk.vv += (0.55 - out) * -nv; }
+  const now = game.t;
+  if (!pk.springT || now - pk.springT > 0.12) { pk.springT = now; game.cornerHits.push({ u: cu + nu * R, v: cv + nv * R, cu, cv, t: 0 }); railFx(pk, -nu, -nv); }
+}
+function drawCornerSprings() {
+  const L = view.L, px = 1 / view.s, R = CORNER_R, col = ST().rail || ST().grid;
+  for (const [cu, cv, a0] of [[R, R, Math.PI], [1 - R, R, -Math.PI / 2], [1 - R, L - R, 0], [R, L - R, Math.PI / 2]]) {
+    let hit = 0;
+    for (const h of game.cornerHits) if (h.cu === cu && h.cv === cv) hit = Math.max(hit, 1 - h.t * 3);
+    // coil: three thin arcs that squeeze together when hit
+    for (let k = 0; k < 3; k++) {
+      const rr2 = R - 0.004 - k * (0.012 - hit * 0.006);
+      ctx.globalAlpha = 0.45 + hit * 0.5 - k * 0.1; ctx.strokeStyle = k ? col : '#ffffff';
+      ctx.lineWidth = (k ? 2 : 3 + hit * 3) * px; ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.arc(cu, cv, rr2, a0 + 0.08, a0 + Math.PI / 2 - 0.08); ctx.stroke();
+    }
+    if (hit > 0) glowCircle(cu + Math.cos(a0 + Math.PI / 4) * R, cv + Math.sin(a0 + Math.PI / 4) * R, 0.05, col, 0.3 * hit);
+  }
+  ctx.globalAlpha = 1;
+}
+// A soft glass reflection across the table that slides as the phone tilts.
+function drawTableGloss() {
+  if (tiltReduced) return;
+  const L = view.L, tf = tiltField();
+  const cx = 0.5 + tf.u * 0.35, cy = L * (0.35 + tf.v * 0.25);
+  ctx.save(); rr(ctx, 0, 0, 1, L, 0.06); ctx.clip(); ctx.globalCompositeOperation = 'screen';
+  const g = ctx.createLinearGradient(cx - 0.6, cy - 0.5, cx + 0.6, cy + 0.5);
+  g.addColorStop(0, 'rgba(255,255,255,0)'); g.addColorStop(0.46, 'rgba(255,255,255,0)'); g.addColorStop(0.5, 'rgba(255,255,255,.07)');
+  g.addColorStop(0.54, 'rgba(255,255,255,0)'); g.addColorStop(1, 'rgba(255,255,255,0)');
+  ctx.fillStyle = g; ctx.fillRect(0, 0, 1, L); ctx.restore();
 }
 function post(pk, pu, pv) {
   const du = pk.u - pu, dv = pk.v - pv, d = Math.hypot(du, dv);
@@ -1186,6 +1270,7 @@ function update(dt, raw = dt) {
   game.surges = game.surges.filter(sg => sg.t < sg.life);
   for (const rh of game.railHits) rh.t += dt;
   game.railHits = game.railHits.filter(rh => rh.t < 0.5);
+  for (const h of game.cornerHits) h.t += dt; game.cornerHits = game.cornerHits.filter(h => h.t < 0.4);
   music.tick();
   for (const b of game.bumpers) {
     b.flash = Math.max(0, b.flash - dt * 5);
@@ -1266,7 +1351,7 @@ function antiStall(dt) {
   for (const pk of game.pucks) {
     if (Math.hypot(pk.vu, pk.vv) < 0.03) {
       pk.still = (pk.still || 0) + dt;
-      if (pk.still > 4) { pk.vu = rand(-0.4, 0.4); pk.vv = (pk.v < view.L / 2 ? 1 : -1) * 0.5; pk.still = 0; }
+      if (pk.still > 2.5) { pk.vu = rand(-0.4, 0.4); pk.vv = (pk.v < view.L / 2 ? 1 : -1) * 0.5; pk.still = 0; }
     } else pk.still = 0;
   }
 }
@@ -1286,6 +1371,7 @@ function frame(now) {
   perfTick(raw * 1000);
   last = now;
   update(Math.min(0.05, raw), raw);
+  tiltTick();
   draw();
   requestAnimationFrame(frame);
 }
@@ -1541,14 +1627,14 @@ function drawScenery(t) {
     ctx.save();
     if (half === 1) { ctx.translate(1, L); ctx.rotate(Math.PI); }
     ctx.translate(0, L / 2);                                   // v = 0 at the crease
-    const arenaLean = game.pucks.length ? (game.pucks[0].u - .5) * (half ? -1 : 1) : 0;
+    const tf = tiltField(), arenaLean = ((game.pucks.length ? game.pucks[0].u - .5 : 0) + tf.u * 0.9) * (half ? -1 : 1);
     if (arenas?.draw(ctx,{H,t,half,lean:arenaLean,beat:game.beat,flash:game.stageFlash,detail:perf.detail,focal})) {
       ctx.restore(); continue;
     }
     // Depth in the background only. Four passes of the same world at different distances:
     // deeper ones sit smaller and higher, drift less and wash out into haze. The view also leans
     // with the puck, so the far world swings behind the near one instead of sliding flat.
-    const lean = game.pucks.length ? (game.pucks[0].u - 0.5) * (half ? -1 : 1) : 0;
+    const lean = ((game.pucks.length ? game.pucks[0].u - 0.5 : 0) + tf.u * 0.9) * (half ? -1 : 1);
     //          layer   scale  lift     drift  swayspeed  haze  leanPull
     const PASSES = perf.detail < 0.7
       ? [['mid', 0.88, -0.06 * H, 0.020, 0.080, 0.14, 0.022], ['near', 1.00, 0, 0.042, 0.130, 0, 0.042]]
@@ -1960,7 +2046,11 @@ function drawPaddle(pd, glowA) {
   ctx.beginPath(); ctx.arc(pd.u, pd.v-pd.r*.035, pd.r * 0.84, 0, Math.PI * 2); ctx.stroke();
   const glass=ctx.createRadialGradient(pd.u-pd.r*.17,pd.v-pd.r*.22,pd.r*.02,pd.u,pd.v,pd.r*.52);glass.addColorStop(0,'#fff');glass.addColorStop(.16,hexA(col,.95));glass.addColorStop(.65,style.core);glass.addColorStop(1,'#101427');ctx.fillStyle=glass;
   ctx.beginPath(); ctx.arc(pd.u, pd.v-pd.r*.025, pd.r * .47, 0, Math.PI * 2); ctx.fill();
-  ctx.globalAlpha=.42;ctx.fillStyle='#fff';ctx.beginPath();ctx.ellipse(pd.u-pd.r*.26,pd.v-pd.r*.30,pd.r*.23,pd.r*.10,-.55,0,Math.PI*2);ctx.fill();ctx.globalAlpha=1;
+  const tfp=tiltField(),hu=pd.u-pd.r*(.26+tfp.u*.18),hv=pd.v-pd.r*(.30+tfp.v*.18);
+  ctx.globalAlpha=.42;ctx.fillStyle='#fff';ctx.beginPath();ctx.ellipse(hu,hv,pd.r*.23,pd.r*.10,-.55,0,Math.PI*2);ctx.fill();
+  // glossy rim: a bright arc that swings toward the light as the phone tilts
+  const ra=Math.atan2(-.6-tfp.v,-.8-tfp.u);ctx.globalAlpha=.55;ctx.strokeStyle='#fff';ctx.lineWidth=Math.max(1.5*px,pd.r*.06);ctx.lineCap='round';
+  ctx.beginPath();ctx.arc(pd.u,pd.v-pd.r*.035,pd.r*.84,ra-.55,ra+.55);ctx.stroke();ctx.globalAlpha=1;
   if(game.fire[pd.p-1]>0){ctx.strokeStyle='#ff8a1e';ctx.lineWidth=Math.max(3*px,pd.r*.12);ctx.beginPath();ctx.arc(pd.u,pd.v-pd.r*.035,pd.r*.84,0,Math.PI*2);ctx.stroke();ctx.strokeStyle='rgba(255,236,170,.9)';ctx.lineWidth=Math.max(1.5*px,pd.r*.04);ctx.stroke();}
   ctx.fillStyle = 'rgba(255,255,255,.55)';
   ctx.beginPath(); ctx.arc(pd.u - pd.r * 0.12, pd.v - pd.r * 0.12, pd.r * 0.14, 0, Math.PI * 2); ctx.fill();
@@ -1977,12 +2067,15 @@ function drawPuck(pk, tint, scale = 1, alpha = 1) {
   if(fire)drawFlames(pk.u,pk.v,r,fireAmt(pk.last)*.9,3+pk.last);
   glowCircle(pk.u, pk.v, r * 2.2, tint, 0.2 * alpha);
   ctx.globalAlpha = alpha;
-  ctx.fillStyle='rgba(0,0,0,.48)';ctx.beginPath();ctx.ellipse(pk.u+r*.12,pk.v+r*.19,r*.98,r*.54,0,0,Math.PI*2);ctx.fill();
-  const body=ctx.createRadialGradient(pk.u-r*.32,pk.v-r*.38,r*.07,pk.u,pk.v,r*1.05);
+  const tk=tiltField();
+  ctx.fillStyle='rgba(0,0,0,.48)';ctx.beginPath();ctx.ellipse(pk.u+r*(.12+tk.u*.3),pk.v+r*(.19+tk.v*.3),r*.98,r*.54,0,0,Math.PI*2);ctx.fill();
+  const body=ctx.createRadialGradient(pk.u-r*(.32+tk.u*.25),pk.v-r*(.38+tk.v*.25),r*.07,pk.u,pk.v,r*1.05);
   body.addColorStop(0,'#fff');body.addColorStop(.17,tint);body.addColorStop(.56,COL.puck);body.addColorStop(1,'#07091b');ctx.fillStyle=body;
   ctx.beginPath(); ctx.arc(pk.u, pk.v, r, 0, Math.PI * 2); ctx.fill();
   ctx.lineWidth = 3 * px; ctx.strokeStyle = tint === '#ffffff' ? '#9aa4c7' : tint;
   ctx.beginPath(); ctx.arc(pk.u, pk.v, r * 0.62, 0, Math.PI * 2); ctx.stroke();
+  ctx.globalAlpha = 0.85 * alpha; ctx.fillStyle = '#fff';   // glossy specular dot
+  ctx.beginPath(); ctx.ellipse(pk.u - r * (0.34 + tk.u * 0.22), pk.v - r * (0.40 + tk.v * 0.22), r * 0.16, r * 0.09, -0.6, 0, Math.PI * 2); ctx.fill();
   ctx.globalAlpha = 1;
 }
 function drawCrease(alpha, from = 0.02, to = 0.98) {
@@ -1998,8 +2091,9 @@ function drawGame(sx, sy) {
   const { L, s } = view;
   const px = 1 / s;
   ctx.setTransform(1, 0, 0, 1, 0, 0);
-  ctx.fillStyle = '#05060f'; if (sx || sy) ctx.fillRect(0, 0, cv.width, cv.height);
-  ctx.drawImage(bg, sx * view.dpr, sy * view.dpr);
+  const bx = sx - tilt.x * 10, by = sy - tilt.y * 10;   // the far background drifts against the tilt
+  ctx.fillStyle = '#05060f'; if (bx || by) ctx.fillRect(0, 0, cv.width, cv.height);
+  ctx.drawImage(bg, bx * view.dpr, by * view.dpr);
   beatGlow(sx, sy);
   drawScenery(game.t);
   drawFloorGrid(game.t);
@@ -2013,6 +2107,8 @@ function drawGame(sx, sy) {
   // the crease (hinge line)
   drawCrease(0.25 + 0.15 * Math.sin(game.t * 2.2) + game.crease * 0.6 + game.beat * 0.2);
   drawBumpers();
+  drawCornerSprings();
+  drawTableGloss();
 
   // shields
   const gw = CFG.goalW / 2;
@@ -2788,7 +2884,8 @@ function drawDepthRails(){
   }
   // Contact shadows anchor paddles and bumpers above the luminous floor.
   ctx.fillStyle='rgba(0,0,0,.38)';
-  for(const p of [...game.paddles,...game.bumpers]){ctx.beginPath();ctx.ellipse(p.u+.009,p.v+.014,p.r*1.10,p.r*.82,0,0,Math.PI*2);ctx.fill();}
+  const tfs=tiltField();
+  for(const p of [...game.paddles,...game.bumpers]){ctx.beginPath();ctx.ellipse(p.u+.009+tfs.u*.016,p.v+.014+tfs.v*.016,p.r*1.10,p.r*.82,0,0,Math.PI*2);ctx.fill();}
   ctx.restore();
 }
 

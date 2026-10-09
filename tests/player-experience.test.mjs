@@ -51,3 +51,18 @@ test('Daily Challenge: one try a day against CTW, shared as a spoiler-free line'
   assert.match(html, /if \(st\.last && st\.last\.day === day\) return st\.last;   \/\/ one try a day/);
   assert.match(html, /searchParams\.set\('challenge', 'daily'\)/);
 });
+
+test('corner springs push a still puck back out of the corner', () => {
+  const html = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  const src = html.slice(html.indexOf('const CORNER_R'), html.indexOf('function drawCornerSprings'));
+  const ctx = vm.createContext({ CFG: { rest: 0.9 }, game: { t: 0, cornerHits: [] }, railFx() {} });
+  vm.runInContext(src, ctx);
+  const L = 1.8;
+  for (const [u, v] of [[0.03, 0.03], [0.97, 0.03], [0.97, L - 0.03], [0.03, L - 0.03]]) {
+    const pk = { u, v, vu: 0, vv: 0, r: 0.035 };
+    ctx.cornerSpring(pk, L);
+    const toCentre = (0.5 - pk.u) * pk.vu + (L / 2 - pk.v) * pk.vv;
+    assert.ok(Math.hypot(pk.vu, pk.vv) >= 0.5, 'kicked out with real speed');
+    assert.ok(toCentre > 0, 'heading back toward the middle');
+  }
+});
