@@ -44,3 +44,11 @@ test('malformed storage and unavailable storage are handled',()=>{
   for(const seed of ['broken','null','{"earned":{"bogus":123},"unlocked":[-1,40]}']){const {p}=fixture(seed);assert.equal(p.canPlay(0),true);assert.equal(p.canPlay(9),false);assert.equal(Object.keys(p.state.earned).length,0);}
   const p=create({getItem(){throw Error('blocked');},setItem(){throw Error('blocked');}});win(p);assert.equal(p.saved,false);assert.equal(p.state.stages[0].wins,1);
 });
+
+test('arenas are harder to unlock, and the Premium Pass unlocks every arena', async () => {
+  const fs = await import('node:fs');
+  const src = fs.readFileSync(new URL('../assets/progression.js', import.meta.url), 'utf8');
+  assert.match(src, /\['Win 12 matches',t=>t\.wins>=12\]/);
+  assert.match(src, /\['Finish 100 matches and earn 150 achievements'/);
+  assert.match(src, /canPlay:i=>state\.unlocked\.includes\(i\)\|\|!!\(root\.CreaseProduct&&root\.CreaseProduct\.isPremium\(\)\)/);
+});
