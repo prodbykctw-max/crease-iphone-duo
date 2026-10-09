@@ -477,12 +477,14 @@ function readSafe() {
 }
 
 function layout() {
-  const oldSafe = JSON.stringify(view.safe);
+  const oldSafe = JSON.stringify(view.safe), oldFold = JSON.stringify(view.fold || null);
   readSafe();
   const v = view, oldLand = v.land, oldL = v.L, first = v.vw === 0;
   if (window.innerWidth < 96 || window.innerHeight < 96) return;
   const nextDpr = Math.min(window.devicePixelRatio || 1, 2, Math.sqrt(2500000 / (window.innerWidth * window.innerHeight)));
-  if (!first && v.vw === window.innerWidth && v.vh === window.innerHeight && v.dpr === nextDpr && oldSafe === JSON.stringify(v.safe)) return;
+  const fold = foldInfo();
+  if (!first && v.vw === window.innerWidth && v.vh === window.innerHeight && v.dpr === nextDpr && oldSafe === JSON.stringify(v.safe) && oldFold === JSON.stringify(fold)) return;
+  v.fold = fold;
   if (!first) {
     for (const pd of game.paddles) { pd.ptr = null; pd.dragAnchor = null; pd.tu = pd.u; pd.tv = pd.v; }
     ptrs.clear();
@@ -498,8 +500,15 @@ function layout() {
   const sp = shortPx - 2 * pad, lp = longPx - 2 * pad;
   const L = clamp(lp / sp, 1.2, 2.1);
   v.s = Math.min(sp, lp / L);
+  // On a fold, each half of the table has to fit on its own side of the fold.
+  if (fold && fold.axis === 'h' && !v.land) v.s = Math.min(v.s, 2 * (Math.min(fold.at - v.safe.t, v.vh - v.safe.b - fold.at) - pad) / L);
+  if (fold && fold.axis === 'v' && v.land) v.s = Math.min(v.s, 2 * (Math.min(fold.at - v.safe.l, v.vw - v.safe.r - fold.at) - pad) / L);
   const fw = v.land ? L * v.s : v.s, fh = v.land ? v.s : L * v.s;
   v.ox = v.safe.l + (aw - fw) / 2; v.oy = v.safe.t + (ah - fh) / 2;
+  // Laptop posture (Battleship style): your half on the flat part, the far half on the standing part,
+  // with the crease exactly on the fold. Book posture: the crease on the vertical fold.
+  if (fold && fold.axis === 'h' && !v.land) v.oy = clamp(fold.at - fh / 2, v.safe.t, Math.max(v.safe.t, v.vh - v.safe.b - fh));
+  if (fold && fold.axis === 'v' && v.land) v.ox = clamp(fold.at - fw / 2, v.safe.l, Math.max(v.safe.l, v.vw - v.safe.r - fw));
   if (!first && Math.abs(L - oldL) > 1e-6) rescaleV(L / oldL);
   v.L = L;
   placeBumpers();
@@ -510,6 +519,17 @@ function layout() {
   if (!first && oldLand !== v.land) onFold();
 }
 
+// Partially folded iPhone Duo: browsers that support the Viewport Segments API report the
+// inner display as two segments. Stacked segments = laptop posture (fold across the screen);
+// side-by-side = book posture. Returns where the fold sits in CSS px, or null when flat/unknown.
+function foldInfo() {
+  const sg = window.viewport && window.viewport.segments;
+  if (!sg || sg.length !== 2) return null;
+  const [a, b] = sg;
+  if (Math.abs(a.left - b.left) < 2 && Math.abs(a.right - b.right) < 2) return { axis: 'h', at: (a.bottom + b.top) / 2 };
+  if (Math.abs(a.top - b.top) < 2 && Math.abs(a.bottom - b.bottom) < 2) return { axis: 'v', at: (a.right + b.left) / 2 };
+  return null;
+}
 function fieldTf(c = ctx) {
   const { s, dpr, ox, oy, L } = view;
   if (view.land) c.setTransform(0, s * dpr, -s * dpr, 0, (ox + L * s) * dpr, oy * dpr);
@@ -2717,12 +2737,16 @@ function onFold() {
 function placePause() {
   const b = $('bPause');
   const p = toScreen(0, view.L / 2);   // where the crease meets the rail
-  if (view.land) { b.style.left = p.x + 'px'; b.style.top = Math.max(view.safe.t + 22, p.y - 2) + 'px'; }
-  else { b.style.left = Math.max(view.safe.l + 22, p.x - 2) + 'px'; b.style.top = p.y + 'px'; }
+  const off = view.fold ? 64 : 0;   // keep the button off the folding region, on player 1's side
+  if (view.land) { b.style.left = (p.x - off) + 'px'; b.style.top = Math.max(view.safe.t + 22, p.y - 2) + 'px'; }
+  else { b.style.left = Math.max(view.safe.l + 22, p.x - 2) + 'px'; b.style.top = (p.y + off) + 'px'; }
 }
 function updateHint() {
   const land = view.land;
-  $('screenHint').textContent = land
+  const laptop = view.fold && view.fold.axis === 'h' && !land;
+  $('screenHint').textContent = laptop
+    ? 'Laptop mode. Your side is on the flat half, the CPU’s side is on the standing half.'
+    : land
     ? 'Wide table. Play head-to-head with one player on each side.'
     : 'Pocket table. Play solo, or turn sideways for a wider two-player match.';
   $('bSolo').classList.toggle('rec', !land);
@@ -3236,6 +3260,7 @@ window.addEventListener('keydown', e => { if (game.state === 'boot') { boot(); r
 let rsz = 0;
 const onResize = () => { cancelAnimationFrame(rsz); rsz = requestAnimationFrame(layout); };
 window.addEventListener('resize', onResize);
+if (navigator.devicePosture) navigator.devicePosture.addEventListener('change', onResize);
 window.addEventListener('orientationchange', onResize);
 window.addEventListener('pageshow', onResize);
 if (window.visualViewport) window.visualViewport.addEventListener('resize', onResize);
