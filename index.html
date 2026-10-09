@@ -1082,6 +1082,11 @@ function scored(scorer, pk) {
   }
   if (alive === 0) { game.state = 'goal'; game.timer = 1.1; game.conceder = scorer === 1 ? 2 : 1; }
 }
+function reflectionText(w, rally) {
+  return game.mode === 'solo'
+    ? (w === 1 ? `Strong finish · best rally: ${rally} hits.` : `Best rally: ${rally} hits · one clean return at a time.`)
+    : `Best shared rally: ${rally} hits · run it back when you’re ready.`;
+}
 function winText(w) {
   if (game.mode === 'solo') return w === 1 ? 'YOU WIN' : 'CPU WINS';
   return w === 1 ? 'CYAN WINS' : 'PINK WINS';
@@ -2915,6 +2920,8 @@ function matchSnapshot() {
     a: game.score[0], b: game.score[1],
     arena: ST().name, rally: game.bestRally || 0,
     p1: COL.p1, p2: COL.p2, grid: ST().grid, base: ST().base.slice(),
+    names: solo ? `You ${game.score[0]} – ${game.score[1]} CPU (${difficultyLabel(game.diff)})` : `Cyan ${game.score[0]} – ${game.score[1]} Pink`,
+    reflection: reflectionText(game.winner, game.bestRally || 0),
   };
 }
 // Lay a string out with CREASE's wide letter spacing; returns where each glyph sits.
@@ -2930,125 +2937,71 @@ function cardSpaced(x, str, cx, size, gapF, weight, maxW) {
   if (maxW && out.total > maxW) out = lay(Math.max(12, size * (maxW / out.total)));  // long names still fit
   return out;
 }
-function cardPaddle(x, cx, cy, r, col) {
-  x.save();
-  x.shadowColor = col; x.shadowBlur = r * 1.5;
-  x.fillStyle = 'rgba(8,2,20,.82)';
-  x.beginPath(); x.arc(cx, cy, r, 0, Math.PI * 2); x.fill();
-  x.strokeStyle = col; x.lineWidth = r * 0.22; x.stroke();
-  x.shadowBlur = r * 0.7; x.lineWidth = r * 0.1;
-  x.beginPath(); x.arc(cx, cy, r * 0.55, 0, Math.PI * 2); x.stroke();
-  x.restore();
+function cardRound(x, x0, y0, w, h, r) {
+  x.beginPath(); x.moveTo(x0 + r, y0); x.lineTo(x0 + w - r, y0); x.quadraticCurveTo(x0 + w, y0, x0 + w, y0 + r);
+  x.lineTo(x0 + w, y0 + h - r); x.quadraticCurveTo(x0 + w, y0 + h, x0 + w - r, y0 + h); x.lineTo(x0 + r, y0 + h);
+  x.quadraticCurveTo(x0, y0 + h, x0, y0 + h - r); x.lineTo(x0, y0 + r); x.quadraticCurveTo(x0, y0, x0 + r, y0); x.closePath();
 }
+// The shared image is the end-game screen itself: the same purple slab, the same 3D chrome
+// title and score, the same two lines of text, then where to play. 1080×1350 (4:5) suits
+// feed posts, stories and messages.
 function drawResultCard(c, s) {
-  const S = CARD, cx = S / 2;
-  c.width = S; c.height = S;
+  const W = CARD, H = 1350, cx = W / 2;
+  c.width = W; c.height = H;
   const x = c.getContext('2d');
   x.textAlign = 'center'; x.textBaseline = 'middle';
-
-  // backdrop: the arena's own sky, lifted by its grid colour
-  const g = x.createLinearGradient(0, 0, 0, S);
-  g.addColorStop(0, s.base[0]); g.addColorStop(0.58, s.base[1]); g.addColorStop(1, s.base[0]);
-  x.fillStyle = g; x.fillRect(0, 0, S, S);
-  const rg = x.createRadialGradient(cx, S * 0.5, 0, cx, S * 0.5, S * 0.66);
-  rg.addColorStop(0, hexA(s.grid, 0.22)); rg.addColorStop(0.6, hexA(s.grid, 0.05)); rg.addColorStop(1, 'rgba(0,0,0,0)');
-  x.fillStyle = rg; x.fillRect(0, 0, S, S);
-  x.globalAlpha = 0.045; x.fillStyle = '#ffffff';
-  for (let y = 0; y < S; y += 4) x.fillRect(0, y, S, 1);
-  x.globalAlpha = 1;
-  const vg = x.createRadialGradient(cx, cx, S * 0.32, cx, cx, S * 0.78);
-  vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,.6)');
-  x.fillStyle = vg; x.fillRect(0, 0, S, S);
-  x.strokeStyle = 'rgba(190,120,255,.30)'; x.lineWidth = 3;
-  const m = 30, r = 44;
-  x.beginPath();
-  x.moveTo(m + r, m); x.lineTo(S - m - r, m); x.quadraticCurveTo(S - m, m, S - m, m + r);
-  x.lineTo(S - m, S - m - r); x.quadraticCurveTo(S - m, S - m, S - m - r, S - m);
-  x.lineTo(m + r, S - m); x.quadraticCurveTo(m, S - m, m, S - m - r);
-  x.lineTo(m, m + r); x.quadraticCurveTo(m, m, m + r, m); x.closePath(); x.stroke();
-
-  // wordmark
-  const wm = 92, word = cardSpaced(x, 'CREASE', cx, wm, 0.14, 900), wy = 132;
+  // backdrop: the arena's sky, dimmed like the frozen table behind the marquee
+  const g = x.createLinearGradient(0, 0, 0, H);
+  g.addColorStop(0, s.base[0]); g.addColorStop(0.6, s.base[1]); g.addColorStop(1, s.base[0]);
+  x.fillStyle = g; x.fillRect(0, 0, W, H);
+  x.fillStyle = 'rgba(4,0,12,.62)'; x.fillRect(0, 0, W, H);
+  const glow = x.createRadialGradient(cx, H * 0.46, 0, cx, H * 0.46, W * 0.75);
+  glow.addColorStop(0, 'rgba(176,38,255,.30)'); glow.addColorStop(1, 'rgba(176,38,255,0)');
+  x.fillStyle = glow; x.fillRect(0, 0, W, H);
+  // the slab, with its two ledges underneath
+  const sx = 70, sy = 96, sw = W - 140, sh = 1040, r = 56;
+  x.fillStyle = '#12022a'; cardRound(x, sx, sy + 26, sw, sh, r); x.fill();
+  x.fillStyle = '#2b0852'; cardRound(x, sx, sy + 18, sw, sh, r); x.fill();
+  const slab = x.createLinearGradient(0, sy, 0, sy + sh);
+  slab.addColorStop(0, '#22073f'); slab.addColorStop(0.58, '#14022c'); slab.addColorStop(1, '#0c011f');
+  x.save(); x.shadowColor = 'rgba(176,38,255,.45)'; x.shadowBlur = 90; x.fillStyle = slab; cardRound(x, sx, sy, sw, sh, r); x.fill(); x.restore();
+  x.save(); cardRound(x, sx, sy, sw, sh, r); x.clip();
+  x.globalAlpha = 0.16; x.fillStyle = '#000'; for (let y = sy; y < sy + sh; y += 3) x.fillRect(sx, y, sw, 1);   // scanlines
+  x.globalAlpha = 0.05; x.fillStyle = '#fff';
+  for (let y = sy; y < sy + sh; y += 8) for (let xx = sx; xx < sx + sw; xx += 8) if (MQ.bayer[((y >> 1) & 3) * 4 + ((xx >> 1) & 3)] > 7) x.fillRect(xx, y, 2, 2);  // dither
+  x.restore();
+  x.strokeStyle = 'rgba(255,120,220,.38)'; x.lineWidth = 3; cardRound(x, sx, sy, sw, sh, r); x.stroke();
+  x.strokeStyle = 'rgba(255,255,255,.10)'; x.lineWidth = 2; x.beginPath(); x.moveTo(sx + r, sy + 2); x.lineTo(sx + sw - r, sy + 2); x.stroke();
+  // 3D chrome title and score, drawn with the screen's own renderer
+  const seg = mqSegs(s.winner, s.title, s.a, s.b, 2.6);
+  const t3 = document.createElement('canvas'); mqDraw(t3, seg.title, 0.18, 900);
+  x.drawImage(t3, cx - t3.width / 2, sy + 40);
+  const d3 = document.createElement('canvas'); mqDraw(d3, seg.digits, 0.22, 700);
+  const dy = sy + 40 + t3.height - 40; x.drawImage(d3, cx - d3.width / 2, dy);
+  // the same two lines the end-game screen shows
+  let ty = dy + d3.height + 46;
+  x.font = `800 44px ${CARD_FONT}`; x.fillStyle = '#f5eaff'; x.fillText(s.names, cx, ty, sw - 80);
+  ty += 58; x.font = `600 34px ${CARD_FONT}`; x.fillStyle = 'rgba(205,190,235,.85)'; x.fillText(s.reflection, cx, ty, sw - 80);
+  // the call to action, styled like the screen's pink key
+  ty += 96; const kw = sw - 120, kh = 112, kx = cx - kw / 2, ky = ty - kh / 2;
+  x.fillStyle = '#860b44'; cardRound(x, kx, ky + 12, kw, kh, 30); x.fill();
+  x.save(); x.shadowColor = 'rgba(255,42,138,.55)'; x.shadowBlur = 40; x.fillStyle = '#ff2a8a'; cardRound(x, kx, ky, kw, kh, 30); x.fill(); x.restore();
+  const sheen = x.createLinearGradient(0, ky, 0, ky + kh); sheen.addColorStop(0, 'rgba(255,255,255,.38)'); sheen.addColorStop(0.46, 'rgba(255,255,255,0)');
+  x.fillStyle = sheen; cardRound(x, kx, ky, kw, kh, 30); x.fill();
+  const cta = cardSpaced(x, 'CAN YOU BEAT IT?', cx, 50, 0.08, 900, kw - 60);
+  x.fillStyle = '#14002c'; for (const [ch, gx] of cta.cells) x.fillText(ch, gx, ty + 2);
+  // arena played
+  ty += 112; const arena = cardSpaced(x, 'ARENA · ' + s.arena, cx, 28, 0.22, 800, sw - 120).cells;
+  x.fillStyle = 'rgba(163,145,201,.95)'; for (const [ch, gx] of arena) x.fillText(ch, gx, ty);
+  // wordmark and where to play, under the slab
+  const wm = 78, word = cardSpaced(x, 'CREASE', cx, wm, 0.14, 900), wy = sy + sh + 92;
   for (let i = 0; i < word.cells.length; i++) {
     const [ch, lx] = word.cells[i], tint = i < 2 ? '#2de2e6' : i > 3 ? '#ff2a8a' : '#ffffff';
-    x.globalAlpha = 0.55;
-    x.fillStyle = '#2de2e6'; x.fillText(ch, lx - wm * 0.028, wy);
-    x.fillStyle = '#ff2a8a'; x.fillText(ch, lx + wm * 0.028, wy);
-    x.globalAlpha = 1; x.shadowColor = tint; x.shadowBlur = wm * 0.42;
-    x.fillStyle = '#ffffff'; x.fillText(ch, lx, wy);
-    x.shadowBlur = 0;
+    x.globalAlpha = 0.55; x.fillStyle = '#2de2e6'; x.fillText(ch, lx - wm * 0.028, wy); x.fillStyle = '#ff2a8a'; x.fillText(ch, lx + wm * 0.028, wy);
+    x.globalAlpha = 1; x.shadowColor = tint; x.shadowBlur = wm * 0.42; x.fillStyle = '#ffffff'; x.fillText(ch, lx, wy); x.shadowBlur = 0;
   }
-  const bar = 300, by = 196;
-  x.fillStyle = '#2de2e6'; x.fillRect(cx - bar / 2, by, bar / 2, 7);
-  x.fillStyle = '#ff2a8a'; x.fillRect(cx, by, bar / 2, 7);
-
-  // who won, in the match's own words
-  const wc = s.winner === 1 ? s.p1 : s.p2;
-  const ttl = cardSpaced(x, s.title, cx, 74, 0.06, 900, S - 200);
-  x.shadowColor = wc; x.shadowBlur = 34; x.fillStyle = wc;
-  for (const [ch, lx] of ttl.cells) x.fillText(ch, lx, 300);
-  x.shadowBlur = 0;
-
-  // the score, the thing people actually post
-  const sy = 468, off = 182;
-  x.font = `900 ${220}px ${CARD_FONT}`;
-  x.shadowColor = s.p1; x.shadowBlur = 48; x.fillStyle = s.p1; x.fillText(String(s.a), cx - off, sy);
-  x.shadowColor = s.p2; x.fillStyle = s.p2; x.fillText(String(s.b), cx + off, sy);
-  x.shadowBlur = 0;
-  x.font = `700 ${96}px ${CARD_FONT}`;
-  x.fillStyle = 'rgba(245,234,255,.45)'; x.fillText('–', cx, sy - 6);
-
-  const lbl = (str, lx, col) => {
-    const cells = cardSpaced(x, str, lx, 30, 0.16, 800, 330).cells;
-    x.fillStyle = col; x.globalAlpha = 0.92;
-    for (const [ch, gx] of cells) x.fillText(ch, gx, 602);
-    x.globalAlpha = 1;
-  };
-  lbl(s.left, cx - off, s.p1);
-  lbl(s.right, cx + off, s.p2);
-
-  // the crease: a glowing centre line with a paddle on each side of it, each one
-  // on its own half of the table and under its own score
-  const ly = 726, x1 = 168, x2 = S - 168;
-  x.save(); x.lineCap = 'butt'; x.strokeStyle = '#ffffff'; x.shadowColor = '#ffffff';
-  x.globalAlpha = 0.26; x.lineWidth = 22; x.shadowBlur = 44;
-  x.beginPath(); x.moveTo(x1, ly); x.lineTo(x2, ly); x.stroke();
-  x.globalAlpha = 0.95; x.lineWidth = 5; x.shadowBlur = 18;
-  x.beginPath(); x.moveTo(x1, ly); x.lineTo(x2, ly); x.stroke();
-  x.restore();
-  cardPaddle(x, cx + off, ly - 58, 30, s.p2);
-  cardPaddle(x, cx - off, ly + 58, 30, s.p1);
-
-  // arena played
-  const cap = cardSpaced(x, 'ARENA', cx, 22, 0.3, 700).cells;
-  x.fillStyle = 'rgba(163,145,201,.9)';
-  for (const [ch, gx] of cap) x.fillText(ch, gx, 854);
-  const an = cardSpaced(x, s.arena, cx, 46, 0.14, 900, S - 220).cells;
-  x.shadowColor = s.grid; x.shadowBlur = 26; x.fillStyle = '#f5eaff';
-  for (const [ch, gx] of an) x.fillText(ch, gx, 906);
-  x.shadowBlur = 0;
-
-  // one stat the match actually tracked
-  if (s.rally > 0) {
-    const txt = `BEST RALLY · ${s.rally} ${s.rally === 1 ? 'HIT' : 'HITS'}`;
-    const st = cardSpaced(x, txt, cx, 30, 0.12, 800, S - 220);
-    const pw = st.total + 72, ph = 60, px0 = cx - pw / 2, py0 = 968 - ph / 2, pr = ph / 2;
-    x.beginPath();
-    x.moveTo(px0 + pr, py0); x.lineTo(px0 + pw - pr, py0);
-    x.quadraticCurveTo(px0 + pw, py0, px0 + pw, py0 + pr);
-    x.quadraticCurveTo(px0 + pw, py0 + ph, px0 + pw - pr, py0 + ph);
-    x.lineTo(px0 + pr, py0 + ph); x.quadraticCurveTo(px0, py0 + ph, px0, py0 + pr);
-    x.quadraticCurveTo(px0, py0, px0 + pr, py0); x.closePath();
-    x.fillStyle = 'rgba(255,210,63,.10)'; x.fill();
-    x.strokeStyle = 'rgba(255,210,63,.55)'; x.lineWidth = 2; x.stroke();
-    x.fillStyle = '#ffd23f';
-    for (const [ch, gx] of st.cells) x.fillText(ch, gx, 968);
-  }
-
-  // where to play
-  const ln = cardSpaced(x, readableLink(), cx, 26, 0.07, 700, S - 180).cells;
-  x.fillStyle = 'rgba(245,234,255,.78)';
-  for (const [ch, gx] of ln) x.fillText(ch, gx, 1030);
+  const ln = cardSpaced(x, readableLink(), cx, 28, 0.07, 700, W - 160).cells;
+  x.fillStyle = 'rgba(245,234,255,.82)'; for (const [ch, gx] of ln) x.fillText(ch, gx, wy + 66);
   return c;
 }
 function buildResultCard(snap) {
@@ -3121,14 +3074,14 @@ function mqDitherTile() {
 }
 const mqHex = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
 // segs: [{text, size, top, bot, near, far, glow, dim}] laid out on one line, scaled to fit the canvas
-function mqDraw(cv, segs, gapEm = 0.18) {
-  const dpr = Math.min(3, window.devicePixelRatio || 1), cssW = Math.max(200, cv.clientWidth || cv.parentNode.clientWidth || 360);
+function mqDraw(cv, segs, gapEm = 0.18, fixedW = 0) {
+  const dpr = fixedW ? 1 : Math.min(3, window.devicePixelRatio || 1), cssW = fixedW || Math.max(200, cv.clientWidth || cv.parentNode?.clientWidth || 360);
   const fam = getComputedStyle(document.body).fontFamily, font = sz => `italic 900 ${sz}px ${fam}`;
   const m = document.createElement('canvas').getContext('2d');
   let total = 0; const widths = segs.map((g, k) => { m.font = font(g.size); const w = m.measureText(g.text).width; total += w + (k ? g.size * gapEm : 0); return w; });
   const maxSize = Math.max(...segs.map(g => g.size)), k = Math.min(1, (cssW * 0.84) / (total + maxSize * 0.2));
   const depth = Math.max(3, Math.round(maxSize * k * 0.13)), pad = Math.round(maxSize * k * 0.2), Hc = Math.round(maxSize * k * 1.02 + pad * 2 + depth);
-  cv.width = Math.round(cssW * dpr); cv.height = Math.round(Hc * dpr); cv.style.aspectRatio = cssW + ' / ' + Hc;
+  cv.width = Math.round(cssW * dpr); cv.height = Math.round(Hc * dpr); if (cv.style) cv.style.aspectRatio = cssW + ' / ' + Hc;
   const x = cv.getContext('2d'); x.setTransform(dpr, 0, 0, dpr, 0, 0); x.clearRect(0, 0, cssW, Hc);
   let cx = (cssW - total * k - depth * 0.5) / 2; const base = pad + maxSize * k * 0.86;
   segs.forEach((g, n) => {
@@ -3157,14 +3110,21 @@ function mqDraw(cv, segs, gapEm = 0.18) {
     cx += widths[n] * k;
   });
 }
-function mqRender(w) {
-  const card = $('overCard'); card.style.setProperty('--mq-dither', mqDitherTile());
+function mqSegs(w, title, A, B, k = 1) {
   const CY = '#2de2e6', PK = '#ff2a8a', winC = w === 1 ? CY : PK, sideC = w === 1 ? PK : CY;
-  mqDraw($('overTitle3d'), [{ text: winText(w), size: 84, top: '#ffffff', bot: winC, near: sideC, far: '#2a0640', glow: winC }]);
   const lit = (n, c, side) => ({ text: String(n), size: 120, top: '#ffffff', bot: c, near: side, far: '#2a0640', glow: c });
   const dim = n => ({ text: String(n), size: 92, top: '#b9a8d8', bot: '#5a4880', near: '#3a2a5c', far: '#140826', glow: '#5a4880', dim: true });
-  const A = game.score[0], B = game.score[1];
-  mqDraw($('overDigits'), [w === 1 ? lit(A, CY, PK) : dim(A), { text: '–', size: 70, top: '#ffffff', bot: '#ffd23f', near: '#8a4a00', far: '#2a0640', glow: '#ffd23f', dim: true }, w === 2 ? lit(B, PK, CY) : dim(B)], 0.22);
+  const up = segs => segs.map(g => ({ ...g, size: g.size * k }));
+  return {
+    title: up([{ text: title, size: 84, top: '#ffffff', bot: winC, near: sideC, far: '#2a0640', glow: winC }]),
+    digits: up([w === 1 ? lit(A, CY, PK) : dim(A), { text: '–', size: 70, top: '#ffffff', bot: '#ffd23f', near: '#8a4a00', far: '#2a0640', glow: '#ffd23f', dim: true }, w === 2 ? lit(B, PK, CY) : dim(B)]),
+  };
+}
+function mqRender(w) {
+  const card = $('overCard'); card.style.setProperty('--mq-dither', mqDitherTile());
+  const seg = mqSegs(w, winText(w), game.score[0], game.score[1]);
+  mqDraw($('overTitle3d'), seg.title);
+  mqDraw($('overDigits'), seg.digits, 0.22);
   card.classList.remove('mq-enter'); void card.offsetWidth; card.classList.add('mq-enter');
 }
 // One-tap feedback on the result screen: a thumbs vote, then one optional reason. No free text is collected.
@@ -3196,9 +3156,7 @@ function showOver() {
   const who = game.mode === 'solo' ? ['You', 'CPU (' + difficultyLabel(game.diff) + ')'] : ['Cyan', 'Pink'];
   $('overScore').textContent = `${who[0]} ${game.score[0]} – ${game.score[1]} ${who[1]}`;
   const rally = game.bestRally || 0;
-  $('overReflection').textContent = game.mode === 'solo'
-    ? (w === 1 ? `Strong finish · best rally: ${rally} hits.` : `Best rally: ${rally} hits · one clean return at a time.`)
-    : `Best shared rally: ${rally} hits · run it back when you’re ready.`;
+  $('overReflection').textContent = reflectionText(w, rally);
   $('bPause').classList.add('hidden');
   show('over', true);
   try { mqRender(w); } catch (_) {}
