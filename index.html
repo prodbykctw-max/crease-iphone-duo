@@ -168,6 +168,10 @@ button:focus-visible{outline:2px solid var(--p1);outline-offset:4px}
 #over .mq-names{margin:2px 0 2px;color:var(--ink);font-size:14px;font-weight:700;letter-spacing:.02em}
 #over #overReflection{margin:2px 0 14px}
 #over .mq-keys{gap:12px 10px}
+#over .mq-fb{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:8px;margin:10px 0 2px;font:700 13px/1.2 system-ui,sans-serif;letter-spacing:.06em;color:#e9dcff}
+#over .mq-fb button{min-height:40px;min-width:48px;padding:6px 12px;border-radius:12px;border:0;font:700 13px/1 system-ui,sans-serif;color:#fff;background:rgba(10,2,24,.6);box-shadow:inset 0 0 0 2px rgba(255,120,220,.55);cursor:pointer}
+#over .mq-fb button[aria-pressed="true"]{background:#ff2a8a;box-shadow:none}
+#over .mq-fb a{color:#9ff;font-weight:700}
 #over .key{--kc:#2a1150;--kd:#12052a;--kg:rgba(176,38,255,.3);border:0;border-radius:16px;color:#14002c;cursor:pointer;
   background:linear-gradient(180deg,rgba(255,255,255,.38),rgba(255,255,255,0) 46%),var(--kc);
   box-shadow:0 6px 0 var(--kd),0 9px 18px rgba(0,0,0,.5),0 0 26px var(--kg);transition:transform .07s,box-shadow .07s}
@@ -348,6 +352,20 @@ button:focus-visible{outline:2px solid var(--p1);outline-offset:4px}
         <button id="bShareCard" class="btn p2 key key-sm"><span>SHARE RESULT</span></button>
         <button id="bMenu" class="btn plain key key-sm"><span>MENU</span></button>
       </div>
+      <div class="mq-fb" id="fbVote" role="group" aria-label="Rate CREASE">
+        <span>RATE CREASE</span>
+        <button type="button" data-vote="up" aria-pressed="false" aria-label="I like it">👍</button>
+        <button type="button" data-vote="down" aria-pressed="false" aria-label="I don't like it">👎</button>
+      </div>
+      <div class="mq-fb hidden" id="fbWhy" role="group" aria-label="What should change?">
+        <span id="fbWhyLabel">WHAT SHOULD CHANGE?</span>
+        <button type="button" data-why="too_hard" aria-pressed="false">Too hard</button>
+        <button type="button" data-why="too_easy" aria-pressed="false">Too easy</button>
+        <button type="button" data-why="more_worlds" aria-pressed="false">More worlds</button>
+        <button type="button" data-why="want_online" aria-pressed="false">Play online</button>
+        <button type="button" data-why="bug" aria-pressed="false">Found a bug</button>
+        <a href="https://www.instagram.com/playcrease/" target="_blank" rel="noopener noreferrer">Tell us more ↗</a>
+      </div>
       <p id="resultShareStatus" class="share-status" role="status"></p>
       <input id="resultShareUrl" class="share-url hidden" readonly aria-label="Challenge link — select and copy">
       <a class="creator" data-inquiry href="https://www.instagram.com/prodbykctw/" target="_blank" rel="noopener noreferrer">Built by KCTW · Custom game inquiries</a>
@@ -400,7 +418,7 @@ let matchTracked = false;
 const challenged = new URLSearchParams(location.search).get('challenge') === '1';
 $('challengeHint').classList.toggle('hidden', !challenged);
 const requestedSource = new URLSearchParams(location.search).get('src');
-const source = ['instagram', 'tiktok', 'youtube', 'creator', 'store'].includes(requestedSource) ? requestedSource : 'direct';
+const source = ['instagram', 'tiktok', 'youtube', 'x', 'facebook', 'reddit', 'creator', 'store'].includes(requestedSource) ? requestedSource : 'direct';
 track('visit', { source: challenged ? 'challenge' : source });
 
 // ---------- config ----------
@@ -3149,8 +3167,22 @@ function mqRender(w) {
   mqDraw($('overDigits'), [w === 1 ? lit(A, CY, PK) : dim(A), { text: '–', size: 70, top: '#ffffff', bot: '#ffd23f', near: '#8a4a00', far: '#2a0640', glow: '#ffd23f', dim: true }, w === 2 ? lit(B, PK, CY) : dim(B)], 0.22);
   card.classList.remove('mq-enter'); void card.offsetWidth; card.classList.add('mq-enter');
 }
+// One-tap feedback on the result screen: a thumbs vote, then one optional reason. No free text is collected.
+function resetFeedback(){for(const b of document.querySelectorAll('#over [data-vote],#over [data-why]'))b.setAttribute('aria-pressed','false');show('fbWhy',false);show('fbVote',true);}
+for(const b of document.querySelectorAll('#over [data-vote]'))b.addEventListener('click',()=>{
+  if(b.getAttribute('aria-pressed')==='true')return;
+  for(const o of document.querySelectorAll('#over [data-vote]'))o.setAttribute('aria-pressed',String(o===b));
+  track('feedback',{vote:b.dataset.vote,mode:game.mode,difficulty:game.diff});
+  $('fbWhyLabel').textContent=b.dataset.vote==='up'?'THANKS! ANYTHING TO CHANGE?':'WHAT SHOULD CHANGE?';show('fbWhy',true);
+});
+for(const b of document.querySelectorAll('#over [data-why]'))b.addEventListener('click',()=>{
+  if(b.getAttribute('aria-pressed')==='true')return;
+  for(const o of document.querySelectorAll('#over [data-why]'))o.setAttribute('aria-pressed',String(o===b));
+  track('feedback_reason',{why:b.dataset.why,mode:game.mode,difficulty:game.diff});
+});
 function showOver() {
   if (!matchTracked) { track('match_complete', { mode: game.mode, difficulty: game.diff, winner: game.winner }); matchTracked = true; }
+  resetFeedback();
   $('resultShareStatus').textContent = ''; $('resultShareUrl').classList.add('hidden');
   // Snapshot now — a rematch or a trip to the menu resets the score. Encoding the
   // PNG waits until the card has painted so the result never lands on a stutter.
