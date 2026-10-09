@@ -40,3 +40,13 @@ test('rate limits answer 429 before the database is touched', async () => {
   assert.equal((await worker.fetch(req(), env)).status, 204);
   assert.equal(writes.length, 1);
 });
+
+test('feedback votes and reasons store only the fixed choices', async () => {
+  const {env,writes} = setup();
+  const id = n => `12345678-1234-1234-1234-12345678900${n}`;
+  assert.equal((await worker.fetch(req({ id: id(1), name: 'feedback', props: { vote: 'up', mode: 'solo', note: 'free text is dropped' } }), env)).status, 204);
+  assert.equal((await worker.fetch(req({ id: id(2), name: 'feedback_reason', props: { why: 'too_hard', difficulty: 'hard' } }), env)).status, 204);
+  assert.equal((await worker.fetch(req({ id: id(3), name: 'feedback', props: { vote: 'meh' } }), env)).status, 204);
+  assert.equal((await worker.fetch(req({ id: id(4), name: 'visit', props: { source: 'x' } }), env)).status, 204);
+  assert.deepEqual(writes.map(w => JSON.parse(w[2])), [{ mode: 'solo', vote: 'up' }, { difficulty: 'hard', why: 'too_hard' }, {}, { source: 'x' }]);
+});

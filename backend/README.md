@@ -22,9 +22,12 @@ FROM events GROUP BY day, name ORDER BY day DESC, name;
 
 SELECT json_extract(props, '$.source') AS source, COUNT(*) AS visits
 FROM events WHERE name = 'visit' GROUP BY source;
+
+SELECT name, json_extract(props, '$.vote') AS vote, json_extract(props, '$.why') AS why, COUNT(*) AS n
+FROM events WHERE name IN ('feedback', 'feedback_reason') GROUP BY name, vote, why;
 ```
 
-`visit` counts page loads, not unique people. `match_start` includes new matches, restarts and rematches (see `reason`). `match_complete` fires when the result screen appears. `rematch` counts result-screen rematches. Native `share_handoff` means the platform accepted the share action, not verified message delivery. `share_copy` means clipboard success. `inquiry_click` is a click, not a sale.
+`visit` counts page loads, not unique people. `match_start` includes new matches, restarts and rematches (see `reason`). `match_complete` fires when the result screen appears. `rematch` counts result-screen rematches. Native `share_handoff` means the platform accepted the share action, not verified message delivery. `share_copy` means clipboard success. `inquiry_click` is a click, not a sale. `feedback` is a result-screen thumbs vote (`vote`: up/down) and `feedback_reason` the optional one-tap reason (`why`: too_hard, too_easy, more_worlds, want_online, bug); no free text is collected. Link `?src=` values: instagram, tiktok, youtube, x, facebook, reddit, creator, store.
 
 The server discards unrecognized properties, uses prepared SQL and deduplicates event UUIDs. It does not persist IP addresses, user agents, names, or persistent player IDs. Infrastructure providers may keep their own logs. Delivery is best effort, without retries; privacy signals disable remote transmission. Local aggregate totals and the return-visit flag survive in localStorage when available. No cross-device retention measurement exists yet.
 

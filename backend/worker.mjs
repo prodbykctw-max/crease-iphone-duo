@@ -1,7 +1,8 @@
-const EVENTS = new Set(['visit', 'match_start', 'match_complete', 'rematch', 'share_attempt', 'share_handoff', 'share_copy', 'inquiry_click']);
+const EVENTS = new Set(['visit', 'match_start', 'match_complete', 'rematch', 'share_attempt', 'share_handoff', 'share_copy', 'inquiry_click', 'feedback', 'feedback_reason']);
 const VALUES = {
   mode: ['solo', 'duo'], difficulty: ['easy', 'normal', 'hard'], reason: ['new', 'restart', 'rematch'],
-  source: ['direct', 'challenge', 'instagram', 'tiktok', 'youtube', 'creator', 'store'],
+  source: ['direct', 'challenge', 'instagram', 'tiktok', 'youtube', 'x', 'facebook', 'reddit', 'creator', 'store'],
+  vote: ['up', 'down'], why: ['too_hard', 'too_easy', 'more_worlds', 'want_online', 'bug'],
   from: ['menu', 'result'], method: ['native'], winner: [1, 2],
 };
 export default {
