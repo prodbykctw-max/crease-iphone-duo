@@ -1,7 +1,7 @@
 # CREASE — full reference
 
 Last updated: 2026-10-06
-Canonical URL: https://prodbykctw-max.github.io/crease-iphone-duo/
+Canonical URL: https://playcrease.app/
 
 ## TL;DR
 
@@ -18,11 +18,11 @@ CREASE is a free, browser-based neon air hockey game made for the iPhone Duo, Ap
 
 ## Online play
 
-Open https://prodbykctw-max.github.io/crease-iphone-duo/online.html. Tap QUICK MATCH to be paired with whoever else is looking for a game, or create a room and send a friend the invite link or room code. The server runs the puck, the score and the paddle limits, so a player can't move a paddle where the rules don't allow or invent a goal. You always play from the bottom of your screen. Free, no account.
+Open https://playcrease.app/online.html. Tap QUICK MATCH to be paired with whoever else is looking for a game, or create a room and send a friend the invite link or room code. The server runs the puck, the score and the paddle limits, so a player can't move a paddle where the rules don't allow or invent a goal. You always play from the bottom of your screen. Free, no account.
 
 ## VR (Meta Quest)
 
-Open https://prodbykctw-max.github.io/crease-iphone-duo/vr.html in the Quest browser, pick your paddle hand and enter VR. Play the CPU with a controller (with haptic feedback), with hand tracking (the paddle follows your index finger; pinch to start), or by looking where you want the paddle. On a computer there is a desktop practice mode.
+Open https://playcrease.app/vr.html in the Quest browser, pick your paddle hand and enter VR. Play the CPU with a controller (with haptic feedback), with hand tracking (the paddle follows your index finger; pinch to start), or by looking where you want the paddle. On a computer there is a desktop practice mode.
 
 ## Mechanics
 
@@ -69,9 +69,9 @@ A: prodbyKCTW — Melvin D. Brown III, an independent developer and producer in 
 
 ## Links
 
-- Play: https://prodbykctw-max.github.io/crease-iphone-duo/
-- Play online: https://prodbykctw-max.github.io/crease-iphone-duo/online.html
-- VR: https://prodbykctw-max.github.io/crease-iphone-duo/vr.html
+- Play: https://playcrease.app/
+- Play online: https://playcrease.app/online.html
+- VR: https://playcrease.app/vr.html
 - Source: https://github.com/prodbykctw-max/crease-iphone-duo
 - Developer Instagram: https://www.instagram.com/prodbykctw/
 - Developer GitHub: https://github.com/prodbykctw-max

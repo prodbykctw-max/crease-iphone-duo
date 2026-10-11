@@ -23,4 +23,4 @@ Allow: /
 User-agent: OAI-SearchBot
 Allow: /
 
-Sitemap: https://prodbykctw-max.github.io/crease-iphone-duo/sitemap.xml
+Sitemap: https://playcrease.app/sitemap.xml

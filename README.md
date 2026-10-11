@@ -2,13 +2,13 @@
 
 Dark vaporwave air hockey built for the iPhone Duo fold, by prodbyKCTW.
 
-**Play:** https://prodbykctw-max.github.io/crease-iphone-duo/
+**Play:** https://playcrease.app/
 
 Other pages on the same site:
 
-- [`online.html`](https://prodbykctw-max.github.io/crease-iphone-duo/online.html) — live match against another person (quick match or room code)
-- [`vr.html`](https://prodbykctw-max.github.io/crease-iphone-duo/vr.html) — Meta Quest browser VR mode vs the CPU (labelled beta in the menu)
-- [`iphone-duo-games/`](https://prodbykctw-max.github.io/crease-iphone-duo/iphone-duo-games/) — landing page about playing CREASE on the iPhone Duo
+- [`online.html`](https://playcrease.app/online.html) — live match against another person (quick match or room code)
+- [`vr.html`](https://playcrease.app/vr.html) — Meta Quest browser VR mode vs the CPU (labelled beta in the menu)
+- [`iphone-duo-games/`](https://playcrease.app/iphone-duo-games/) — landing page about playing CREASE on the iPhone Duo
 
 ## The game
 
