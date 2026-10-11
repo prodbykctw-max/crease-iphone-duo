@@ -65,7 +65,7 @@ cd backend/online
 npx wrangler dev --env dev --port 8787 --local
 ```
 
-Production allows only `https://prodbykctw-max.github.io`. The `dev`
+Production allows `https://prodbykctw-max.github.io`, `https://playcrease.app` and `https://www.playcrease.app`. The `dev`
 environment in `wrangler.jsonc` allows `http://127.0.0.1:8765` (and localhost
 on 8787), so serving the repo root on port 8765 and opening `online.html`
 there will talk to the local Worker - point `window.CREASE_ONLINE_URL` at

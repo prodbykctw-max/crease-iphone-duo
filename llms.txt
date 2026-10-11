@@ -2,7 +2,7 @@
 
 > CREASE is a free neon air hockey game made for the iPhone Duo, Apple's foldable (pre-orders October 16, 2026; on sale October 23, 2026). Open the phone: full table, two players, one on each side. Close it: pocket table, you vs the CPU. Fold it mid-match and the game keeps going. First to 7. It runs in any modern browser today, with no download and no account. Made by prodbyKCTW (Melvin D. Brown III).
 
-The full reference, with controls, mechanics and FAQ, is at [llms-full.txt](https://prodbykctw-max.github.io/crease-iphone-duo/llms-full.txt). Every public page is listed below.
+The full reference, with controls, mechanics and FAQ, is at [llms-full.txt](https://playcrease.app/llms-full.txt). Every public page is listed below.
 
 - Genre: arcade / sports (air hockey)
 - Platform: web browser, mobile-first (iPhone Safari, Android Chrome, desktop); installable as a home-screen app; Meta Quest browser for VR
@@ -12,11 +12,11 @@ The full reference, with controls, mechanics and FAQ, is at [llms-full.txt](http
 
 ## Pages
 
-- [Play CREASE](https://prodbykctw-max.github.io/crease-iphone-duo/): the game (solo vs CPU, or two players on one device)
-- [Play online](https://prodbykctw-max.github.io/crease-iphone-duo/online.html): live match against another person; quick match or a room code
-- [Games for the iPhone Duo](https://prodbykctw-max.github.io/crease-iphone-duo/iphone-duo-games/): what CREASE does on Apple's foldable, with Apple's published specs
-- [CREASE in VR](https://prodbykctw-max.github.io/crease-iphone-duo/vr.html): Meta Quest browser, vs the CPU, controllers or hand tracking
-- [llms-full.txt](https://prodbykctw-max.github.io/crease-iphone-duo/llms-full.txt): full description, controls, mechanics, FAQ
+- [Play CREASE](https://playcrease.app/): the game (solo vs CPU, or two players on one device)
+- [Play online](https://playcrease.app/online.html): live match against another person; quick match or a room code
+- [Games for the iPhone Duo](https://playcrease.app/iphone-duo-games/): what CREASE does on Apple's foldable, with Apple's published specs
+- [CREASE in VR](https://playcrease.app/vr.html): Meta Quest browser, vs the CPU, controllers or hand tracking
+- [llms-full.txt](https://playcrease.app/llms-full.txt): full description, controls, mechanics, FAQ
 
 ## Optional
 
