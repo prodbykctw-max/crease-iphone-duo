@@ -1321,9 +1321,10 @@ function scored(scorer, pk) {
   if (alive === 0) { game.state = 'goal'; game.timer = 1.1; game.conceder = scorer === 1 ? 2 : 1; }
 }
 function reflectionText(w, rally) {
+  const hits = `${rally} ${rally === 1 ? 'hit' : 'hits'}`;
   return game.mode === 'solo'
-    ? (w === 1 ? `Strong finish · best rally: ${rally} hits.` : `Best rally: ${rally} hits · one clean return at a time.`)
-    : `Best shared rally: ${rally} hits · run it back when you’re ready.`;
+    ? (w === 1 ? `Strong finish · best rally: ${hits}.` : `Best rally: ${hits} · one clean return at a time.`)
+    : `Best shared rally: ${hits} · run it back when you’re ready.`;
 }
 function winText(w) {
   if (game.mode === 'solo') return w === 1 ? 'YOU WIN' : 'CPU WINS';
