@@ -21,10 +21,12 @@ canvas{display:block;width:min(90vw,400px);height:auto;margin:auto;touch-action:
 p{color:#bfadd7}a{display:inline-block;text-decoration:none}
 #status{min-height:3em}#score{font-size:30px;color:#2de2e6}
 small{display:block;color:#bfadd7}
-.or{color:#6d5f87;font-size:13px;letter-spacing:.2em;margin:14px 0 2px}
+.or{color:#8f80aa;font-size:13px;letter-spacing:.2em;margin:14px 0 2px}
 .row{display:flex;gap:4px;justify-content:center;align-items:center}
 .row input{flex:1;margin-right:0}.row button{flex:0 0 auto}
 .about{text-align:left;margin:28px 6px 8px;border-top:1px solid #2a1745;padding-top:8px}.about h2{font-size:17px;color:#2de2e6;letter-spacing:.06em}.about p{font-size:14px;line-height:1.55}.about a{display:inline;padding:0;margin:0;border:0;background:none;color:#2de2e6;text-decoration:underline}
+button:focus-visible,a:focus-visible{outline:2px solid #2de2e6;outline-offset:4px}
+.legal{margin:22px 6px 4px;font-size:12px;line-height:1.6;color:#bfadd7}.legal p{margin:2px 0;font-size:12px}.legal a{display:inline;padding:0;margin:0;border:0;background:none;color:#bfadd7;text-decoration:underline;text-underline-offset:3px}
 </style><main><h1>CREASE</h1><p>First to seven, live against another player</p>
 <section id="lobby">
   <button id="quick">QUICK MATCH</button>
@@ -46,7 +48,8 @@ small{display:block;color:#bfadd7}
   <p>CREASE online is a live, first-to-7 air hockey match against another person, in your browser. Tap QUICK MATCH and you are paired with whoever else is looking for a game. To play a friend, tap CREATE A ROOM and send them the invite link or the room code.</p>
   <p>You always play from the bottom of your screen: drag your paddle on your half of the table. The server runs the puck, the score and the paddle limits, so a player can't move a paddle where the rules don't allow or invent a goal. No download, no account, no payment.</p>
   <p>Want to play the CPU, or two people on one phone? <a href="./">Play CREASE</a>. It was made for the iPhone Duo: open it for two players, one on each side; close it for you vs the CPU.</p>
-</section></main>
+</section>
+<footer class="legal"><p><a href="privacy/">Privacy</a> · <a href="terms/">Terms</a> · <a href="mailto:prodbykctw@gmail.com">Contact</a></p><p>Not affiliated with Apple Inc. iPhone is a trademark of Apple Inc.</p></footer></main>
 <script src="online-config.js"></script><script type="module">
 const $=id=>document.getElementById(id),ctx=$('table').getContext('2d');
 let ws=null,player=0,state=null,lastSend=0,room='',searching=false,tries=0;

@@ -50,3 +50,19 @@ test('feedback votes and reasons store only the fixed choices', async () => {
   assert.equal((await worker.fetch(req({ id: id(4), name: 'visit', props: { source: 'x' } }), env)).status, 204);
   assert.deepEqual(writes.map(w => JSON.parse(w[2])), [{ mode: 'solo', vote: 'up' }, { difficulty: 'hard', why: 'too_hard' }, {}, { source: 'x' }]);
 });
+
+test('result-card share events keep their from and method values', async () => {
+  const {env,writes} = setup();
+  const id = n => `12345678-1234-1234-1234-12345678901${n}`;
+  assert.equal((await worker.fetch(req({ id: id(1), name: 'share_handoff', props: { method: 'image', from: 'result_card' } }), env)).status, 204);
+  assert.equal((await worker.fetch(req({ id: id(2), name: 'share_attempt', props: { from: 'result_card' } }), env)).status, 204);
+  assert.deepEqual(writes.map(w => JSON.parse(w[2])), [{ from: 'result_card', method: 'image' }, { from: 'result_card' }]);
+});
+
+test('daily cron deletes events older than 90 days', async () => {
+  const sqls = [];
+  const env = { DB: { prepare(sql) { sqls.push(sql); return { async run() {} }; } } };
+  await worker.scheduled({}, env);
+  assert.equal(sqls.length, 1);
+  assert.match(sqls[0], /DELETE FROM events WHERE created_at < .*-90 days/);
+});

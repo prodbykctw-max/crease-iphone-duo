@@ -3,6 +3,7 @@
   "main": "worker.mjs",
   "compatibility_date": "2026-09-19",
   "workers_dev": true,
+  "triggers": { "crons": ["17 7 * * *"] },
   "vars": { "ALLOWED_ORIGINS": "https://prodbykctw-max.github.io,https://playcrease.app,https://www.playcrease.app" },
   "ratelimits": [
     { "name": "PER_IP", "namespace_id": "1001", "simple": { "limit": 20, "period": 60 } },
