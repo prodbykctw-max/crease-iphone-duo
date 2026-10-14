@@ -1,13 +1,13 @@
 # CREASE
 
-> CREASE is a free neon air hockey game made for the iPhone Duo, Apple's foldable (pre-orders October 16, 2026; on sale October 23, 2026). Open the phone: full table, two players, one on each side. Close it: pocket table, you vs the CPU. Fold it mid-match and the game keeps going. First to 7. It runs in any modern browser today, with no download and no account. Made by prodbyKCTW (Melvin D. Brown III).
+> CREASE is a free neon air hockey game made for the iPhone Duo, Apple's foldable (pre-orders October 16, 2026; on sale October 23, 2026). Open the phone: full table, two players, one on each side. Close it: pocket table, you vs the CPU. Fold it mid-match and the game keeps going. First to 7. It runs in any modern browser today, with no download and no account. Made by prodbyKCTW (Melvin D. Brown III). Not affiliated with Apple Inc.
 
 The full reference, with controls, mechanics and FAQ, is at [llms-full.txt](https://playcrease.app/llms-full.txt). Every public page is listed below.
 
 - Genre: arcade / sports (air hockey)
 - Platform: web browser, mobile-first (iPhone Safari, Android Chrome, desktop); installable as a home-screen app; Meta Quest browser for VR
-- Players: 1 (vs CPU: Easy, Normal, Hard), 2 on one device, or 2 online (quick match or room code)
-- Price: free
+- Players: 1 (vs CPU: Normal, Hard, CTW), 2 on one device, or 2 online (quick match or room code)
+- Price: free to play; an optional Premium Pass is a one-time purchase
 - Developer: prodbyKCTW / RARƎ AGENCY; custom game inquiries via the in-game link
 
 ## Pages
@@ -17,6 +17,8 @@ The full reference, with controls, mechanics and FAQ, is at [llms-full.txt](http
 - [Games for the iPhone Duo](https://playcrease.app/iphone-duo-games/): what CREASE does on Apple's foldable, with Apple's published specs
 - [CREASE in VR](https://playcrease.app/vr.html): Meta Quest browser, vs the CPU, controllers or hand tracking
 - [llms-full.txt](https://playcrease.app/llms-full.txt): full description, controls, mechanics, FAQ
+- [Privacy policy](https://playcrease.app/privacy/): what the game collects and how to opt out or delete it
+- [Terms of use](https://playcrease.app/terms/): rules, the optional Premium Pass, purchases and refunds
 
 ## Optional
 

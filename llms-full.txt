@@ -1,11 +1,11 @@
 # CREASE — full reference
 
-Last updated: 2026-10-06
+Last updated: 2026-10-14
 Canonical URL: https://playcrease.app/
 
 ## TL;DR
 
-CREASE is a free, browser-based neon air hockey game made for the iPhone Duo, Apple's foldable (pre-orders October 16, 2026; on sale October 23, 2026). Open the phone: full table, two players, one on each side. Close it: pocket table, you vs the CPU (Easy, Normal, Hard). Fold it mid-match and the game keeps going. First to 7. On any other phone, portrait is the pocket table and landscape is the wide two-player table, with the glowing center line, the "crease," between the two halves. You can also play a live match against another person online, or play in VR on Meta Quest. It has a dark vaporwave look, a tap-to-boot intro, an animated cutscene, smash and bump mechanics, power-ups, and a synthwave soundtrack. It was created specifically around the iPhone Duo foldable-phone experience and works on any modern mobile or desktop browser. Built by prodbyKCTW (Melvin D. Brown III, Atlanta, GA).
+CREASE is a free, browser-based neon air hockey game made for the iPhone Duo, Apple's foldable (pre-orders October 16, 2026; on sale October 23, 2026). Open the phone: full table, two players, one on each side. Close it: pocket table, you vs the CPU (Normal, Hard, CTW). Fold it mid-match and the game keeps going. First to 7. On any other phone, portrait is the pocket table and landscape is the wide two-player table, with the glowing center line, the "crease," between the two halves. You can also play a live match against another person online, or play in VR on Meta Quest. It has a dark vaporwave look, a tap-to-boot intro, an animated cutscene, smash and bump mechanics, power-ups, and a synthwave soundtrack. It was created specifically around the iPhone Duo foldable-phone experience and works on any modern mobile or desktop browser. Built by prodbyKCTW (Melvin D. Brown III, Atlanta, GA).
 
 ## How to play
 
@@ -30,16 +30,16 @@ Open https://playcrease.app/vr.html in the Quest browser, pick your paddle hand 
 - BUMP: gold bumpers on the crease kick the puck. Score off one for a BANK SHOT.
 - Power-ups spawn on the crease; knock the puck through one to take it: BIG paddle, MULTI puck, WALL over your goal.
 - Hit and scoring effects: freeze-frames, screen shake, pop-up text, race-to-7 bars; the table pulses to the soundtrack.
-- Difficulty (solo): Easy, Normal, Hard.
+- Difficulty (solo): Normal, Hard, CTW. The Daily Challenge is always played against CTW.
 - Sound can be toggled on/off.
 
 ## Flow
 
-Tap to boot (unlocks sound) → prodbyKCTW studio logo → intro cutscene (the table unfolds out of the crease, a rally, a smash, the title; tap to skip, replay from the menu) → match. Winning plays a victory cutscene. Returning players skip the intro after their first match. A "Challenge a friend" link shares the game.
+Tap to boot (unlocks sound) → prodbyKCTW studio logo → intro cutscene (the table unfolds out of the crease, a rally, a smash, the title; tap to skip, replay from the menu) → match. Winning plays a victory cutscene. The intro plays every time the game opens; tap to skip it. A "Challenge a friend" link shares the game.
 
 ## Tech
 
-Single static index.html (HTML5 canvas + vanilla JavaScript), no build step, hosted on GitHub Pages. Optional anonymous analytics (disabled until configured; no names or contact details requested). Visit preferences and game totals stay in the player's browser.
+Single static index.html (HTML5 canvas + vanilla JavaScript), no build step, hosted on GitHub Pages. Anonymous gameplay analytics are on: short events such as "match started" are sent with a fresh random ID per event and a few fixed details (mode, difficulty, winner); no names, accounts, cookies or IP addresses are stored, and nothing is sent when the browser has Do Not Track or Global Privacy Control turned on. Progress, records and settings stay in the player's browser. Privacy policy: https://playcrease.app/privacy/
 
 ## Frequently asked questions
 
@@ -47,7 +47,7 @@ Q: What is CREASE?
 A: A free two-player neon air hockey game that runs in your browser — one screen, two players, first to 7. Solo vs CPU in portrait, head-to-head in landscape.
 
 Q: Is it free?
-A: Yes. No download, no account, no payment.
+A: Yes. CREASE is free to play, with no download and no account. An optional Premium Pass (a one-time purchase) adds extras: every arena unlocked, the Design Studio, signature paddles, and power-ups (BIG and WALL) that last longer and carry into the next round for both sides of the table on that device. Online matches are not affected.
 
 Q: Can two people play on one phone?
 A: Yes. On the iPhone Duo, open it; on other phones, turn to landscape. Each player controls the paddle on their half of the screen.
@@ -75,3 +75,8 @@ A: prodbyKCTW — Melvin D. Brown III, an independent developer and producer in 
 - Source: https://github.com/prodbykctw-max/crease-iphone-duo
 - Developer Instagram: https://www.instagram.com/prodbykctw/
 - Developer GitHub: https://github.com/prodbykctw-max
+- Privacy: https://playcrease.app/privacy/
+- Terms: https://playcrease.app/terms/
+- Contact: prodbykctw@gmail.com
+
+CREASE is made by prodbyKCTW LLC (Marietta, Georgia, USA). Not affiliated with Apple Inc. iPhone is a trademark of Apple Inc.

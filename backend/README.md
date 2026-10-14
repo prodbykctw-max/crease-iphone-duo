@@ -12,7 +12,7 @@ npx wrangler d1 migrations apply crease-metrics --remote
 npx wrangler deploy
 ```
 
-Set `window.CREASE_ANALYTICS_ENDPOINT` in `../analytics-config.js` to the deployed Worker's HTTPS `/events` URL, then publish the frontend. The blank default sends no metrics. Never place a Cloudflare token or payment secret in browser code.
+Set `window.CREASE_ANALYTICS_ENDPOINT` in `../analytics-config.js` to the deployed Worker's HTTPS `/events` URL, then publish the frontend. The endpoint is currently set to the deployed `crease-metrics` Worker, so metrics are on; setting it back to blank turns them off. Never place a Cloudflare token or payment secret in browser code.
 
 Before enabling publicly, apply Cloudflare rate limiting appropriate to the account. Origin checks prevent casual browser misuse, not forged requests. Metrics are client-reported and unsuitable for prizes, verified scores, billing, or payment entitlements. There is no public read endpoint. Use the authenticated D1 console or Wrangler to query:
 
@@ -31,7 +31,7 @@ FROM events WHERE name IN ('feedback', 'feedback_reason') GROUP BY name, vote, w
 
 The server discards unrecognized properties, uses prepared SQL and deduplicates event UUIDs. It does not persist IP addresses, user agents, names, or persistent player IDs. Infrastructure providers may keep their own logs. Delivery is best effort, without retries; privacy signals disable remote transmission. Local aggregate totals and the return-visit flag survive in localStorage when available. No cross-device retention measurement exists yet.
 
-Suggested retention: delete events older than 90 days through an authenticated maintenance job:
+Retention: the privacy policy (`/privacy/`) says events are kept up to 90 days. The Worker's daily cron trigger (`triggers.crons` in `wrangler.jsonc`, handled by `scheduled()` in `worker.mjs`) runs this delete once `npx wrangler deploy` has been run with this config:
 
 ```sql
 DELETE FROM events WHERE created_at < strftime('%Y-%m-%dT%H:%M:%fZ', 'now', '-90 days');

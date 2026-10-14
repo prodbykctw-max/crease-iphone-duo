@@ -3,7 +3,7 @@ const VALUES = {
   mode: ['solo', 'duo'], difficulty: ['easy', 'normal', 'hard'], reason: ['new', 'restart', 'rematch'],
   source: ['direct', 'challenge', 'instagram', 'tiktok', 'youtube', 'x', 'facebook', 'reddit', 'creator', 'store'],
   vote: ['up', 'down'], why: ['too_hard', 'too_easy', 'more_worlds', 'want_online', 'bug'],
-  from: ['menu', 'result'], method: ['native'], winner: [1, 2],
+  from: ['menu', 'result', 'result_card'], method: ['native', 'image'], winner: [1, 2],
 };
 export default {
   async fetch(request, env) {
@@ -46,6 +46,10 @@ export default {
         .bind(body.id, body.name, JSON.stringify(props)).run();
       return reply(null, 204);
     } catch (_) { return reply('Temporarily unavailable', 503); }
+  },
+  // Daily cron (wrangler.jsonc triggers): the privacy policy promises events are kept up to 90 days.
+  async scheduled(_event, env) {
+    await env.DB.prepare("DELETE FROM events WHERE created_at < strftime('%Y-%m-%dT%H:%M:%fZ', 'now', '-90 days')").run();
   },
 };
 
