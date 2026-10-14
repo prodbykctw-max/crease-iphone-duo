@@ -16,7 +16,15 @@ Two ways in, both served by the same Worker:
 `Lobby` is a single Durable Object holding waiting room codes for 30 seconds.
 A code is only offered to a second player after its host's socket is open in
 the Room (the Room calls the lobby's internal `/ready`), and never to a request
-from the host's own IP. `Room` is one Durable Object per match: it accepts two
+from the host's own IP. Offering a code does not remove it: it stays listed
+until the Room reports that the second player connected (`/paired`) or that the
+room closed (`/gone`). An offer that is not paired within 5 seconds lapses and
+the code goes to the next arrival; the IP that let it lapse is not offered that
+code again. Each IP holds at most one unopened code (asking again returns the
+same code), and when the list is full (32) the oldest unconfirmed code is
+dropped first; a confirmed waiting host is never dropped. `/ready`, `/paired`
+and `/gone` are internal: the public Worker forwards only `/match` to the
+lobby. `Room` is one Durable Object per match: it accepts two
 sockets, steps the physics at 60 Hz and broadcasts state at 30 Hz. A room that
 nobody joins closes 60 seconds after its first player arrived (a storage
 alarm); a finished match closes about 5 seconds after the winner is decided; a
@@ -69,8 +77,11 @@ Production allows `https://prodbykctw-max.github.io`, `https://playcrease.app` a
 environment in `wrangler.jsonc` allows `http://127.0.0.1:8765` (and localhost
 on 8787), so serving the repo root on port 8765 and opening `online.html`
 there will talk to the local Worker - point `window.CREASE_ONLINE_URL` at
-`http://127.0.0.1:8787` to try it. `npx wrangler deploy` (no `--env`) deploys
-production with no localhost origins.
+`http://127.0.0.1:8787` to try it. `online.html` has a Content-Security-Policy
+whose `connect-src` only allows the production Worker, so for a local test also
+add `http://127.0.0.1:8787 ws://127.0.0.1:8787` to that `connect-src` (do not
+commit either change). `npx wrangler deploy` (no `--env`) deploys production
+with no localhost origins.
 
 ## Verified
 

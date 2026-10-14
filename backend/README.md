@@ -12,6 +12,8 @@ npx wrangler d1 migrations apply crease-metrics --remote
 npx wrangler deploy
 ```
 
+Run `npx wrangler d1 migrations apply crease-metrics --remote` again whenever a new file appears in `migrations/` (for example `0002_daily_cap.sql`), before deploying the Worker that uses it.
+
 Set `window.CREASE_ANALYTICS_ENDPOINT` in `../analytics-config.js` to the deployed Worker's HTTPS `/events` URL, then publish the frontend. The endpoint is currently set to the deployed `crease-metrics` Worker, so metrics are on; setting it back to blank turns them off. Never place a Cloudflare token or payment secret in browser code.
 
 Before enabling publicly, apply Cloudflare rate limiting appropriate to the account. Origin checks prevent casual browser misuse, not forged requests. Metrics are client-reported and unsuitable for prizes, verified scores, billing, or payment entitlements. There is no public read endpoint. Use the authenticated D1 console or Wrangler to query:
@@ -31,10 +33,19 @@ FROM events WHERE name IN ('feedback', 'feedback_reason') GROUP BY name, vote, w
 
 The server discards unrecognized properties, uses prepared SQL and deduplicates event UUIDs. It does not persist IP addresses, user agents, names, or persistent player IDs. Infrastructure providers may keep their own logs. Delivery is best effort, without retries; privacy signals disable remote transmission. Local aggregate totals and the return-visit flag survive in localStorage when available. No cross-device retention measurement exists yet.
 
+Daily cap: Workers rate limits are counted per Cloudflare location, not worldwide, so they can't promise to protect the account's shared D1 write quota (free plan: 100,000 rows written per day for the whole account). The Worker therefore keeps one counter row per UTC day in `daily_counts` (migration `0002_daily_cap.sql`) and stores an event only while that day's count is below `DAILY_EVENT_CAP` (`vars` in `wrangler.jsonc`, default 3000). The counter is raised with a single conditional upsert, so concurrent requests can't overshoot it. Past the cap, events are acknowledged (204) and dropped. A stored event writes about 4 rows (event, primary-key index, `created_at` index, counter), so 3000 events is about 12,000 rows a day. To see today's count:
+
+```sql
+SELECT * FROM daily_counts ORDER BY day DESC LIMIT 7;
+```
+
+Privacy signals: a request with `Sec-GPC: 1` or `DNT: 1` gets 204 and nothing is stored or counted (`analytics.js` already sends nothing from such browsers).
+
 Retention: the privacy policy (`/privacy/`) says events are kept up to 90 days. The Worker's daily cron trigger (`triggers.crons` in `wrangler.jsonc`, handled by `scheduled()` in `worker.mjs`) runs this delete once `npx wrangler deploy` has been run with this config:
 
 ```sql
 DELETE FROM events WHERE created_at < strftime('%Y-%m-%dT%H:%M:%fZ', 'now', '-90 days');
+DELETE FROM daily_counts WHERE day < strftime('%Y-%m-%d', 'now', '-30 days');
 ```
 
 Test locally with `node --test tests/worker.test.mjs` from the repository root. Deployment and actual D1 integration still require verification in the Cloudflare account.
