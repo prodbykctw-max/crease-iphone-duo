@@ -1,5 +1,5 @@
-// Online relay hardening: paddle speed cap, lobby readiness, idle/finished room
-// closing and per-IP rate limiting (backend/online).
+// Online relay hardening: paddle speed cap, lobby readiness and offer handling,
+// idle/finished room closing and per-IP rate limiting (backend/online).
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {initial,step,target,steer,MAX_SPEED} from '../backend/online/physics.mjs';
@@ -79,6 +79,78 @@ test('lobby ignores /ready for codes it never issued',async()=>{
   assert.equal((await match(lobby,'1.1.1.1')).create,true);
 });
 
+test('an offered code stays listed: not offered to a third player while the offer is live, and the joiner can retry',async()=>{
+  const lobby=new Lobby({});const real=Date.now;
+  try{
+    const t0=real();Date.now=()=>t0;
+    const host=await match(lobby,'1.1.1.1');await lobby.fetch(req('/ready?code='+host.code));
+    assert.deepEqual(await match(lobby,'2.2.2.2'),{code:host.code,create:false});
+    Date.now=()=>t0+3000;
+    const third=await match(lobby,'3.3.3.3');assert.equal(third.create,true);assert.notEqual(third.code,host.code,'live offer handed to a second joiner');
+    assert.deepEqual(await match(lobby,'2.2.2.2'),{code:host.code,create:false},'the same joiner retrying gets the same code');
+    assert.ok(lobby.waiting.some(w=>w.code===host.code),'offering must not remove the code');
+  }finally{Date.now=real;}
+});
+
+test('an offer that is not paired within 5 s goes to the next arrival, never back to the IP that let it lapse',async()=>{
+  const lobby=new Lobby({});const real=Date.now;
+  try{
+    const t0=real();Date.now=()=>t0;
+    const host=await match(lobby,'1.1.1.1');await lobby.fetch(req('/ready?code='+host.code));
+    // a grabber takes the code and never connects, then keeps polling
+    assert.equal((await match(lobby,'6.6.6.6')).code,host.code);
+    Date.now=()=>t0+4000;assert.equal((await match(lobby,'6.6.6.6')).code,host.code,'a repeat ask does not extend the offer');
+    Date.now=()=>t0+5100;
+    const again=await match(lobby,'6.6.6.6');assert.equal(again.create,true);assert.notEqual(again.code,host.code,'the grabber got the lapsed code back');
+    assert.deepEqual(await match(lobby,'7.7.7.7'),{code:host.code,create:false},'the real joiner gets the waiting host');
+  }finally{Date.now=real;}
+});
+
+test('a code is dropped once its room reports the pair',async()=>{
+  const lobby=new Lobby({});const real=Date.now;
+  try{
+    const t0=real();Date.now=()=>t0;
+    const host=await match(lobby,'1.1.1.1');await lobby.fetch(req('/ready?code='+host.code));
+    assert.equal((await match(lobby,'2.2.2.2')).code,host.code);
+    await lobby.fetch(req('/paired?code='+host.code));
+    assert.equal(lobby.waiting.length,0);
+    Date.now=()=>t0+6000;
+    const next=await match(lobby,'3.3.3.3');assert.equal(next.create,true);assert.notEqual(next.code,host.code);
+  }finally{Date.now=real;}
+});
+
+test('one IP holds at most one unopened code; once its room is open it may host another',async()=>{
+  const lobby=new Lobby({});
+  const first=await match(lobby,'8.8.8.8');assert.equal(first.create,true);
+  for(let i=0;i<50;i++)assert.deepEqual(await match(lobby,'8.8.8.8'),first);
+  assert.equal(lobby.waiting.length,1,'a flood from one IP listed extra codes');
+  await lobby.fetch(req('/ready?code='+first.code));
+  const second=await match(lobby,'8.8.8.8');assert.equal(second.create,true);assert.notEqual(second.code,first.code);
+});
+
+test('a burst of new codes never pushes out a confirmed waiting host',async()=>{
+  const lobby=new Lobby({});const real=Date.now;
+  try{
+    const t0=real();Date.now=()=>t0;
+    const host=await match(lobby,'1.1.1.1');await lobby.fetch(req('/ready?code='+host.code));
+    for(let i=0;i<200;i++)await match(lobby,'10.0.'+(i>>8)+'.'+(i&255));
+    assert.ok(lobby.waiting.length<=32,'list grew to '+lobby.waiting.length);
+    assert.ok(lobby.waiting.some(w=>w.code===host.code),'the confirmed host was dropped');
+    Date.now=()=>t0+5100;
+    assert.deepEqual(await match(lobby,'9.9.9.9'),{code:host.code,create:false});
+  }finally{Date.now=real;}
+});
+
+test('when every listed code is a confirmed host, a new code is still listed and none are dropped',async()=>{
+  const lobby=new Lobby({});const now=Date.now();
+  // 32 confirmed hosts, each currently offered to someone else
+  for(let i=0;i<32;i++)lobby.waiting.push({code:'HOST'+String(i).padStart(6,'A'),ts:now,ip:'1.0.0.'+i,ready:true,offer:{ip:'2.0.0.'+i,at:now},declined:new Set()});
+  const mine=await match(lobby,'3.3.3.3');assert.equal(mine.create,true);
+  assert.equal(lobby.waiting.length,33);
+  assert.equal(lobby.waiting.filter(w=>w.ready).length,32);
+  assert.ok(lobby.waiting.some(w=>w.code===mine.code));
+});
+
 // ── Room with a fake socket pair (Node has no WebSocketPair / 101 Response) ──
 class FakeWS{constructor(){this.sent=[];this.closed=false;this.l={};}accept(){}send(m){this.sent.push(m);}
   close(){this.closed=true;}addEventListener(t,f){(this.l[t]??=[]).push(f);}emit(t,e){for(const f of this.l[t]||[])f(e);}}
@@ -102,6 +174,44 @@ test('host connecting tells the lobby; an empty room closes on its alarm',()=>wi
   assert.deepEqual(readyCalls,['https://lobby/ready?code=ABCDEFGHJK']);
   await room.alarm();
   assert.equal(sockets[0].closed,true);assert.equal(room.players.length,0);
+}));
+
+test('the second player connecting tells the lobby the pair is made',()=>withFakes(async()=>{
+  const calls=[];
+  const env={LOBBY:{idFromName:n=>n,get:()=>({fetch:async u=>{calls.push(String(u));return new Response(null,{status:204});}})}};
+  const realSI=globalThis.setInterval,realCI=globalThis.clearInterval;
+  globalThis.setInterval=()=>1;globalThis.clearInterval=()=>{};
+  try{
+    const room=new Room(fakeCtx(),env);
+    await room.fetch(roomReq('ABCDEFGHJK',true));
+    assert.deepEqual(calls,['https://lobby/ready?code=ABCDEFGHJK']);
+    await room.fetch(roomReq('ABCDEFGHJK',false));
+    await new Promise(r=>setTimeout(r,0));
+    assert.deepEqual(calls,['https://lobby/ready?code=ABCDEFGHJK','https://lobby/paired?code=ABCDEFGHJK']);
+  }finally{globalThis.setInterval=realSI;globalThis.clearInterval=realCI;}
+}));
+
+test('lobby and rooms together: a paired code leaves the lobby, an abandoned offer is re-offered',()=>withFakes(async()=>{
+  const realSI=globalThis.setInterval,realCI=globalThis.clearInterval,real=Date.now;
+  globalThis.setInterval=()=>1;globalThis.clearInterval=()=>{};
+  try{
+    const lobby=new Lobby({}),rooms=new Map();
+    const env={LOBBY:{idFromName:n=>n,get:()=>({fetch:u=>lobby.fetch(new Request(u))})}};
+    const room=code=>{if(!rooms.has(code))rooms.set(code,new Room(fakeCtx(),env));return rooms.get(code);};
+    const t0=real();Date.now=()=>t0;
+    // host 1 asks, opens its room; a grabber takes the code and never connects
+    const h=await match(lobby,'1.1.1.1');assert.equal(h.create,true);
+    await room(h.code).fetch(roomReq(h.code,true));
+    assert.equal((await match(lobby,'6.6.6.6')).code,h.code);
+    // 5 s later a real joiner still gets host 1 and connects
+    Date.now=()=>t0+5100;
+    const j=await match(lobby,'2.2.2.2');assert.deepEqual(j,{code:h.code,create:false});
+    await room(j.code).fetch(roomReq(j.code,false));
+    await new Promise(r=>setTimeout(r,0));
+    assert.equal(room(h.code).players.length,2);
+    assert.ok(!lobby.waiting.some(w=>w.code===h.code),'paired code still listed');
+    const next=await match(lobby,'3.3.3.3');assert.equal(next.create,true);assert.notEqual(next.code,h.code);
+  }finally{globalThis.setInterval=realSI;globalThis.clearInterval=realCI;Date.now=real;}
 }));
 
 test('a full room ignores the alarm; a finished match closes ~5 s after the winner',()=>withFakes(async sockets=>{
@@ -147,11 +257,11 @@ test('rate limit: /match and /room are limited per IP after the origin check',as
   assert.equal(codes.filter(c=>c===200).length,20);assert.equal(codes.at(-1),429);
 });
 
-test('production config serves only the github.io origin',async()=>{
+test('production config serves only the game\'s own origins',async()=>{
   const {readFileSync}=await import('node:fs');
   const raw=readFileSync(new URL('../backend/online/wrangler.jsonc',import.meta.url),'utf8');
   const cfg=JSON.parse(raw.replace(/^\s*\/\/.*$/gm,''));
-  assert.equal(cfg.vars.ALLOWED_ORIGINS,'https://prodbykctw-max.github.io');
+  assert.deepEqual(cfg.vars.ALLOWED_ORIGINS.split(','),['https://prodbykctw-max.github.io','https://playcrease.app','https://www.playcrease.app']);
   assert.match(cfg.env.dev.vars.ALLOWED_ORIGINS,/localhost/);
   assert.equal(cfg.ratelimits[0].name,'MATCH_LIMIT');
 });

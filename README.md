@@ -51,20 +51,26 @@ python3 -m http.server 8765
 
 Port 8765 is the origin the online relay's `dev` environment allows, and the default for `qa/qa.js`.
 
+The test hooks `window.__crease` (game) and `window.__online` (online page) exist only on a local server (`localhost` / `127.0.0.1`) or when the URL has `?qa=1`.
+
 ## Tests and checks
 
 ```sh
 node --test tests/*.test.mjs          # unit tests (game logic, progression, workers, online relay)
 node tools/stamp-assets.mjs --check   # fails if a ?v= cache tag no longer matches its file
 node tools/stamp-assets.mjs           # rewrite the cache tags after changing a script
+node tools/csp-hash.mjs --check       # fails if a CSP script hash no longer matches its inline script
+node tools/csp-hash.mjs               # rewrite the CSP hashes after changing an inline script
 ```
+
+`index.html`, `online.html` and `vr.html` carry a Content-Security-Policy that only runs scripts from this site plus the exact inline scripts listed by hash. After editing any inline script, run `node tools/stamp-assets.mjs` first and then `node tools/csp-hash.mjs` (in that order), or the browser will refuse to run the changed script. On `index.html` the policy is installed by the first script in `<head>`, everywhere except `localhost` / `127.0.0.1`, because the internal capture harness rewrites the game script locally. See the header of `tools/csp-hash.mjs`.
 
 `qa/qa.js` and `qa/check-centerpieces.cjs` are Playwright browser checks (Playwright is not a dependency of this repo; install it separately).
 
 ## Deploy
 
 - **Game:** a static site served by GitHub Pages from `main`. The live page matched `index.html` on `main` when this README was written.
-- **CI:** `.github/workflows/asset-tags.yml` runs `node tools/stamp-assets.mjs --check` on every push to `main` and every pull request. Script tags in `index.html`, `vr.html` and `online.html` use content-hash `?v=` tags; do not hand-edit them.
+- **CI:** `.github/workflows/asset-tags.yml` runs `node tools/stamp-assets.mjs --check`, `node tools/csp-hash.mjs --check` and the unit tests (`node --test tests/*.test.mjs`) on every push to `main` and every pull request. Script tags in `index.html`, `vr.html` and `online.html` use content-hash `?v=` tags; do not hand-edit them.
 - **Workers:** deployed separately with Wrangler from `backend/` (metrics) and `backend/online/` (online relay). See the two backend READMEs.
 
 ## Project structure
@@ -87,7 +93,7 @@ backend/                Metrics Worker + D1 migration (see backend/README.md)
 backend/online/         Online relay Worker + shared physics (see its README)
 tests/                  node:test suites
 qa/                     Playwright checks
-tools/                  stamp-assets.mjs, capture/video helpers
+tools/                  stamp-assets.mjs, csp-hash.mjs, capture/video helpers
 docs/                   STATUS, LAUNCH, iOS 27 / iPhone Duo readiness, player-experience principles
 marketing/              Launch campaign notes
 media/                  Gameplay video and poster

@@ -17,6 +17,9 @@ export default {
       'Access-Control-Allow-Methods': 'POST', 'Access-Control-Allow-Headers': 'Content-Type', 'Access-Control-Max-Age': '600' } });
     if (request.method !== 'POST') return reply('Method not allowed', 405);
     if (!request.headers.get('Content-Type')?.startsWith('application/json')) return reply('JSON required', 415);
+    // Global Privacy Control / Do Not Track: accept the request and store nothing. analytics.js already
+    // stays silent for these browsers; this also covers any other client that sends the signal.
+    if (request.headers.get('Sec-GPC') === '1' || request.headers.get('DNT') === '1') return reply(null, 204);
     // Public telemetry is untrusted. Two Workers rate limits run before any body is read or written:
     // one per connection (the IP is only a transient limiter key; it is never stored) and one for
     // the whole Worker, so a flood can't use up the account's shared D1 write quota.
@@ -41,15 +44,41 @@ export default {
     if (!body || !EVENTS.has(body.name) || typeof body.id !== 'string' || !/^[a-f0-9-]{36}$/i.test(body.id)) return reply('Invalid event', 400);
     const props = {};
     for (const [key, values] of Object.entries(VALUES)) if (values.includes(body.props?.[key])) props[key] = body.props[key];
+    // Global daily cap. Workers rate limits are counted per Cloudflare location, not worldwide, so a
+    // distributed flood could still pass them. One counter row per UTC day is raised only while it is
+    // below the cap, in a single statement, so concurrent requests can't overshoot it. Once the cap is
+    // reached the event is dropped (204, nothing stored) and the account's D1 write quota is safe.
+    const cap = dailyCap(env);
+    if (cap === 0) return reply(null, 204);
     try {
+      const counted = await env.DB.prepare('INSERT INTO daily_counts (day, n) VALUES (?, 1) ON CONFLICT(day) DO UPDATE SET n = n + 1 WHERE n < ?')
+        .bind(new Date().toISOString().slice(0, 10), cap).run();
+      if (!counted?.meta?.changes) return reply(null, 204);
       await env.DB.prepare('INSERT OR IGNORE INTO events (id, name, props) VALUES (?, ?, ?)')
         .bind(body.id, body.name, JSON.stringify(props)).run();
       return reply(null, 204);
     } catch (_) { return reply('Temporarily unavailable', 503); }
   },
-  // Daily cron (wrangler.jsonc triggers): the privacy policy promises events are kept up to 90 days.
+  // Daily cron (wrangler.jsonc triggers): the privacy policy promises events are kept up to 90 days;
+  // the daily counters are only needed for a month. Each delete runs even if the other fails, and a
+  // failure is rethrown afterwards so it shows in the Worker's cron logs.
   async scheduled(_event, env) {
-    await env.DB.prepare("DELETE FROM events WHERE created_at < strftime('%Y-%m-%dT%H:%M:%fZ', 'now', '-90 days')").run();
+    const failures = [];
+    for (const sql of [
+      "DELETE FROM events WHERE created_at < strftime('%Y-%m-%dT%H:%M:%fZ', 'now', '-90 days')",
+      "DELETE FROM daily_counts WHERE day < strftime('%Y-%m-%d', 'now', '-30 days')",
+    ]) {
+      try { await env.DB.prepare(sql).run(); } catch (error) { failures.push(error); }
+    }
+    if (failures.length) throw failures[0];
   },
 };
+
+// DAILY_EVENT_CAP (wrangler.jsonc vars) is the most events stored per UTC day; default 3000. Each stored
+// event writes about 4 D1 rows (event row, primary key index, created_at index, counter), so the default
+// stays far below the free plan's 100,000 rows written per day for the whole account.
+function dailyCap(env) {
+  const n = Number.parseInt(env.DAILY_EVENT_CAP, 10);
+  return Number.isFinite(n) && n >= 0 ? n : 3000;
+}
 

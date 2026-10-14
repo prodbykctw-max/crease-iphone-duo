@@ -1,4 +1,4 @@
-<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>CREASE · Play Air Hockey Online, Free</title>
+<!doctype html><html lang="en"><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-rTFMDvNI0+/ZTGCzSuhpAodcFDo/yKJABAUKmJzfYPg='; connect-src 'self' https://crease-online.prodbykctw.workers.dev wss://crease-online.prodbykctw.workers.dev; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'none'; form-action 'none'"><meta name="referrer" content="strict-origin-when-cross-origin"><meta name="viewport" content="width=device-width,initial-scale=1"><title>CREASE · Play Air Hockey Online, Free</title>
 <meta name="description" content="Play CREASE online free — neon air hockey against another person in your browser. Tap QUICK MATCH to be paired with whoever is looking for a game, or share a room code to play a friend. No download, no account.">
 <link rel="canonical" href="https://playcrease.app/online.html">
 <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large">
@@ -163,7 +163,8 @@ function draw(){
   ctx.restore();requestAnimationFrame(draw);
 }
 draw();
-// Test hook: lets an automated run read what a real player would see.
-window.__online={get state(){return state;},get player(){return player;},get room(){return room;},
+// Test hook: lets an automated run read what a real player would see. Only on
+// a local server (localhost / 127.0.0.1) or with ?qa=1.
+if(/^(localhost|127\.0\.0\.1)$/.test(location.hostname)||new URLSearchParams(location.search).get('qa')==='1')window.__online={get state(){return state;},get player(){return player;},get room(){return room;},
   get status(){return $('status').textContent;},get connected(){return !!ws&&ws.readyState===1;}};
 </script></html>

@@ -2,6 +2,10 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<!-- Content-Security-Policy: installed by the next script, except on a local test server (localhost / 127.0.0.1) where the capture harness rewrites the game script. Update hashes with: node tools/csp-hash.mjs -->
+<meta name="crease-csp" content="default-src 'self'; script-src 'self' 'sha256-9kyMFOQq/HLwXlyiVTgCTQzmo6H4oBBvtdWEJb0rIFI=' 'sha256-2vj9hLVuxIYov2EVhgm0mCt4bCYrRG3u5Cb5RsK7Arc='; connect-src 'self' https://crease-metrics.prodbykctw.workers.dev; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<script>(function(){var h=location.hostname;if(h==='localhost'||h==='127.0.0.1')return;var p=document.querySelector('meta[name="crease-csp"]'),m=document.createElement('meta');m.httpEquiv='Content-Security-Policy';m.content=p.content;document.head.appendChild(m);})();</script>
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
@@ -3650,8 +3654,8 @@ newMatch('demo');
 if (/[?&]nointro\b/.test(location.search) || challenged) show('menu', true); else showBoot();
 requestAnimationFrame(t => { last = t; requestAnimationFrame(frame); });
 
-// test hooks (harmless in production)
-window.__crease = {
+// Test hooks for automated checks: only on a local server (localhost / 127.0.0.1) or with ?qa=1.
+if (/^(localhost|127\.0\.0\.1)$/.test(location.hostname) || new URLSearchParams(location.search).get('qa') === '1') window.__crease = {
   game, view, layout, newMatch, start, pause, playIntro, endIntro, showBoot, playStudio, endStudio, bootMarkRender, setStage, STAGES, stage: () => stageIx, perf, music, audio: () => ac,
   sim(seconds, step = 1 / 60) { for (let t = 0; t < seconds; t += step) update(step); },
   matchSnapshot, drawShareCard: snap => drawResultCard(document.createElement('canvas'), snap || matchSnapshot()).toDataURL('image/png'),
