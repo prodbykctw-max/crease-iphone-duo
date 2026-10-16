@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="referrer" content="strict-origin-when-cross-origin">
 <!-- Content-Security-Policy: installed by the next script, except on a local test server (localhost / 127.0.0.1) where the capture harness rewrites the game script. Update hashes with: node tools/csp-hash.mjs -->
-<meta name="crease-csp" content="default-src 'self'; script-src 'self' 'sha256-9kyMFOQq/HLwXlyiVTgCTQzmo6H4oBBvtdWEJb0rIFI=' 'sha256-2vj9hLVuxIYov2EVhgm0mCt4bCYrRG3u5Cb5RsK7Arc='; connect-src 'self' https://crease-metrics.prodbykctw.workers.dev; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta name="crease-csp" content="default-src 'self'; script-src 'self' 'sha256-9kyMFOQq/HLwXlyiVTgCTQzmo6H4oBBvtdWEJb0rIFI=' 'sha256-IjMagKBGwPDBwdSCRQfzj18psYwkdwJLUr4nypvNZzY='; connect-src 'self' https://crease-metrics.prodbykctw.workers.dev; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <script>(function(){var h=location.hostname;if(h==='localhost'||h==='127.0.0.1')return;var p=document.querySelector('meta[name="crease-csp"]'),m=document.createElement('meta');m.httpEquiv='Content-Security-Policy';m.content=p.content;document.head.appendChild(m);})();</script>
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -47,6 +47,8 @@ html.splash-boot,html.splash-boot body{background:#030007}
 h1{margin:0;font-size:clamp(42px,11vmin,76px);font-weight:900;font-style:italic;letter-spacing:.16em;padding:0 .08em 0 .2em;line-height:1.08;
   background:linear-gradient(180deg,#fff 0%,#ffe6ff 44%,#6a2bb8 50%,#ff7ad9 62%,#ffd23f 100%);-webkit-background-clip:text;background-clip:text;color:transparent;
   filter:drop-shadow(0 0 10px rgba(255,42,138,.55)) drop-shadow(2px 2px 0 rgba(45,226,230,.55))}
+h1.logo{background:none;filter:none;color:inherit;padding:2px 0 4px;letter-spacing:0;line-height:0;font-size:0}
+h1.logo img{display:block;height:clamp(34px,8.4vmin,58px);width:auto;max-width:100%;margin:0 auto}
 h2{margin:0 0 6px;font-size:clamp(30px,8vmin,48px);font-weight:900;font-style:italic;letter-spacing:.08em;text-shadow:0 0 14px rgba(255,42,138,.6),2px 2px 0 rgba(45,226,230,.5)}
 .tag{margin:6px 0 2px;color:var(--ink);font-size:15px;font-weight:600}
 .hint{margin:6px 0 14px;color:var(--dim);font-size:13px;line-height:1.4;min-height:18px}
@@ -226,19 +228,19 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--p1);outline-offset:
 <link rel="alternate" type="text/plain" href="https://playcrease.app/llms.txt" title="llms.txt">
 <meta property="og:site_name" content="CREASE">
 <meta property="og:locale" content="en_US">
-<meta property="og:image" content="https://playcrease.app/og-fold.png">
+<meta property="og:image" content="https://playcrease.app/og-crease.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta property="og:image:alt" content="CREASE neon air hockey table, the crease running down the middle of the screen">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="CREASE — Air Hockey for the iPhone Duo">
 <meta name="twitter:description" content="Free neon air hockey for the iPhone Duo. Open it: two players, one on each side. Close it: you vs the CPU. Fold it mid-match and the game keeps going. First to 7.">
-<meta name="twitter:image" content="https://playcrease.app/og-fold.png">
+<meta name="twitter:image" content="https://playcrease.app/og-crease.png">
 <link rel="icon" href="favicon.ico?v=logo-a" sizes="32x32">
 <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=logo-a">
 <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png?v=logo-a">
 <link rel="manifest" href="manifest.webmanifest">
-<script type="application/ld+json">[{"@context": "https://schema.org", "@type": "VideoGame", "name": "CREASE", "alternateName": "CREASE — Free Two-Player Air Hockey", "url": "https://playcrease.app/", "image": "https://playcrease.app/og-fold.png", "description": "CREASE is a free two-player neon air hockey game in your browser. One screen, two players, first to 7. Solo vs CPU in portrait, head-to-head in landscape. Built for foldable phones like the iPhone Duo by prodbyKCTW.", "genre": ["Arcade", "Sports"], "gamePlatform": ["Web browser", "iOS Safari", "Android Chrome"], "applicationCategory": "Game", "operatingSystem": "Any", "playMode": ["SinglePlayer", "MultiPlayer"], "numberOfPlayers": {"@type": "QuantitativeValue", "minValue": 1, "maxValue": 2}, "isAccessibleForFree": true, "offers": {"@type": "Offer", "price": "0", "priceCurrency": "USD"}, "author": {"@type": "Organization", "name": "prodbyKCTW", "url": "https://www.instagram.com/prodbykctw/", "founder": {"@type": "Person", "name": "Melvin D. Brown III"}}, "publisher": {"@type": "Organization", "name": "RARƎ AGENCY"}, "@id": "https://playcrease.app/#game", "datePublished": "2026-09-21", "inLanguage": "en-US", "screenshot": "https://playcrease.app/media/crease-fold-poster.jpg", "video": {"@id": "https://playcrease.app/#gameplay-video"}, "trailer": {"@id": "https://playcrease.app/#gameplay-video"}}, {"@context": "https://schema.org", "@type": "VideoObject", "@id": "https://playcrease.app/#gameplay-video", "name": "CREASE — fold it mid-match and the game keeps going", "description": "CREASE gameplay. Closed, it is a pocket table: you vs the CPU. Opened, it is a full table with a player on each side. Fold it mid-match and the game keeps going, score and all.", "thumbnailUrl": ["https://playcrease.app/media/crease-fold-poster.jpg", "https://playcrease.app/og-fold.png"], "contentUrl": "https://playcrease.app/media/crease-fold.mp4", "encodingFormat": "video/mp4", "width": 1920, "height": 1080, "duration": "PT11S", "uploadDate": "2026-10-05T00:00:00-04:00", "isFamilyFriendly": true, "inLanguage": "en-US", "publisher": {"@type": "Organization", "name": "prodbyKCTW", "url": "https://www.instagram.com/prodbykctw/"}, "creator": {"@type": "Person", "name": "Melvin D. Brown III"}, "about": {"@id": "https://playcrease.app/#game"}}, {"@context": "https://schema.org", "@type": "FAQPage", "mainEntity": [{"@type": "Question", "name": "What is CREASE?", "acceptedAnswer": {"@type": "Answer", "text": "A free two-player neon air hockey game that runs in your browser — one screen, two players, first to 7. Solo vs CPU in portrait, head-to-head in landscape."}}, {"@type": "Question", "name": "Is CREASE free?", "acceptedAnswer": {"@type": "Answer", "text": "Yes. CREASE is free to play, with no download and no account. An optional Premium Pass (a one-time purchase) adds extras."}}, {"@type": "Question", "name": "Can two people play on one phone?", "acceptedAnswer": {"@type": "Answer", "text": "Yes. Turn the phone to landscape; each player controls the paddle on their half of the screen."}}, {"@type": "Question", "name": "Does CREASE work on iPhone?", "acceptedAnswer": {"@type": "Answer", "text": "Yes — in Safari and as a home-screen app (Share → Add to Home Screen). It also runs in Android Chrome and desktop browsers."}}, {"@type": "Question", "name": "What is the iPhone Duo connection?", "acceptedAnswer": {"@type": "Answer", "text": "CREASE is made for Apple's foldable. Closed, the outer screen is a pocket table: you vs the CPU. Opened, the inner screen is a full table with one player on each side, and the center line runs down the fold. Fold or unfold mid-match and the game keeps going, score and all."}}, {"@type": "Question", "name": "Can I play CREASE online against other people?", "acceptedAnswer": {"@type": "Answer", "text": "Yes. Open Play online and tap QUICK MATCH to be paired with whoever else is looking for a game, or send a friend a room code to play them directly. It is free and runs in the browser with no account."}}, {"@type": "Question", "name": "What are SMASH and BUMP?", "acceptedAnswer": {"@type": "Answer", "text": "SMASH is flicking your paddle hard into the puck to speed it up. BUMP is bouncing the puck off the gold bumpers on the crease; scoring off one is a BANK SHOT."}}, {"@type": "Question", "name": "Who made CREASE?", "acceptedAnswer": {"@type": "Answer", "text": "prodbyKCTW — Melvin D. Brown III, an independent developer and producer in the Atlanta area, co-founder of RARƎ AGENCY."}}]}]</script>
+<script type="application/ld+json">[{"@context": "https://schema.org", "@type": "VideoGame", "name": "CREASE", "alternateName": "CREASE — Free Two-Player Air Hockey", "url": "https://playcrease.app/", "image": "https://playcrease.app/og-crease.png", "description": "CREASE is a free two-player neon air hockey game in your browser. One screen, two players, first to 7. Solo vs CPU in portrait, head-to-head in landscape. Built for foldable phones like the iPhone Duo by prodbyKCTW.", "genre": ["Arcade", "Sports"], "gamePlatform": ["Web browser", "iOS Safari", "Android Chrome"], "applicationCategory": "Game", "operatingSystem": "Any", "playMode": ["SinglePlayer", "MultiPlayer"], "numberOfPlayers": {"@type": "QuantitativeValue", "minValue": 1, "maxValue": 2}, "isAccessibleForFree": true, "offers": {"@type": "Offer", "price": "0", "priceCurrency": "USD"}, "author": {"@type": "Organization", "name": "prodbyKCTW", "url": "https://www.instagram.com/prodbykctw/", "founder": {"@type": "Person", "name": "Melvin D. Brown III"}}, "publisher": {"@type": "Organization", "name": "RARƎ AGENCY"}, "@id": "https://playcrease.app/#game", "datePublished": "2026-09-21", "inLanguage": "en-US", "screenshot": "https://playcrease.app/media/crease-fold-poster.jpg", "video": {"@id": "https://playcrease.app/#gameplay-video"}, "trailer": {"@id": "https://playcrease.app/#gameplay-video"}}, {"@context": "https://schema.org", "@type": "VideoObject", "@id": "https://playcrease.app/#gameplay-video", "name": "CREASE — fold it mid-match and the game keeps going", "description": "CREASE gameplay. Closed, it is a pocket table: you vs the CPU. Opened, it is a full table with a player on each side. Fold it mid-match and the game keeps going, score and all.", "thumbnailUrl": ["https://playcrease.app/media/crease-fold-poster.jpg", "https://playcrease.app/og-crease.png"], "contentUrl": "https://playcrease.app/media/crease-fold.mp4", "encodingFormat": "video/mp4", "width": 1920, "height": 1080, "duration": "PT11S", "uploadDate": "2026-10-05T00:00:00-04:00", "isFamilyFriendly": true, "inLanguage": "en-US", "publisher": {"@type": "Organization", "name": "prodbyKCTW", "url": "https://www.instagram.com/prodbykctw/"}, "creator": {"@type": "Person", "name": "Melvin D. Brown III"}, "about": {"@id": "https://playcrease.app/#game"}}, {"@context": "https://schema.org", "@type": "FAQPage", "mainEntity": [{"@type": "Question", "name": "What is CREASE?", "acceptedAnswer": {"@type": "Answer", "text": "A free two-player neon air hockey game that runs in your browser — one screen, two players, first to 7. Solo vs CPU in portrait, head-to-head in landscape."}}, {"@type": "Question", "name": "Is CREASE free?", "acceptedAnswer": {"@type": "Answer", "text": "Yes. CREASE is free to play, with no download and no account. An optional Premium Pass (a one-time purchase) adds extras."}}, {"@type": "Question", "name": "Can two people play on one phone?", "acceptedAnswer": {"@type": "Answer", "text": "Yes. Turn the phone to landscape; each player controls the paddle on their half of the screen."}}, {"@type": "Question", "name": "Does CREASE work on iPhone?", "acceptedAnswer": {"@type": "Answer", "text": "Yes — in Safari and as a home-screen app (Share → Add to Home Screen). It also runs in Android Chrome and desktop browsers."}}, {"@type": "Question", "name": "What is the iPhone Duo connection?", "acceptedAnswer": {"@type": "Answer", "text": "CREASE is made for Apple's foldable. Closed, the outer screen is a pocket table: you vs the CPU. Opened, the inner screen is a full table with one player on each side, and the center line runs down the fold. Fold or unfold mid-match and the game keeps going, score and all."}}, {"@type": "Question", "name": "Can I play CREASE online against other people?", "acceptedAnswer": {"@type": "Answer", "text": "Yes. Open Play online and tap QUICK MATCH to be paired with whoever else is looking for a game, or send a friend a room code to play them directly. It is free and runs in the browser with no account."}}, {"@type": "Question", "name": "What are SMASH and BUMP?", "acceptedAnswer": {"@type": "Answer", "text": "SMASH is flicking your paddle hard into the puck to speed it up. BUMP is bouncing the puck off the gold bumpers on the crease; scoring off one is a BANK SHOT."}}, {"@type": "Question", "name": "Who made CREASE?", "acceptedAnswer": {"@type": "Answer", "text": "prodbyKCTW — Melvin D. Brown III, an independent developer and producer in the Atlanta area, co-founder of RARƎ AGENCY."}}]}]</script>
 </head>
 <body>
 <canvas id="cv" aria-label="CREASE game table"></canvas>
@@ -259,7 +261,7 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--p1);outline-offset:
 
 <div id="menu" class="overlay hidden">
   <div class="card">
-    <h1>CREASE</h1>
+    <h1 class="logo"><img src="assets/crease-wordmark.svg?v=logo-a" alt="CREASE" width="824" height="164"></h1>
     <p class="tag">One screen. Two players. First to 7.</p>
     <p id="challengeHint" class="share-status hidden">Challenge accepted? Choose your match below.</p>
     <p id="screenHint" class="hint"></p>
@@ -425,6 +427,7 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--p1);outline-offset:
 
 <script src="analytics-config.js"></script>
 <script src="analytics.js"></script>
+<script src="assets/crease-logo.js?v=b9edba6bb1"></script>
 <script src="assets/arena-engine.js?v=839de2dcf7"></script>
 <script src="assets/progression.js?v=cba130d647"></script>
 <script src="assets/monetization.js?v=2edb24d735"></script>
@@ -1509,7 +1512,14 @@ function perfTick(ms) {
   else if (fps < 45 && perf.detail > 0.65) { perf.detail = 0.65; perf.hold = 180; }
   else if (fps > 56 && perf.detail < 1) { perf.detail = Math.min(1, perf.detail + 0.35); perf.hold = 300; }
 }
+// Split screen / pop-up windows (Galaxy Z Fold, iPad, desktop): when another window has focus and
+// nothing is in play, redraw at ~8 fps so the other apps on screen get the GPU and battery.
+const IDLE_STATES = { paused: 1, over: 1 };
+function idleBackground() {
+  return !document.hasFocus() && (game.mode === 'demo' || IDLE_STATES[game.state] === 1);
+}
 function frame(now) {
+  if (idleBackground() && now - last < 125) { requestAnimationFrame(frame); return; }
   const raw = Math.max(0, (now - last) / 1000);
   perfTick(raw * 1000);
   last = now;
@@ -2445,11 +2455,12 @@ function bootMarkSetup() {
   const key = F + '|' + dpr;
   if (key === bootMark.key) return true;
   bootMark.key = key; bootMark.dpr = dpr; bootMark.F = F;
+  const LG = window.CreaseLogo, lh = 0.74 * F;                                         // logo cap height ≈ the old caps
   const font = `900 ${F}px -apple-system, "SF Pro Rounded", system-ui, sans-serif`;
   const probe = mkCanvas(1, 1).getContext('2d'); probe.font = font;
   const letters = [...'CREASE'], ls = 0.14 * F, padL = 0.24 * F, padR = 0.1 * F;   // letter-spacing .14em, padding 0 .1em 0 .24em
   const adv = letters.map(ch => probe.measureText(ch).width);
-  const W = padL + adv.reduce((a, b) => a + b + ls, 0) + padR, H = 1.1 * F;         // line-height 1.1
+  const W = LG ? LG.width(lh) + 0.2 * F : padL + adv.reduce((a, b) => a + b + ls, 0) + padR, H = 1.1 * F;
   const M = Math.ceil(F * 0.45);                                                      // room for the glow outside the box
   bootMark.W = W; bootMark.H = H; bootMark.M = M;
   const c = $('bootMark');
@@ -2462,8 +2473,17 @@ function bootMarkSetup() {
   const base = (H - (asc + desc)) / 2 + asc;
   const text = mkCanvas(W * dpr, H * dpr), tg = text.getContext('2d');
   tg.scale(dpr, dpr); tg.font = font; tg.textBaseline = 'alphabetic'; tg.fillStyle = '#fff';
-  let x = padL;
-  for (let i = 0; i < letters.length; i++) { tg.fillText(letters[i], x, base); x += adv[i] + ls; }
+  if (LG) {
+    const lx = 0.1 * F, ly = (H - lh) / 2;
+    LG.draw(tg, lx, ly, lh, { top: '#fff', bot: '#fff' });
+    const two = mkCanvas(W * dpr, H * dpr), tc = two.getContext('2d');
+    tc.scale(dpr, dpr); LG.draw(tc, lx, ly, lh);
+    bootMark.two = two;
+  } else {
+    let x = padL;
+    for (let i = 0; i < letters.length; i++) { tg.fillText(letters[i], x, base); x += adv[i] + ls; }
+    bootMark.two = null;
+  }
   bootMark.text = text;
   for (const [k, col] of [['cyan', 'rgba(45,226,230,.7)'], ['pink', 'rgba(255,42,138,.7)']]) {
     const o = mkCanvas(text.width, text.height), og = o.getContext('2d');
@@ -2485,6 +2505,7 @@ function bootMarkSetup() {
 }
 // gradient-filled text at time t (background-position animates 0% → 300% over 5s, tiles repeat)
 function holoText(t) {
+  if (bootMark.two) return bootMark.two;   // logo A: its own pink/cyan split instead of the holo sweep
   const g = bootMark.grad, gc = g.getContext('2d'), tw = bootMark.tile.width;
   gc.globalCompositeOperation = 'source-over'; gc.clearRect(0, 0, g.width, g.height);
   const off = -2 * bootMark.W * bootMark.dpr * 3 * ((t % 5) / 5);
@@ -2738,12 +2759,31 @@ function drawIntro(sx, sy) {
 function drawTitle(T) {
   const word = 'CREASE', cx = view.vw / 2, cy = view.vh / 2 - Math.min(view.vw, view.vh) * 0.04;
   const size = Math.min(view.vw * 0.15, view.vh * 0.16, 110);
+  const LG = window.CreaseLogo;
   ctx.save(); ctx.setTransform(view.dpr, 0, 0, view.dpr, 0, 0);
+  let total;
+  if (LG) {
+    // logo A: each letter springs in with its two halves closing on the crease
+    const h = size * 0.9, s = h / LG.H;
+    total = LG.width(h);
+    const x0 = cx - total / 2, y0 = cy - h / 2;
+    for (let i = 0; i < word.length; i++) {
+      const k = seg(T, 5.0 + i * 0.12, 5.25 + i * 0.12);
+      if (k <= 0) continue;
+      const e = ease.outBack(k), sc = 2.4 - 1.4 * e, split = (1 - ease.out3(k)) * h * 0.55;
+      const c = LG.cuts[i], lw = (c[1] - c[0]) * s, lx = x0 + c[0] * s, mid = lx + lw / 2;
+      ctx.save(); ctx.translate(mid, cy); ctx.scale(sc, sc); ctx.translate(-mid, -cy);
+      ctx.globalAlpha = Math.min(1, k * 1.5);
+      if (k < 1) { ctx.shadowColor = 'rgba(255,255,255,.55)'; ctx.shadowBlur = size * 0.3 * (1 - k); }
+      LG.drawLetter(ctx, i, lx, y0, h, { split });
+      ctx.restore();
+    }
+  } else {
   ctx.font = `900 ${Math.round(size)}px -apple-system, "SF Pro Rounded", system-ui, sans-serif`;
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   const gap = size * 0.12;
   const widths = [...word].map(ch => ctx.measureText(ch).width);
-  const total = widths.reduce((a, b) => a + b, 0) + gap * (word.length - 1);
+  total = widths.reduce((a, b) => a + b, 0) + gap * (word.length - 1);
   let x = cx - total / 2;
   for (let i = 0; i < word.length; i++) {
     const w = widths[i], lx = x + w / 2; x += w + gap;
@@ -2760,6 +2800,8 @@ function drawTitle(T) {
     ctx.fillStyle = '#ffffff'; ctx.fillText(word[i], 0, 0);
     ctx.restore();
   }
+  }
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   const tg = seg(T, 6.1, 6.6);
   if (tg > 0) {
     ctx.globalAlpha = tg;
@@ -3341,7 +3383,11 @@ function drawResultCard(c, s) {
   x.fillStyle = 'rgba(163,145,201,.95)'; for (const [ch, gx] of arena) x.fillText(ch, gx, ty);
   // wordmark and where to play, under the slab
   const wm = 78, word = cardSpaced(x, 'CREASE', cx, wm, 0.14, 900), wy = sy + sh + 92;
-  for (let i = 0; i < word.cells.length; i++) {
+  if (window.CreaseLogo) {
+    const lh = 60, lw = CreaseLogo.width(lh);
+    x.save(); x.shadowColor = 'rgba(255,42,138,.35)'; x.shadowBlur = 24;
+    CreaseLogo.draw(x, cx - lw / 2, wy - lh / 2, lh); x.restore();
+  } else for (let i = 0; i < word.cells.length; i++) {
     const [ch, lx] = word.cells[i], tint = i < 2 ? '#2de2e6' : i > 3 ? '#ff2a8a' : '#ffffff';
     x.globalAlpha = 0.55; x.fillStyle = '#2de2e6'; x.fillText(ch, lx - wm * 0.028, wy); x.fillStyle = '#ff2a8a'; x.fillText(ch, lx + wm * 0.028, wy);
     x.globalAlpha = 1; x.shadowColor = tint; x.shadowBlur = wm * 0.42; x.fillStyle = '#ffffff'; x.fillText(ch, lx, wy); x.shadowBlur = 0;
@@ -3629,6 +3675,12 @@ for (const b of $('diff').querySelectorAll('button')) {
     for (const o of $('diff').querySelectorAll('button')) o.classList.toggle('on', o === b);
   };
 }
+// Multi-window: the game stays visible but loses focus when the player taps another app.
+// Pause so nobody is scored on while they are away; audio sleeps until the window is back.
+window.addEventListener('blur', () => {
+  if (game.state === 'play' || game.state === 'countdown' || game.state === 'goal' || game.state === 'fold') { pause(); if (ac) ac.suspend(); }
+});
+window.addEventListener('focus', () => { if (ac && booted && !document.hidden) ac.resume(); });
 document.addEventListener('visibilitychange', () => {
   progress.save();
   if (document.hidden) { pause(); if (ac) ac.suspend(); }
@@ -3637,8 +3689,13 @@ document.addEventListener('visibilitychange', () => {
 cv.addEventListener('pointerdown', () => { if (game.state === 'intro' && game.introT > 0.25) { unlockAudio(); endIntro(); } });
 window.addEventListener('keydown', e => { if (game.state === 'boot') { boot(); return; } if (game.state === 'studio') { endStudio(); return; } if (game.state === 'intro') { endIntro(); return; } if (e.key === 'Escape' || e.key === 'p') { game.state === 'paused' ? $('bResume').click() : pause(); } });
 
-let rsz = 0;
-const onResize = () => { cancelAnimationFrame(rsz); rsz = requestAnimationFrame(layout); };
+let rsz = 0, rszT = 0, rszAt = 0;
+const relayout = () => { cancelAnimationFrame(rsz); rsz = requestAnimationFrame(() => { rszAt = performance.now(); layout(); }); };
+const onResize = () => {
+  clearTimeout(rszT);
+  if (performance.now() - rszAt > 100) relayout();
+  rszT = setTimeout(relayout, 120);
+};
 window.addEventListener('resize', onResize);
 if (navigator.devicePosture) navigator.devicePosture.addEventListener('change', onResize);
 window.addEventListener('orientationchange', onResize);

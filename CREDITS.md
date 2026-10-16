@@ -28,6 +28,6 @@ These files are in the repository but their origin is not recorded here. Confirm
 
 - [ ] `assets/arenas/*.webp` (10 arena plates and 10 thumbnails: gold-rush, ice, inferno, kctw, miami, midnight, sakura, toxic, ultraviolet, void)
 - [ ] `assets/kctw_logo.webp` (prodbyKCTW studio logo shown at boot)
-- [ ] `og.png`, `og-fold.png` (link preview images)
+- [ ] `og.png`, `og-fold.png`, `og-crease.png` (link preview images)
 - [ ] `media/crease-fold.mp4`, `media/crease-fold-poster.jpg` (gameplay video and poster)
 - [ ] `favicon.ico`, `apple-touch-icon.png`, `icon-192.png`, `icon-512.png`, `icon-512-maskable.png` (app icons)
