@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="referrer" content="strict-origin-when-cross-origin">
 <!-- Content-Security-Policy: installed by the next script, except on a local test server (localhost / 127.0.0.1) where the capture harness rewrites the game script. Update hashes with: node tools/csp-hash.mjs -->
-<meta name="crease-csp" content="default-src 'self'; script-src 'self' 'sha256-9kyMFOQq/HLwXlyiVTgCTQzmo6H4oBBvtdWEJb0rIFI=' 'sha256-IjMagKBGwPDBwdSCRQfzj18psYwkdwJLUr4nypvNZzY='; connect-src 'self' https://crease-metrics.prodbykctw.workers.dev; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta name="crease-csp" content="default-src 'self'; script-src 'self' 'sha256-9kyMFOQq/HLwXlyiVTgCTQzmo6H4oBBvtdWEJb0rIFI=' 'sha256-PjBbw49iMzty5ayeHsGrQRS/p8BEfdWZEM4hLcHCmQw='; connect-src 'self' https://crease-metrics.prodbykctw.workers.dev; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <script>(function(){var h=location.hostname;if(h==='localhost'||h==='127.0.0.1')return;var p=document.querySelector('meta[name="crease-csp"]'),m=document.createElement('meta');m.httpEquiv='Content-Security-Policy';m.content=p.content;document.head.appendChild(m);})();</script>
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -828,64 +828,139 @@ const sfx = {
   },
 };
 
-// ---- synthwave loop (procedural, 96 BPM, Am–F–C–G) ----
-// The visuals listen to it: each kick sets game.beat, which pulses the grid and the sun.
+// ---- "Hurricane" disco loop (procedural, 120 BPM, original composition) ----
+// French-electro disco: four-on-the-floor with the whole mix ducking under every kick, a gritty octave
+// bass, chopped disco string stabs, a phased lead hook and claps. 32 bars (64 s): filtered intro →
+// groove → hook → breakdown with a riser → full drop, then it loops. Chords: Fmaj7 · G6 · Em7 · Am9.
+// The visuals listen to it: each beat sets game.beat, which pulses the grid and the sun.
 const music = {
-  on: false, next: 0, step: 0, bpm: 96, kicks: [],
-  start() { if (!ac || this.on) return; bus(); this.on = true; this.step = 0; this.next = ac.currentTime + 0.08; },
+  on: false, next: 0, step: 0, bpm: 120, kicks: [], fx: null,
+  start() { if (!ac || this.on) return; bus(); this.build(); this.on = true; this.step = 0; this.next = ac.currentTime + 0.08; },
   stop() { this.on = false; },
   tick() {
     const now = ac ? ac.currentTime : 0;
     while (this.kicks.length && this.kicks[0] <= now) { this.kicks.shift(); game.beat = 1; }
     if (!this.on || !ac || ac.state !== 'running') return;
     const sixteenth = 60 / this.bpm / 4;
-    while (this.next < now + 0.12) { this.play(this.step, this.next); this.next += sixteenth; this.step = (this.step + 1) % 256; }
+    while (this.next < now + 0.12) { this.play(this.step, this.next); this.next += sixteenth; this.step = (this.step + 1) % 512; }
+  },
+  // Long-lived effect chain, built once per audio context.
+  build() {
+    if (this.fx && this.fx.ac === ac) return;
+    const sweep = ac.createBiquadFilter(); sweep.type = 'lowpass'; sweep.frequency.value = 16000; sweep.Q.value = 1.1;
+    const pump = ac.createGain();                                 // sidechain: ducks on every kick
+    pump.connect(sweep); sweep.connect(musicBus);
+    const curve = new Float32Array(1024);
+    for (let i = 0; i < curve.length; i++) { const x = i / (curve.length - 1) * 2 - 1; curve[i] = Math.tanh(2.8 * x); }
+    const grit = ac.createWaveShaper(); grit.curve = curve; grit.oversample = '2x';
+    const bassF = ac.createBiquadFilter(); bassF.type = 'lowpass'; bassF.frequency.value = 1500; bassF.Q.value = 1.4;
+    const bassOut = ac.createGain(); bassOut.gain.value = 0.24;
+    grit.connect(bassF); bassF.connect(bassOut); bassOut.connect(pump);
+    // phaser (4 swept allpass stages mixed with the dry signal) + dotted-8th echo for the lead
+    const lead = ac.createGain(), phOut = ac.createGain();
+    const lfo = ac.createOscillator(), depth = ac.createGain(); lfo.frequency.value = 0.3; depth.gain.value = 800; lfo.connect(depth);
+    let node = lead;
+    for (let i = 0; i < 4; i++) { const ap = ac.createBiquadFilter(); ap.type = 'allpass'; ap.frequency.value = 1000 + i * 400; ap.Q.value = 0.6; depth.connect(ap.frequency); node.connect(ap); node = ap; }
+    node.connect(phOut); lead.connect(phOut); lfo.start();
+    const dl = ac.createDelay(1), fb = ac.createGain(), wet = ac.createGain();
+    dl.delayTime.value = 60 / this.bpm * 0.75; fb.gain.value = 0.3; wet.gain.value = 0.24;
+    phOut.connect(pump); phOut.connect(dl); dl.connect(fb); fb.connect(dl); dl.connect(wet); wet.connect(pump);
+    this.fx = { ac, sweep, pump, grit, lead };
   },
   play(step, t) {
-    if (muted) { if (step % 4 === 0) this.kicks.push(t); return; }
-    const dst = musicBus, bar = Math.floor(step / 16) % 4, s16 = step % 16;
-    const roots = [45, 41, 36, 43];                       // A2 F2 C2 G2
-    const chords = [[57, 60, 64], [53, 57, 60], [52, 55, 60], [50, 55, 59]];
-    const hz = m => 440 * Math.pow(2, (m - 69) / 12);
-    // kick on every beat
-    if (s16 % 4 === 0) {
+    const fx = this.fx, beat = 60 / this.bpm, bar = beat * 4;
+    const b32 = Math.floor(step / 16), s16 = step % 16, ch = b32 % 4;
+    // sections: 0-3 intro · 4-11 groove · 12-19 hook · 20-23 breakdown · 24-31 drop
+    const intro = b32 < 4, groove = b32 >= 4 && b32 < 12, hook = b32 >= 12 && b32 < 20, brk = b32 >= 20 && b32 < 24, drop = b32 >= 24;
+    // filter moves run even while muted so the mix is in the right place when sound comes back
+    if (fx && s16 === 0) {
+      const f = fx.sweep.frequency;
+      if (b32 === 0) { f.setValueAtTime(380, t); f.exponentialRampToValueAtTime(16000, t + bar * 4); }
+      if (b32 === 4 || b32 === 24) f.setValueAtTime(16000, t);
+      if (b32 === 20) { f.setValueAtTime(16000, t); f.exponentialRampToValueAtTime(900, t + bar); }
+      if (b32 === 23) { f.setValueAtTime(900, t); f.exponentialRampToValueAtTime(16000, t + bar); }
+    }
+    if (s16 % 4 === 0) this.kicks.push(t);
+    if (muted || !fx) return;
+    const dst = musicBus, hz = m => 440 * Math.pow(2, (m - 69) / 12);
+    const roots = [41, 43, 40, 45];                                   // F2 G2 E2 A2
+    const chords = [[53, 57, 60, 64], [55, 59, 62, 64], [52, 55, 59, 62], [57, 60, 64, 67]];
+    const kickOn = !brk || (b32 === 23 && s16 >= 8);
+    // kick (straight to the bus, so it punches through the filtered intro) + sidechain duck
+    if (s16 % 4 === 0 && kickOn) {
       const o = ac.createOscillator(), g = ac.createGain();
-      o.frequency.setValueAtTime(130, t); o.frequency.exponentialRampToValueAtTime(42, t + 0.14);
-      g.gain.setValueAtTime(0.9, t); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.3);
-      o.connect(g); g.connect(dst); o.start(t); o.stop(t + 0.32);
-      this.kicks.push(t);
+      o.frequency.setValueAtTime(150, t); o.frequency.exponentialRampToValueAtTime(44, t + 0.12);
+      g.gain.setValueAtTime(0.8, t); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.26);
+      o.connect(g); g.connect(dst); o.start(t); o.stop(t + 0.3);
+      noise(t, 0.012, 0.12, 'highpass', 3500, dst);
+      const p = fx.pump.gain; p.setValueAtTime(1, t); p.linearRampToValueAtTime(0.3, t + 0.012); p.linearRampToValueAtTime(1, t + beat * 0.85);
     }
-    // gated snare on 2 and 4
-    if (s16 === 4 || s16 === 12) noise(t, 0.22, 0.35, 'bandpass', 1500, dst);
-    // hats on the off-8ths
-    if (s16 % 4 === 2) noise(t, 0.04, 0.12, 'highpass', 7000, dst);
-    // driving bass: 8th notes, octave bounce
-    if (s16 % 2 === 0) {
-      const o = ac.createOscillator(), f = ac.createBiquadFilter(), g = ac.createGain();
-      o.type = 'sawtooth'; o.frequency.value = hz(roots[bar] + (s16 % 4 === 2 ? 12 : 0));
-      f.type = 'lowpass'; f.frequency.setValueAtTime(900, t); f.frequency.exponentialRampToValueAtTime(180, t + 0.18);
-      g.gain.setValueAtTime(0.28, t); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.2);
-      o.connect(f); f.connect(g); g.connect(dst); o.start(t); o.stop(t + 0.22);
+    // claps on 2 and 4 (three quick slaps)
+    if ((s16 === 4 || s16 === 12) && !intro && !brk) for (let i = 0; i < 3; i++) noise(t + i * 0.011, i === 2 ? 0.2 : 0.02, 0.26, 'bandpass', 1250, fx.pump);
+    // hats: soft closed 16ths, open hat on the off-beat
+    if (!brk) {
+      if (s16 % 4 === 2) noise(t, 0.13, 0.1, 'highpass', 7800, fx.pump);
+      else if (!intro || b32 >= 2) noise(t, 0.025, s16 % 2 ? 0.03 : 0.045, 'highpass', 9000, fx.pump);
     }
-    // pad: one long detuned chord per bar
-    if (s16 === 0) {
-      const d = 60 / this.bpm * 4;
-      for (const m of chords[bar]) for (const det of [-7, 7]) {
+    // gritty octave bass, syncopated 16ths
+    const BASS = [0, null, 12, null, null, 0, 12, null, 0, null, 12, 0, null, 0, 12, null];
+    const FILL = [0, null, 12, null, null, 0, 12, null, 0, 7, 12, null, 10, null, 12, 7];
+    const bn = (ch === 3 ? FILL : BASS)[s16];
+    if (bn !== null && !brk) {
+      const o = ac.createOscillator(), o2 = ac.createOscillator(), g = ac.createGain();
+      o.type = 'sawtooth'; o2.type = 'square'; o.frequency.value = hz(roots[ch] + bn); o2.frequency.value = hz(roots[ch] + bn - 12);
+      g.gain.setValueAtTime(0.7, t); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.13);
+      o.connect(g); o2.connect(g); g.connect(fx.grit); o.start(t); o2.start(t); o.stop(t + 0.15); o2.stop(t + 0.15);
+    }
+    // chopped disco string stabs on the syncopations
+    if ((groove || hook || drop) && (s16 === 3 || s16 === 6 || s16 === 11)) {
+      for (const m of chords[ch]) for (const det of [-9, 9]) {
         const o = ac.createOscillator(), f = ac.createBiquadFilter(), g = ac.createGain();
-        o.type = 'sawtooth'; o.frequency.value = hz(m); o.detune.value = det;
-        f.type = 'lowpass'; f.frequency.value = 1100;
-        g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.028, t + 0.5); g.gain.exponentialRampToValueAtTime(0.0001, t + d);
-        o.connect(f); f.connect(g); g.connect(dst); o.start(t); o.stop(t + d + 0.05);
+        o.type = 'sawtooth'; o.frequency.value = hz(m + 12); o.detune.value = det;
+        f.type = 'bandpass'; f.frequency.value = 1700; f.Q.value = 0.6;
+        g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.13, t + 0.008); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.16);
+        o.connect(f); f.connect(g); g.connect(fx.pump); o.start(t); o.stop(t + 0.16);
       }
     }
-    // arp: chord tones up an octave on 16ths
-    if (step >= 32) {
-      const ch = chords[bar], m = ch[s16 % 3] + 12 + (s16 % 6 === 5 ? 12 : 0);
-      const o = ac.createOscillator(), g = ac.createGain();
-      o.type = 'square'; o.frequency.value = hz(m);
-      g.gain.setValueAtTime(0.022, t); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.09);
-      o.connect(g); g.connect(dst); o.start(t); o.stop(t + 0.1);
+    // lush string pad, one chord per bar (hook, breakdown, drop)
+    if (s16 === 0 && (hook || brk || drop)) {
+      for (const m of chords[ch]) for (const det of [-12, 0, 12]) {
+        const o = ac.createOscillator(), f = ac.createBiquadFilter(), g = ac.createGain();
+        o.type = 'sawtooth'; o.frequency.value = hz(m); o.detune.value = det;
+        f.type = 'lowpass'; f.frequency.value = brk ? 1800 : 2600;
+        g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(brk ? 0.02 : 0.013, t + 0.3); g.gain.setValueAtTime(brk ? 0.02 : 0.013, t + bar * 0.85); g.gain.exponentialRampToValueAtTime(0.0001, t + bar + 0.1);
+        o.connect(f); f.connect(g); g.connect(fx.pump); o.start(t); o.stop(t + bar + 0.15);
+      }
     }
+    // the lead hook: [slot, note, length in 16ths] per chord
+    const HOOK = [
+      [[0, 72, 2], [3, 76, 1], [4, 77, 3], [8, 76, 1], [10, 72, 2], [12, 69, 4]],
+      [[0, 71, 2], [3, 74, 1], [4, 76, 3], [8, 79, 2], [11, 76, 1], [12, 74, 4]],
+      [[0, 76, 3], [4, 74, 1], [6, 71, 2], [8, 67, 2], [11, 71, 1], [12, 74, 4]],
+      [[0, 72, 6], [6, 71, 2], [8, 67, 2], [10, 69, 6]],
+    ];
+    if (hook || brk || drop) for (const [slot, m, len] of HOOK[ch]) if (slot === s16) {
+      const up = drop && b32 >= 28 ? 12 : 0, d = len * beat / 4;
+      const o = ac.createOscillator(), o2 = ac.createOscillator(), f = ac.createBiquadFilter(), g = ac.createGain();
+      o.type = 'sawtooth'; o2.type = 'square'; o.frequency.value = hz(m + up); o2.frequency.value = hz(m + up); o.detune.value = -6; o2.detune.value = 6;
+      f.type = 'lowpass'; f.frequency.setValueAtTime(brk ? 1400 : 3200, t); f.frequency.exponentialRampToValueAtTime(brk ? 700 : 1300, t + d);
+      g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(brk ? 0.035 : 0.05, t + 0.01); g.gain.setValueAtTime(brk ? 0.035 : 0.05, t + d * 0.8); g.gain.exponentialRampToValueAtTime(0.0001, t + d + 0.06);
+      o.connect(f); o2.connect(f); f.connect(g); g.connect(fx.lead); o.start(t); o2.start(t); o.stop(t + d + 0.08); o2.stop(t + d + 0.08);
+    }
+    // breakdown build: snare roll that tightens and a noise riser into the drop
+    if (b32 === 23) {
+      if (s16 % (s16 < 8 ? 2 : 1) === 0) noise(t, 0.08, 0.06 + s16 * 0.012, 'bandpass', 1600, dst);
+      if (s16 === 0) {
+        const n = ac.createBufferSource(), f = ac.createBiquadFilter(), g = ac.createGain();
+        if (!noiseBuf) noise(t, 0.001, 0.0001, 'highpass', 9000, dst);
+        n.buffer = noiseBuf; n.loop = true; f.type = 'bandpass'; f.Q.value = 2;
+        f.frequency.setValueAtTime(500, t); f.frequency.exponentialRampToValueAtTime(9000, t + bar);
+        g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.16, t + bar * 0.95); g.gain.linearRampToValueAtTime(0.0001, t + bar);
+        n.connect(f); f.connect(g); g.connect(dst); n.start(t); n.stop(t + bar + 0.02);
+      }
+    }
+    // crash-style white noise splash at the top of the drop
+    if (b32 === 24 && s16 === 0) noise(t, 1.4, 0.14, 'highpass', 5000, dst);
   },
 };
 const buzz = ms => { if (!touched || game.mode === 'demo') return; try { navigator.vibrate && navigator.vibrate(ms); } catch (_) {} };
