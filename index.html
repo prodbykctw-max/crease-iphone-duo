@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="referrer" content="strict-origin-when-cross-origin">
 <!-- Content-Security-Policy: installed by the next script, except on a local test server (localhost / 127.0.0.1) where the capture harness rewrites the game script. Update hashes with: node tools/csp-hash.mjs -->
-<meta name="crease-csp" content="default-src 'self'; script-src 'self' 'sha256-9kyMFOQq/HLwXlyiVTgCTQzmo6H4oBBvtdWEJb0rIFI=' 'sha256-PjBbw49iMzty5ayeHsGrQRS/p8BEfdWZEM4hLcHCmQw='; connect-src 'self' https://crease-metrics.prodbykctw.workers.dev; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta name="crease-csp" content="default-src 'self'; script-src 'self' 'sha256-9kyMFOQq/HLwXlyiVTgCTQzmo6H4oBBvtdWEJb0rIFI=' 'sha256-TfkXKVS8qvSfgRCwifN6spcDpBUgIFOaGTgBvnvF/Os='; connect-src 'self' https://crease-metrics.prodbykctw.workers.dev; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <script>(function(){var h=location.hostname;if(h==='localhost'||h==='127.0.0.1')return;var p=document.querySelector('meta[name="crease-csp"]'),m=document.createElement('meta');m.httpEquiv='Content-Security-Policy';m.content=p.content;document.head.appendChild(m);})();</script>
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1330,7 +1330,7 @@ function envPuck(pk, dt, L) {
   else if (e.type === 'TIDE') pk.vv += toward * 0.75 * dt;
   else if (e.type === 'HOLE') { const gu = 0.5 - pk.u, gv = (e.who === 1 ? 0.22 : L - 0.22) - pk.v, d = Math.hypot(gu, gv) + 0.05; pk.vu += gu / d * 0.9 * dt; pk.vv += gv / d * 0.9 * dt; }
   else if (e.type === 'BASS') {
-    const beatNow = Math.floor(game.t / 0.625);
+    const beatNow = Math.floor(game.t / (60 / music.bpm));   // follows the soundtrack tempo
     if (beatNow !== e.lastBeat) { e.lastBeat = beatNow; pk.vv += toward * 0.32; game.stageFlash = Math.max(game.stageFlash, 0.6); surge(pk.u, pk.v, ST().grid, 0.7); }
   }
 }
