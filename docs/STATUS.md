@@ -39,8 +39,11 @@ root of `main`, so anything merged there is live within minutes.
 
 ## Not done
 
-- **Checkout is not wired.** "GET PREMIUM PASS" currently opens the creator's
-  Instagram. There is no payment flow, and nothing verifies an entitlement.
+- **Checkout is built but not live.** The Premium Pass flow (Lemon Squeezy
+  checkout link, license-key restore, `backend/license/` Worker that signs the
+  pass) is in the repo, but no Lemon Squeezy store exists yet, so every setting in
+  `assets/commerce-config.js` is empty and the button reads COMING SOON. Go-live
+  steps: `docs/CHECKOUT.md`.
 - **The metrics Worker is not deployed.** `backend/` holds a Worker and a D1
   migration for metrics; the D1 database id in `wrangler.jsonc` is still a
   placeholder. See `backend/README.md`. (The separate online relay in

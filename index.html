@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="referrer" content="strict-origin-when-cross-origin">
 <!-- Content-Security-Policy: installed by the next script, except on a local test server (localhost / 127.0.0.1) where the capture harness rewrites the game script. Update hashes with: node tools/csp-hash.mjs -->
-<meta name="crease-csp" content="default-src 'self'; script-src 'self' 'sha256-9kyMFOQq/HLwXlyiVTgCTQzmo6H4oBBvtdWEJb0rIFI=' 'sha256-TfkXKVS8qvSfgRCwifN6spcDpBUgIFOaGTgBvnvF/Os='; connect-src 'self' https://crease-metrics.prodbykctw.workers.dev; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta name="crease-csp" content="default-src 'self'; script-src 'self' 'sha256-9kyMFOQq/HLwXlyiVTgCTQzmo6H4oBBvtdWEJb0rIFI=' 'sha256-3cxBc6l7Qrrk+qeHEwxqXgjRIZvkX4LR8jvu6y/aYQs='; connect-src 'self' https://crease-metrics.prodbykctw.workers.dev https://crease-license.prodbykctw.workers.dev; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <script>(function(){var h=location.hostname;if(h==='localhost'||h==='127.0.0.1')return;var p=document.querySelector('meta[name="crease-csp"]'),m=document.createElement('meta');m.httpEquiv='Content-Security-Policy';m.content=p.content;document.head.appendChild(m);})();</script>
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -174,6 +174,7 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--p1);outline-offset:
 #designStudio.locked .studio-grid{opacity:.45;pointer-events:none}
 .product-dialog{color:#f5eaff;background:#0b0914;border:1px solid #554467;border-radius:18px;width:min(780px,92vw);max-height:88dvh;padding:20px;overflow:auto;touch-action:pan-y}
 .product-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;margin:14px 0}.product-card{border:1px solid #372c46;border-radius:10px;background:#171122;padding:14px}.product-card.locked{opacity:.62}.product-card h3{margin:0 0 7px;font-size:15px}.product-card p{margin:0;color:#c2b5d4;font-size:12px;line-height:1.5}.product-card button{margin-top:10px;width:100%;min-height:42px}
+.premium-price{margin:6px 0 10px;font-size:20px;font-weight:800;color:#ffd23f;letter-spacing:.02em}.premium-restore{margin-top:18px;padding-top:14px;border-top:1px solid #2b2337}.premium-restore h3{margin:0 0 4px;font-size:15px}.premium-restore .btn{margin-top:8px}#premiumSoon,#premiumCheckout{display:block;text-align:center;text-decoration:none}
 .leaderboard-list{margin:14px 0;padding:0;list-style:none}.leaderboard-list li{display:grid;grid-template-columns:32px 1fr auto;gap:10px;padding:12px 8px;border-bottom:1px solid #2b2337}.leaderboard-list small{color:#a99fba}
 @media(max-width:650px){.arena-shell{padding:14px}.arena-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.arena-copy{align-items:stretch;flex-direction:column}.arena-copy .btn{flex:auto}.arena-heading h2{font-size:20px}}
 
@@ -347,7 +348,8 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--p1);outline-offset:
     <label class="sd-check"><input type="checkbox" id="sdStageOn"> Use my stage</label></fieldset>
 </div>
 </dialog>
-<dialog id="premium" class="product-dialog" aria-labelledby="premiumTitle"><div class="arena-heading"><h2 id="premiumTitle">PREMIUM GARAGE</h2><button id="bPremiumClose" class="link">Close</button></div><p id="premiumStatus" class="hint"></p><div id="premiumGrid" class="product-grid"></div><a id="premiumCheckout" class="btn p1" target="_blank" rel="noopener noreferrer">GET PREMIUM PASS</a></dialog>
+<dialog id="premium" class="product-dialog" aria-labelledby="premiumTitle"><div class="arena-heading"><h2 id="premiumTitle">PREMIUM GARAGE</h2><button id="bPremiumClose" class="link">Close</button></div><p id="premiumStatus" class="hint"></p><div id="premiumGrid" class="product-grid"></div><p id="premiumPrice" class="premium-price hidden"></p><a id="premiumCheckout" class="btn p1 hidden" target="_blank" rel="noopener noreferrer">GET PREMIUM PASS</a><button id="premiumSoon" class="btn p1" type="button" disabled>COMING SOON</button>
+<div id="premiumRestore" class="premium-restore hidden"><h3>Already bought it? Restore your pass</h3><p class="hint">Enter the license key from your Lemon Squeezy receipt email. It works on up to 5 of your devices.</p><label class="field">License key<input id="premiumKey" maxlength="100" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Paste your license key"></label><button id="premiumRedeem" class="btn plain" type="button">ENTER LICENSE KEY</button><p id="premiumKeyStatus" class="hint" role="status" aria-live="polite"></p></div></dialog>
 <dialog id="clearData" class="product-dialog" aria-labelledby="clearDataTitle"><div class="arena-heading"><h2 id="clearDataTitle">CLEAR MY DATA</h2><button id="bClearDataClose" class="link">Cancel</button></div><p class="hint">This deletes everything CREASE has saved in this browser: progress, achievements, arena unlocks, records, your display name, daily results, Design Studio designs and pictures, your stage and paddle choice, play counts, and a Premium Pass activated on this device. It can’t be undone.</p><button id="bClearDataConfirm" class="btn p2">DELETE MY DATA</button></dialog>
 
 <div id="how" class="overlay hidden">
@@ -430,7 +432,8 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--p1);outline-offset:
 <script src="assets/crease-logo.js?v=b9edba6bb1"></script>
 <script src="assets/arena-engine.js?v=839de2dcf7"></script>
 <script src="assets/progression.js?v=cba130d647"></script>
-<script src="assets/monetization.js?v=2edb24d735"></script>
+<script src="assets/commerce-config.js?v=689c72bad7"></script>
+<script src="assets/monetization.js?v=fa1eff2157"></script>
 <script>
 (() => {
 'use strict';
@@ -3222,8 +3225,17 @@ function renderLeaderboard(){
     w.append((Number(row.wins)||0)+' W ',sm);li.append(n,who,w);list.append(li);});
 }
 function renderPremium(){
-  const paid=CreaseProduct.isPremium();$('premiumStatus').textContent=paid?'Premium Pass active on this device.'+(CreaseProduct.isFounder()?' Founder: Founder’s Gold is yours.':''):'One-time Premium Pass: every arena unlocked now, the Design Studio, three signature paddles with their own hit sparks and goal explosions, and Founder’s Gold if you buy before Nov 1, 2026. It also changes power-ups in matches on this device: BIG and WALL last 1.6× longer and carry into the next round, for both sides of the table. Online matches are not affected.';
-  $('premiumCheckout').href=CreaseProduct.checkout();$('premiumCheckout').textContent=paid?'Creator contact / manage pass':'GET PREMIUM PASS';
+  const paid=CreaseProduct.isPremium(),ready=CreaseProduct.checkoutReady(),price=CreaseProduct.priceLabel(),end=CreaseProduct.founderWindowEnd();
+  // Launch-window line. Once SALES_START is set the date the window closes is added (display only; the license server decides who qualifies).
+  let launch=CreaseProduct.founderText;
+  if(end)launch+=Date.now()<end?' The window closes '+new Date(end).toLocaleDateString(undefined,{year:'numeric',month:'long',day:'numeric'})+'.':' The launch window has closed.';
+  $('premiumStatus').textContent=paid?'Premium Pass active on this device.'+(CreaseProduct.isFounder()?' Founder’s Gold is yours.':'')+' To use it on another device, enter your license key there (it is in your Lemon Squeezy receipt email).':'One-time Premium Pass: every arena unlocked now, the Design Studio, three signature paddles with their own hit sparks and goal explosions, and Founder’s Gold. '+launch+' It also changes power-ups in matches on this device: BIG and WALL last 1.6× longer and carry into the next round, for both sides of the table. Online matches are not affected.';
+  // Not on sale yet (no checkout link in assets/commerce-config.js): a disabled COMING SOON button, no link, no price.
+  const checkout=$('premiumCheckout');
+  if(ready)checkout.href=CreaseProduct.checkout();else checkout.removeAttribute('href');
+  checkout.classList.toggle('hidden',paid||!ready);$('premiumSoon').classList.toggle('hidden',paid||ready);
+  $('premiumPrice').textContent=price;$('premiumPrice').classList.toggle('hidden',paid||!ready||!price);
+  $('premiumRestore').classList.toggle('hidden',paid||!CreaseProduct.restoreReady());
   const grid=$('premiumGrid');grid.replaceChildren();
   for(const [id,s] of Object.entries(CreaseProduct.styles)){
     const can=CreaseProduct.canUse(id);
@@ -3235,7 +3247,28 @@ function renderPremium(){
   const fire=document.createElement('article');fire.className='product-card';fire.innerHTML='<h3>Fire Mode</h3><p>Free gameplay feature: score three goals in a row to set your paddle, the puck and your side of the rails on fire for seven seconds.</p>';grid.append(fire);
 }
 $('bLeaderboard').onclick=()=>{renderLeaderboard();$('leaderboard').showModal();};$('bLeaderboardClose').onclick=()=>$('leaderboard').close();$('saveLeaderboardName').onclick=()=>{CreaseProduct.setName($('leaderboardName').value);renderLeaderboard();};
-$('bPremium').onclick=()=>{renderPremium();$('premium').showModal();};
+$('bPremium').onclick=()=>{renderPremium();$('premium').showModal();track('premium_open');};
+$('premiumCheckout').addEventListener('click',()=>track('checkout_start'));
+// License key: sent to the license server, which asks Lemon Squeezy. The pass unlocks only when the server says verified.
+const KEY_MESSAGES={format:'That doesn’t look like a license key. Copy it from your Lemon Squeezy receipt email.',invalid:'We couldn’t find that key. Check it against your receipt email.',wrong_product:'That key is for a different product.',limit:'This key is already on its maximum of 5 devices. Contact us (see the Terms page) and we’ll help.',expired:'This key isn’t active any more. If you think that’s a mistake, contact us (see the Terms page).',revoked:'This key isn’t active any more. If you think that’s a mistake, contact us (see the Terms page).',unavailable:'Pass activation is temporarily unavailable. Please try again soon.',offline:'Couldn’t reach the pass server. Check your connection and try again.'};
+let redeeming=false;
+async function redeemKey(raw,fromLink){
+  if(redeeming)return;
+  const status=$('premiumKeyStatus'),key=CreaseProduct.cleanKey(raw);
+  if(!key){status.textContent=KEY_MESSAGES.format;return;}
+  redeeming=true;$('premiumRedeem').disabled=true;status.textContent='Checking your key…';track('key_submit');
+  const r=await CreaseProduct.redeemKey(key);
+  redeeming=false;$('premiumRedeem').disabled=false;
+  if(r.ok){
+    track('key_verified');$('premiumKey').value='';renderPremium();refreshStageLock();
+    status.textContent='';
+    if(fromLink)toast('PREMIUM PASS UNLOCKED',2.2);else $('premiumStatus').textContent+=' Premium Pass unlocked.';
+  }else{status.textContent=KEY_MESSAGES[r.reason]||KEY_MESSAGES.invalid;if(fromLink)$('premiumKey').value=key;}
+}
+$('premiumRedeem').onclick=()=>redeemKey($('premiumKey').value,false);
+$('premiumKey').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();redeemKey($('premiumKey').value,false);}});
+// Coming back from Lemon Squeezy checkout with the key in the link (#pass=KEY): unlock it once, then drop it from the address bar.
+{const linked=CreaseProduct.takeKeyFromUrl();if(linked&&!CreaseProduct.isPremium()&&CreaseProduct.restoreReady())redeemKey(linked,true);}
 // Clear my data: removes every crease.* key this game saved in this browser, then reloads.
 $('bClearData').onclick=()=>$('clearData').showModal();$('bClearDataClose').onclick=()=>$('clearData').close();
 $('clearData').addEventListener('keydown',e=>e.stopPropagation());
