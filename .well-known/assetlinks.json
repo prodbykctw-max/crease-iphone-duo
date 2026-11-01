@@ -1,0 +1,8 @@
+[{
+      "relation": ["delegate_permission/common.handle_all_urls"],
+      "target": {
+        "namespace": "android_app",
+        "package_name": "app.playcrease",
+        "sha256_cert_fingerprints": ["6E:8C:C9:DB:C9:CF:00:D7:22:70:BC:74:DE:0D:AE:12:64:B4:DB:4E:6E:A5:35:45:3A:AD:40:A6:5A:93:7D:3F"]
+      }
+    }]

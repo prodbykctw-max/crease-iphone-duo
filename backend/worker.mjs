@@ -1,4 +1,6 @@
-const EVENTS = new Set(['visit', 'match_start', 'match_complete', 'rematch', 'share_attempt', 'share_handoff', 'share_copy', 'inquiry_click', 'feedback', 'feedback_reason', 'daily_start', 'daily_complete', 'arena_power']);
+const EVENTS = new Set(['visit', 'match_start', 'match_complete', 'rematch', 'share_attempt', 'share_handoff', 'share_copy', 'inquiry_click', 'feedback', 'feedback_reason', 'daily_start', 'daily_complete', 'arena_power',
+  // Premium Pass funnel: counts only, no properties (the key, email and IP never reach this Worker).
+  'premium_open', 'checkout_start', 'key_submit', 'key_verified']);
 const VALUES = {
   mode: ['solo', 'duo'], difficulty: ['easy', 'normal', 'hard'], reason: ['new', 'restart', 'rematch'],
   source: ['direct', 'challenge', 'instagram', 'tiktok', 'youtube', 'x', 'facebook', 'reddit', 'creator', 'store'],

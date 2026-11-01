@@ -43,7 +43,7 @@ test('a save with every achievement, every arena and a full record list stays fa
   const entries = [
     ['crease.progress.v1', JSON.stringify(fullProgress())],
     ['crease.leaderboard.v1', JSON.stringify(rows)],
-    ['crease.stage', '9'], ['crease.daily.v1', JSON.stringify({ last: { day: '2026-11-01', no: 24, a: 7, b: 3, win: true, goals: '1121211', rally: 14, streak: 5 }, best: 5 })],
+    ['crease.stage', '9'], ['crease.daily.v1', JSON.stringify({ last: { day: '2026-10-30', no: 24, a: 7, b: 3, win: true, goals: '1121211', rally: 14, streak: 5 }, best: 5 })],
     ['crease.metrics.v1', '{"visit":999}'],
   ];
   const raw = entries[0][1].length;
@@ -94,7 +94,7 @@ for (const name of Object.keys(TARGETS)) {
     const all = text(dir);
     const joined = Object.values(all).join('\n').replace(/^\s*\/\/.*$/gm, '');
     // (isPremium() calls remain as dead false branches of the unchanged game code; no player-facing wording does)
-    for (const re of [/instagram\.com/i, /Premium (Pass|Garage)|GET PREMIUM|Founder's/i, /Design studio|DESIGN STUDIO/i, /bPremium/, /fetch\(/, /WebSocket/, /sendBeacon/, /XMLHttpRequest/, /navigator\.serviceWorker/, /navigator\.clipboard/, /navigator\.share/, /manifest\.webmanifest/, /online\.html/, /vr\.html/, /privacy\//, /terms\//, /mailto:/, /prodbykctw@/i, /googleapis|gstatic|cdn\./]) {
+    for (const re of [/instagram\.com/i, /Premium (Pass|Garage)|GET PREMIUM|Founder's/i, /Design studio|DESIGN STUDIO/i, /commerce-config|crease-license|lemon ?squeezy|redeemKey|takeKeyFromUrl|#pass=|premiumCheckout|premiumKey/i, /bPremium/, /fetch\(/, /WebSocket/, /sendBeacon/, /XMLHttpRequest/, /navigator\.serviceWorker/, /navigator\.clipboard/, /navigator\.share/, /manifest\.webmanifest/, /online\.html/, /vr\.html/, /privacy\//, /terms\//, /mailto:/, /prodbykctw@/i, /googleapis|gstatic|cdn\./]) {
       assert.ok(!re.test(joined), `${name} still contains ${re}`);
     }
     // the only absolute URLs are the SDK tag, its CSP entry and the SVG namespace

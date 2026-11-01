@@ -23,7 +23,7 @@ Other pages on the same site:
 - Juiced hits and scoring: freeze-frames, shake, pop-up text, race-to-7 bars on the rails, and a procedural synthwave loop (96 BPM, synthesized in Web Audio — no audio files) whose kick the table pulses to.
 - **Ten arenas** (Midnight, Toxic, Ice, Inferno, Ultraviolet, Miami, Gold Rush, Void, Sakura, prodby KCTW) with photographic plates in `assets/arenas/` and a shared WebGL centerpiece on the crease. Midnight is always available; the rest unlock through play (`assets/progression.js`).
 - **Progress:** achievements and a local Records/leaderboard list, saved per device in `localStorage`.
-- **Garage:** arena picker and a Premium Garage of paddle styles. The **GET PREMIUM PASS** button currently links to the creator's Instagram — there is no checkout or payment flow in this repo.
+- **Garage:** arena picker and a Premium Garage of paddle styles. The Premium Pass is sold through Lemon Squeezy with license keys; until the store is set up in `assets/commerce-config.js` the button reads **COMING SOON** and links nowhere. Setup and go-live steps: [`docs/CHECKOUT.md`](docs/CHECKOUT.md).
 - **Challenge a friend / Share result:** uses the native share sheet when available, otherwise a copyable link. Challenge links carry `?challenge=1`.
 - A "Built by KCTW" link to Instagram appears on the menu and result screens for custom game inquiries.
 - Share → Add to Home Screen for full-screen (`manifest.webmanifest`).
@@ -85,12 +85,14 @@ online-config.js        Online relay URL
 assets/
   arena-engine.js       Arena plates + shared WebGL centerpiece
   progression.js        Achievements, records, arena unlocks
-  monetization.js       Local leaderboard, paddle styles, premium hooks
+  monetization.js       Local leaderboard, paddle styles, premium pass + license-key redeem
+  commerce-config.js    Checkout settings (Lemon Squeezy links/ids, price label, sales start)
   quest-vr.mjs          VR game; quest-controls.mjs = hand/controller smoothing
   arenas/               Arena plates and thumbnails (.webp)
   vendor/               three.js r170
 backend/                Metrics Worker + D1 migration (see backend/README.md)
 backend/online/         Online relay Worker + shared physics (see its README)
+backend/license/        License Worker: Lemon Squeezy key -> signed pass token (see docs/CHECKOUT.md)
 tests/                  node:test suites
 qa/                     Playwright checks
 tools/                  stamp-assets.mjs, csp-hash.mjs, capture/video helpers

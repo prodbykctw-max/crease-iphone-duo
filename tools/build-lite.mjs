@@ -114,7 +114,8 @@ function transformGame(g, t, flags) {
   g = rep(g, "$('bShareCard').onclick = () => shareResultCard();\n", '', 'share card handler');
   // premium garage, pass and Design Studio
   g = cut(g, 'function renderPremium(){', "$('bLeaderboard').onclick=", 'premium dialog code', { inclusive: false });
-  g = rep(g, "$('bPremium').onclick=()=>{renderPremium();$('premium').showModal();};\n", '', 'premium button');
+  // premium button, checkout click tracking, license-key redeem and the #pass= link intake
+  g = cut(g, "$('bPremium').onclick=", '// Clear my data:', 'premium button, key redeem and checkout link', { inclusive: false });
   g = cut(g, '// ---------- Design Studio UI ----------', 'let arenaRaf = 0,', 'design studio code', {
     inclusive: false, to: "$('leaderboard').addEventListener('keydown',e=>e.stopPropagation());\n",
   });
@@ -129,7 +130,7 @@ function transformGame(g, t, flags) {
   return g.slice(0, -'\n})();'.length) + '\n' + readLite('bridge.js') + '\n})();\n';
 }
 
-const GAME_SCRIPTS = ['analytics-config.js', 'analytics.js', 'assets/crease-logo.js', 'assets/arena-engine.js', 'assets/progression.js', 'assets/monetization.js'];
+const GAME_SCRIPTS = ['analytics-config.js', 'analytics.js', 'assets/crease-logo.js', 'assets/arena-engine.js', 'assets/progression.js', 'assets/commerce-config.js', 'assets/monetization.js'];
 
 export function buildTarget(name, { out = path.join(ROOT, 'dist-lite'), rewarded = false } = {}) {
   if (!TARGETS[name]) throw new Error(`unknown target ${name}`);
@@ -139,7 +140,9 @@ export function buildTarget(name, { out = path.join(ROOT, 'dist-lite'), rewarded
   mkdirSync(path.join(dir, 'assets', 'lite'), { recursive: true });
 
   const html = read('index.html');
-  const css = html.slice(where(html, '<style>', 'style start') + 7, where(html, '</style>', 'style end'));
+  let css = html.slice(where(html, '<style>', 'style start') + 7, where(html, '</style>', 'style end'));
+  // purchase-dialog styles (price, license-key box) have no markup in Lite
+  css = cut(css, '.premium-price{', '.leaderboard-list{', 'premium dialog css', { inclusive: false });
   const bodyStart = where(html, '<body>', 'body') + 6;
   const scriptsAt = where(html, '<script src="analytics-config.js"></script>', 'script block');
   const gameAt = where(html, '<script>\n(() => {', 'game script');

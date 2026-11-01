@@ -28,6 +28,5 @@ Use ?src=instagram, ?src=tiktok, ?src=youtube, ?src=creator or ?src=store on the
 ## Monetization experiments
 1. Custom game commissions: existing Instagram inquiry link is the initial lead channel.
 2. Sponsored arena: scope artwork, usage term, approval rounds and price for each client.
-3. Optional premium arena/effects bundle: test willingness to pay $2.99–$4.99 once. These are proposed experiments, not validated prices.
-Payments and paid content are not implemented in this change. Choose the content and payment provider before building checkout. Keep entitlements server-side once paid content exists.
+3. Optional premium arena/effects bundle: the Premium Pass is priced at $2.99 one-time (chosen by the owner, not a validated price). Checkout is Lemon Squeezy with license keys; see `docs/CHECKOUT.md`. Founder's Gold goes to passes bought in the first 30 days after the Pass goes on sale. The funnel (`premium_open`, `checkout_start`, `key_submit`, `key_verified`) is counted by the metrics Worker.
 
