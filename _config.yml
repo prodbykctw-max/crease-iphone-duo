@@ -1,0 +1,3 @@
+# GitHub Pages (Jekyll) skips dot-folders by default; Android app links need /.well-known/assetlinks.json served.
+include:
+  - .well-known
