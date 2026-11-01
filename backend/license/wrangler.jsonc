@@ -1,0 +1,22 @@
+{
+  "name": "crease-license",
+  "main": "worker.mjs",
+  "compatibility_date": "2026-09-22",
+  "workers_dev": true,
+  // Fill these four after the Lemon Squeezy store and product exist (docs/CHECKOUT.md). While STORE_ID
+  // or PRODUCT_ID is empty the Worker refuses every request (503), so nothing can unlock the pass.
+  // They must match assets/commerce-config.js; tests/checkout.test.mjs fails if they drift.
+  "vars": {
+    "ALLOWED_ORIGINS": "https://prodbykctw-max.github.io,https://playcrease.app,https://www.playcrease.app",
+    "STORE_ID": "",
+    "PRODUCT_ID": "",
+    "VARIANT_ID": "",
+    "SALES_START": ""
+  },
+  // Secret (never in this file): wrangler secret put SIGNING_SECRET
+  // Per-IP and Worker-wide limits keep us under Lemon Squeezy's 60 License API calls a minute.
+  "ratelimits": [
+    { "name": "PER_IP", "namespace_id": "4004", "simple": { "limit": 10, "period": 60 } },
+    { "name": "ALL_TRAFFIC", "namespace_id": "4005", "simple": { "limit": 25, "period": 60 } }
+  ]
+}

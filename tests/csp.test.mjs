@@ -23,7 +23,7 @@ test('withHashes replaces old hashes and keeps the other sources', () => {
 });
 
 for (const [page, connect] of [
-  ['index.html', ["'self'", 'https://crease-metrics.prodbykctw.workers.dev']],
+  ['index.html', ["'self'", 'https://crease-metrics.prodbykctw.workers.dev', 'https://crease-license.prodbykctw.workers.dev']],
   ['online.html', ["'self'", 'https://crease-online.prodbykctw.workers.dev', 'wss://crease-online.prodbykctw.workers.dev']],
   ['vr.html', null],
 ]) {

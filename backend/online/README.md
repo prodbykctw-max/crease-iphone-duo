@@ -39,6 +39,7 @@ Abuse limits:
 - Paddle speed: a `move` message only sets a target; each physics tick moves
   the paddle toward it by at most `MAX_SPEED` (4.2 table units/s, in
   `physics.mjs`), just over the official client's ceiling of 0.12 per 30 ms.
+- What a player can send: only `{type:'move',x,y}`. No paddle skin, Design Studio picture, name or Premium Pass status is sent to an opponent, and `tests/checkout.test.mjs` fails if the page or the relay starts handling them. If premium skins are ever shown to an opponent, the relay must verify the signed pass token (`backend/license/token.mjs`) first; see `docs/CHECKOUT.md`.
 - Tests: `node --test tests/online.test.mjs tests/online-security.test.mjs`.
 
 ## Deploy
