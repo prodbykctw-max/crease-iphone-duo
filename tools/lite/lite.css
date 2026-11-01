@@ -1,0 +1,14 @@
+/* CREASE Lite additions: loading screen, ad blocker, host pause. */
+#liteLoad{position:fixed;inset:0;z-index:50;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:22px;background:radial-gradient(ellipse at 50% 60%,#1d0638,#030007 70%);color:#cdb8ff;text-align:center;padding:0 16px}
+#liteLoad[hidden]{display:none}
+#liteLoad img{width:min(72vw,420px);height:auto}
+#liteLoad .bar{width:min(60vw,320px);margin:0;position:relative}
+#liteLoad .bar i{position:absolute;left:0;top:0;width:35%;animation:liteSlide 1.1s ease-in-out infinite alternate}
+#liteLoad p{margin:0;font:700 13px/1.2 system-ui,sans-serif;letter-spacing:.28em}
+@keyframes liteSlide{from{left:0}to{left:65%}}
+#liteBlock{position:fixed;inset:0;z-index:60;display:flex;align-items:center;justify-content:center;background:rgba(3,0,7,.82)}
+#liteBlock[hidden]{display:none}
+#liteBlock i{width:44px;height:44px;border-radius:50%;border:4px solid rgba(255,255,255,.18);border-top-color:#2de2e6;animation:liteSpin .8s linear infinite}
+@keyframes liteSpin{to{transform:rotate(360deg)}}
+html.lite-halt body{pointer-events:none}
+@media (prefers-reduced-motion:reduce){#liteLoad .bar i,#liteBlock i{animation:none}}
