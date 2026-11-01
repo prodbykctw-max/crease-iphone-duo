@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="referrer" content="strict-origin-when-cross-origin">
 <!-- Content-Security-Policy: installed by the next script, except on a local test server (localhost / 127.0.0.1) where the capture harness rewrites the game script. Update hashes with: node tools/csp-hash.mjs -->
-<meta name="crease-csp" content="default-src 'self'; script-src 'self' 'sha256-9kyMFOQq/HLwXlyiVTgCTQzmo6H4oBBvtdWEJb0rIFI=' 'sha256-3cxBc6l7Qrrk+qeHEwxqXgjRIZvkX4LR8jvu6y/aYQs='; connect-src 'self' https://crease-metrics.prodbykctw.workers.dev https://crease-license.prodbykctw.workers.dev; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta name="crease-csp" content="default-src 'self'; script-src 'self' 'sha256-9kyMFOQq/HLwXlyiVTgCTQzmo6H4oBBvtdWEJb0rIFI=' 'sha256-3O2x1nYoRInVGO/E/Fe2Eh3JGd9dGB4/QM6rx7n+2SE='; connect-src 'self' https://crease-metrics.prodbykctw.workers.dev https://crease-license.prodbykctw.workers.dev; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <script>(function(){var h=location.hostname;if(h==='localhost'||h==='127.0.0.1')return;var p=document.querySelector('meta[name="crease-csp"]'),m=document.createElement('meta');m.httpEquiv='Content-Security-Policy';m.content=p.content;document.head.appendChild(m);})();</script>
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -349,7 +349,7 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--p1);outline-offset:
 </div>
 </dialog>
 <dialog id="premium" class="product-dialog" aria-labelledby="premiumTitle"><div class="arena-heading"><h2 id="premiumTitle">PREMIUM GARAGE</h2><button id="bPremiumClose" class="link">Close</button></div><p id="premiumStatus" class="hint"></p><div id="premiumGrid" class="product-grid"></div><p id="premiumPrice" class="premium-price hidden"></p><a id="premiumCheckout" class="btn p1 hidden" target="_blank" rel="noopener noreferrer">GET PREMIUM PASS</a><button id="premiumSoon" class="btn p1" type="button" disabled>COMING SOON</button>
-<div id="premiumRestore" class="premium-restore hidden"><h3>Already bought it? Restore your pass</h3><p class="hint">Enter the license key from your Lemon Squeezy receipt email. It works on up to 5 of your devices.</p><label class="field">License key<input id="premiumKey" maxlength="100" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Paste your license key"></label><button id="premiumRedeem" class="btn plain" type="button">ENTER LICENSE KEY</button><p id="premiumKeyStatus" class="hint" role="status" aria-live="polite"></p></div></dialog>
+<div id="premiumRestore" class="premium-restore hidden"><h3>Already bought it? Restore your pass</h3><p class="hint">Enter the license key from your Lemon Squeezy receipt email. It works on up to 5 of your devices.</p><label class="field">License key<input id="premiumKey" maxlength="100" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Paste your license key"></label><button id="premiumRedeem" class="btn plain" type="button">ENTER LICENSE KEY</button><p id="premiumKeyStatus" class="hint" role="status" aria-live="polite"></p></div><div id="premiumRestoreStripe" class="premium-restore hidden"><h3>Already bought it? Restore your pass</h3><p class="hint">Enter the email you used at checkout, plus the last 4 digits of the card you paid with (or the receipt number from your receipt email). It works on up to 5 of your devices.</p><label class="field">Email<input id="premiumEmail" type="email" maxlength="254" autocomplete="email" autocapitalize="off" spellcheck="false" placeholder="you@example.com"></label><label class="field">Card’s last 4 digits (or receipt number)<input id="premiumProof" maxlength="40" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="e.g. 4242"></label><button id="premiumRestoreBtn" class="btn plain" type="button">RESTORE PASS</button><p id="premiumRestoreStatus" class="hint" role="status" aria-live="polite"></p></div></dialog>
 <dialog id="clearData" class="product-dialog" aria-labelledby="clearDataTitle"><div class="arena-heading"><h2 id="clearDataTitle">CLEAR MY DATA</h2><button id="bClearDataClose" class="link">Cancel</button></div><p class="hint">This deletes everything CREASE has saved in this browser: progress, achievements, arena unlocks, records, your display name, daily results, Design Studio designs and pictures, your stage and paddle choice, play counts, and a Premium Pass activated on this device. It can’t be undone.</p><button id="bClearDataConfirm" class="btn p2">DELETE MY DATA</button></dialog>
 
 <div id="how" class="overlay hidden">
@@ -433,7 +433,7 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--p1);outline-offset:
 <script src="assets/arena-engine.js?v=839de2dcf7"></script>
 <script src="assets/progression.js?v=cba130d647"></script>
 <script src="assets/commerce-config.js?v=689c72bad7"></script>
-<script src="assets/monetization.js?v=fa1eff2157"></script>
+<script src="assets/monetization.js?v=05c0c6d331"></script>
 <script>
 (() => {
 'use strict';
@@ -3229,13 +3229,15 @@ function renderPremium(){
   // Launch-window line. Once SALES_START is set the date the window closes is added (display only; the license server decides who qualifies).
   let launch=CreaseProduct.founderText;
   if(end)launch+=Date.now()<end?' The window closes '+new Date(end).toLocaleDateString(undefined,{year:'numeric',month:'long',day:'numeric'})+'.':' The launch window has closed.';
-  $('premiumStatus').textContent=paid?'Premium Pass active on this device.'+(CreaseProduct.isFounder()?' Founder’s Gold is yours.':'')+' To use it on another device, enter your license key there (it is in your Lemon Squeezy receipt email).':'One-time Premium Pass: every arena unlocked now, the Design Studio, three signature paddles with their own hit sparks and goal explosions, and Founder’s Gold. '+launch+' It also changes power-ups in matches on this device: BIG and WALL last 1.6× longer and carry into the next round, for both sides of the table. Online matches are not affected.';
+  const stripe=CreaseProduct.provider()==='stripe';
+  $('premiumStatus').textContent=paid?'Premium Pass active on this device.'+(CreaseProduct.isFounder()?' Founder’s Gold is yours.':'')+(stripe?' To use it on another device, open the Premium Garage there and restore it with your checkout email and your card’s last 4 digits (or your receipt number).':' To use it on another device, enter your license key there (it is in your Lemon Squeezy receipt email).'):'One-time Premium Pass: every arena unlocked now, the Design Studio, three signature paddles with their own hit sparks and goal explosions, and Founder’s Gold. '+launch+' It also changes power-ups in matches on this device: BIG and WALL last 1.6× longer and carry into the next round, for both sides of the table. Online matches are not affected.';
   // Not on sale yet (no checkout link in assets/commerce-config.js): a disabled COMING SOON button, no link, no price.
   const checkout=$('premiumCheckout');
   if(ready)checkout.href=CreaseProduct.checkout();else checkout.removeAttribute('href');
   checkout.classList.toggle('hidden',paid||!ready);$('premiumSoon').classList.toggle('hidden',paid||ready);
   $('premiumPrice').textContent=price;$('premiumPrice').classList.toggle('hidden',paid||!ready||!price);
-  $('premiumRestore').classList.toggle('hidden',paid||!CreaseProduct.restoreReady());
+  $('premiumRestore').classList.toggle('hidden',paid||!CreaseProduct.restoreReady()||stripe);
+  $('premiumRestoreStripe').classList.toggle('hidden',paid||!CreaseProduct.restoreReady()||!stripe);
   const grid=$('premiumGrid');grid.replaceChildren();
   for(const [id,s] of Object.entries(CreaseProduct.styles)){
     const can=CreaseProduct.canUse(id);
@@ -3269,6 +3271,22 @@ $('premiumRedeem').onclick=()=>redeemKey($('premiumKey').value,false);
 $('premiumKey').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();redeemKey($('premiumKey').value,false);}});
 // Coming back from Lemon Squeezy checkout with the key in the link (#pass=KEY): unlock it once, then drop it from the address bar.
 {const linked=CreaseProduct.takeKeyFromUrl();if(linked&&!CreaseProduct.isPremium()&&CreaseProduct.restoreReady())redeemKey(linked,true);}
+// Stripe: the license server asks Stripe about the purchase; the pass unlocks only when it says verified.
+const STRIPE_MESSAGES={format:'Enter the email you used at checkout and your card’s last 4 digits (or your receipt number).',invalid:'We couldn’t confirm that purchase. Restore it below with your checkout email and your card’s last 4 digits.',not_found:'We couldn’t find a purchase with that email and card digits (or receipt number). Check the email on your receipt.',unpaid:'That payment hasn’t gone through yet. If you were charged, contact us (see the Terms page).',wrong_product:'That purchase is for a different product.',limit:'This purchase is already on its maximum of 5 devices. Contact us (see the Terms page) and we’ll help.',revoked:'That purchase was refunded or disputed, so the pass isn’t active. If you think that’s a mistake, contact us (see the Terms page).',expired:'That purchase isn’t active any more. Contact us (see the Terms page).',unavailable:'Pass activation is temporarily unavailable. Please try again soon.',offline:'Couldn’t reach the pass server. Check your connection and try again.'};
+let restoring=false;
+async function stripeUnlock(run,fromLink){
+  if(restoring)return;
+  const status=$('premiumRestoreStatus');restoring=true;$('premiumRestoreBtn').disabled=true;status.textContent=fromLink?'':'Checking your purchase…';track('key_submit');
+  const r=await run();
+  restoring=false;$('premiumRestoreBtn').disabled=false;
+  if(r.ok){track('key_verified');$('premiumProof').value='';renderPremium();refreshStageLock();status.textContent='';
+    if(fromLink)toast('PREMIUM PASS UNLOCKED',2.2);else $('premiumStatus').textContent+=' Premium Pass unlocked.';}
+  else{renderPremium();status.textContent=STRIPE_MESSAGES[r.reason]||STRIPE_MESSAGES.invalid;if(fromLink&&!$('premium').open)$('premium').showModal();}
+}
+$('premiumRestoreBtn').onclick=()=>stripeUnlock(()=>CreaseProduct.restorePurchase($('premiumEmail').value,$('premiumProof').value),false);
+$('premiumProof').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();$('premiumRestoreBtn').click();}});
+// Coming back from Stripe checkout (?cs=the Checkout Session id): unlock once, then drop it from the address bar.
+{const session=CreaseProduct.takeSessionFromUrl();if(session&&!CreaseProduct.isPremium()&&CreaseProduct.restoreReady())stripeUnlock(()=>CreaseProduct.redeemSession(session),true);}
 // Clear my data: removes every crease.* key this game saved in this browser, then reloads.
 $('bClearData').onclick=()=>$('clearData').showModal();$('bClearDataClose').onclick=()=>$('clearData').close();
 $('clearData').addEventListener('keydown',e=>e.stopPropagation());

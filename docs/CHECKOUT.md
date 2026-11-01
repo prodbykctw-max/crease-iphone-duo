@@ -167,3 +167,60 @@ WHERE name IN ('premium_open','checkout_start','key_submit','key_verified') GROU
 ## Not verified against a real store
 
 Because no Lemon Squeezy account exists yet, these rest on the docs and mocked responses only: whether a `#fragment` survives in the redirect link; the exact responses for an unknown key and for a key that was never activated; how a refunded key reports its status; whether ids differ between test and live mode.
+
+---
+
+# Stripe checkout (Stripe Managed Payments)
+
+The same Premium Pass can be sold through a Stripe Payment Link with Managed Payments on (Stripe is merchant of
+record and handles sales tax/VAT, like Lemon Squeezy, for 3.5% on top of standard card fees). The game picks
+the provider from `CHECKOUT_URL` in `assets/commerce-config.js`: a `https://buy.stripe.com/...` link switches the
+Premium Garage to Stripe mode; a Lemon Squeezy link keeps the license-key flow. Both stay in the code.
+
+## How it works
+
+1. **GET PREMIUM PASS** opens the Payment Link. After paying, Stripe sends the buyer to
+   `https://playcrease.app/?cs={CHECKOUT_SESSION_ID}`.
+2. The game reads `cs` once, removes it from the address bar and POSTs `{ session_id, device_id }` to
+   `crease-license` `/stripe/redeem`. `device_id` is a random 32-hex id the browser keeps (`crease.device.v1`).
+3. The Worker reads the Checkout Session from Stripe (line items + charge expanded) and unlocks only if it is
+   complete and paid, in the same mode as the key (live key = live sales only), contains `STRIPE_PRICE_ID`, and
+   the charge is not refunded (even partly) or disputed. Founder's Gold uses the session's `created` time.
+4. D1 (`crease-license`, table `devices`) counts devices per sale: at most 5. It stores a SHA-256 of the session
+   id and the random device id, nothing else.
+5. **Restore** on another device: checkout email + the card's last 4 digits (or the receipt number). The Worker
+   searches complete sessions for that email, matches the proof on the charge, re-reads the sale in full and
+   applies the same checks. Unknown email and wrong proof get the same answer (`not_found`).
+
+No webhook in v1: a refund after unlock does not lock devices that already have the pass, but blocks every new
+unlock or restore. Stripe itself may refund within 60 days under Managed Payments.
+
+## Verified end to end in the sandbox (November 2026, before launch)
+
+Sandbox account "CREASE sandbox". Test product `prod_VYErmeygt1RjVX`, price `price_1UX8NNPI1ShVAXTPm5y7wURF`
+($2.99, tax code `txcd_10201000`, video games downloaded, permanent rights), Payment Link with
+`managed_payments[enabled]=true`. A test-card purchase redirected back with `?cs=`, unlocked Premium +
+Founder's Gold, restore on a fresh device worked (email typed in different case + last 4), wrong digits were
+refused, and after a refund restore answered `revoked`.
+
+Findings: the sandbox charge had **no receipt number** (sandbox doesn't send receipts), so card last 4 is the
+primary restore proof. Stripe **added sales tax on top** ($2.99 + $0.27 in Georgia = $3.26) because prices are
+tax-exclusive by default; to charge exactly $2.99 tax-included, turn on **Settings → Tax → Include tax in
+prices** (or create the live price with `tax_behavior=inclusive`).
+
+## Go-live steps (Stripe)
+
+1. Finish activating the live Stripe account and turn on **Managed Payments** (Dashboard → Settings → Managed
+   Payments). Stripe runs an eligibility review.
+2. In live mode create the product (name CREASE Premium, tax code `txcd_10201000`, $2.99 one-time, tax behavior
+   decided above), then a Payment Link with Managed Payments on and **After payment → redirect** to
+   `https://playcrease.app/?cs={CHECKOUT_SESSION_ID}`.
+3. Create a **restricted key** (Developers → API keys → Create restricted key) with **Read** on Checkout
+   Sessions, Charges and PaymentIntents only, then:
+   `wrangler secret put STRIPE_KEY` in `backend/license` (paste the `rk_live_...` key; never commit it).
+4. Set `STRIPE_PRICE_ID` (the live price id) and `SALES_START` in `backend/license/wrangler.jsonc`; deploy.
+5. In `assets/commerce-config.js` set `CHECKOUT_URL` (the live `buy.stripe.com` link), `WORKER_URL`
+   (`https://crease-license.prodbykctw.workers.dev`) and the same `SALES_START`.
+6. Update Terms and Privacy to name Stripe (Managed Payments / Link) as merchant of record and processor, and
+   mention the restore lookup (email + card last 4, used once, not stored).
+7. Buy once in live mode with a real card, check the unlock, then refund it from the Dashboard.
