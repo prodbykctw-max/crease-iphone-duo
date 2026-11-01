@@ -428,7 +428,8 @@ test('repo: no copy of the old Nov 1 founder date and no Instagram checkout link
   const hits = [];
   for (const f of files) {
     if (f.endsWith('checkout.test.mjs')) continue;   // this file names the strings it hunts for
-    const text = fs.readFileSync(f, 'utf8').toLowerCase();
+    // The terms/privacy 'Effective November 1, 2026' date is the policy date, not the old founder promise.
+    const text = fs.readFileSync(f, 'utf8').toLowerCase().replaceAll('effective november 1, 2026', '');
     for (const s of old) if (text.includes(s)) hits.push(path.basename(f) + ': ' + s);
   }
   assert.deepEqual(hits, []);
