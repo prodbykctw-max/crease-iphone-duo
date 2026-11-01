@@ -11,9 +11,17 @@
     "STORE_ID": "",
     "PRODUCT_ID": "",
     "VARIANT_ID": "",
-    "SALES_START": ""
+    "SALES_START": "",
+    // Stripe: the live price id of CREASE Premium. Empty means the Stripe routes refuse everything (503).
+    "STRIPE_PRICE_ID": ""
   },
-  // Secret (never in this file): wrangler secret put SIGNING_SECRET
+  // Secrets (never in this file): wrangler secret put SIGNING_SECRET, and for Stripe wrangler secret put
+  // STRIPE_KEY (a LIVE restricted key, read-only: Checkout Sessions, Charges, PaymentIntents). A test key
+  // here would accept sandbox purchases, so the Worker only honours sessions whose mode matches the key.
+  // Device counts for Stripe sales (schema.sql). Apply with: wrangler d1 execute crease-license --remote --file schema.sql
+  "d1_databases": [
+    { "binding": "DB", "database_name": "crease-license", "database_id": "4faeb3e8-72e7-4728-b3c6-249026c067f4" }
+  ],
   // Per-IP and Worker-wide limits keep us under Lemon Squeezy's 60 License API calls a minute.
   "ratelimits": [
     { "name": "PER_IP", "namespace_id": "4004", "simple": { "limit": 10, "period": 60 } },

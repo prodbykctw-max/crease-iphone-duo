@@ -8,8 +8,12 @@
 // Lemon Squeezy's License API needs no API key (https://docs.lemonsqueezy.com/api/license-api), so the
 // only secret here is SIGNING_SECRET. The key, the buyer's email and the caller's IP are never logged,
 // stored or returned: the response carries only the fields listed above.
+//
+// The same Worker also serves Stripe purchases (POST /stripe/redeem and /stripe/restore, see stripe.mjs).
+// Both routes share the origin check, the rate limits, the body limit and the token format below.
 import { signToken } from './token.mjs';
 import { isFounder, parseIso } from './founder.mjs';
+import { redeemSession, restorePurchase } from './stripe.mjs';
 
 const LS_API = 'https://api.lemonsqueezy.com/v1/licenses/';
 // The id the game itself uses for the Premium Pass (assets/monetization.js PRODUCT.id).
@@ -17,6 +21,7 @@ export const PASS_ID = 'crease-premium-pass';
 const KEY = /^[A-Za-z0-9_-]{8,100}$/;
 const INSTANCE = /^[A-Za-z0-9-]{8,64}$/;
 const MAX_BODY = 1024;
+const ROUTES = ['/license/activate', '/stripe/redeem', '/stripe/restore'];
 
 export default {
   async fetch(request, env) {
@@ -27,7 +32,8 @@ export default {
     const json = (body, status = 200) => new Response(JSON.stringify(body), { status, headers: { ...cors, 'Content-Type': 'application/json' } });
     const text = (body, status) => new Response(body, { status, headers: cors });
 
-    if (new URL(request.url).pathname !== '/license/activate') return text('Not found', 404);
+    const path = new URL(request.url).pathname;
+    if (!ROUTES.includes(path)) return text('Not found', 404);
     if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: { ...cors,
       'Access-Control-Allow-Methods': 'POST', 'Access-Control-Allow-Headers': 'Content-Type', 'Access-Control-Max-Age': '600' } });
     if (request.method !== 'POST') return text('Method not allowed', 405);
@@ -44,6 +50,13 @@ export default {
     if (raw === null) return text('Too large', 413);
     let body;
     try { body = JSON.parse(raw); } catch (_) { return text('Invalid JSON', 400); }
+    if (path !== '/license/activate') {
+      try {
+        return await (path === '/stripe/redeem' ? redeemSession : restorePurchase)(body, env, json, PASS_ID);
+      } catch (_) {
+        return json({ verified: false, reason: 'unavailable' }, 503);
+      }
+    }
     const key = typeof body?.license_key === 'string' ? body.license_key.trim() : '';
     const prior = typeof body?.instance_id === 'string' && INSTANCE.test(body.instance_id) ? body.instance_id : '';
     if (!KEY.test(key)) return json({ verified: false, reason: 'invalid' });

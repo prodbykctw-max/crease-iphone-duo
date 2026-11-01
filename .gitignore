@@ -5,3 +5,6 @@ backend/online/package-lock.json
 backend/online/package.json
 backend/license/.wrangler/
 dist-lite/
+backend/.wrangler/
+.dev.vars
+**/.dev.vars
