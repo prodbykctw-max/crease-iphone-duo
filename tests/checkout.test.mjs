@@ -453,7 +453,7 @@ test('copy: terms and privacy name Lemon Squeezy as merchant of record and proce
   const terms = read('terms/index.html'), privacy = read('privacy/index.html');
   assert.match(terms, /Lemon Squeezy[^<]*<\/a>, which acts as the merchant of record and payment processor/);
   assert.match(terms, /<strong>Refunds\.<\/strong> Lemon Squeezy, as merchant of record, handles refunds/);
-  assert.match(terms, /sold by prodbyKCTW LLC/);
+  assert.match(terms, /sold by Melvin D\. Brown III \(KCTW\)/);
   assert.match(privacy, /Lemon Squeezy<\/a>, which is the merchant of record and payment processor/);
   assert.match(privacy, /does not store or log the key, your email or your IP address/);
   for (const page of [terms, privacy]) assert.ok(!/instagram direct messages/i.test(page), 'the old Instagram-DM sales wording is gone');
