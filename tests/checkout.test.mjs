@@ -374,7 +374,7 @@ test('config: the shipped client config is empty placeholders (price aside) and 
   const c = clientConfig();
   assert.deepEqual(Object.keys(c).sort(), ['CHECKOUT_URL', 'PRICE_LABEL', 'PRODUCT_ID', 'SALES_START', 'STORE_ID', 'VARIANT_ID', 'WORKER_URL']);
   for (const k of ['CHECKOUT_URL', 'STORE_ID', 'PRODUCT_ID', 'VARIANT_ID', 'SALES_START', 'WORKER_URL']) assert.equal(c[k], '', k + ' stays empty until go-live');
-  assert.equal(c.PRICE_LABEL, '$2.99');
+  assert.equal(c.PRICE_LABEL, '$2.99 + tax', 'prices are tax-exclusive, so the label says tax is added');
   const v = wranglerVars();
   for (const k of ['STORE_ID', 'PRODUCT_ID', 'VARIANT_ID', 'SALES_START']) assert.equal(v[k], c[k], k + ' must be the same in commerce-config.js and backend/license/wrangler.jsonc');
   assert.equal(JSON.parse(read('backend/license/wrangler.jsonc').replace(/^\s*\/\/.*$/gm, '')).name, 'crease-license');

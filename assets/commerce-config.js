@@ -8,9 +8,9 @@ window.CREASE_COMMERCE = Object.freeze({
   STORE_ID: '',
   PRODUCT_ID: '',
   VARIANT_ID: '',
-  // Price text shown beside the button once CHECKOUT_URL is set ($2.99 one-time). Empty hides the price line.
-  // Keep it equal to the price on the Lemon Squeezy variant.
-  PRICE_LABEL: '$2.99',
+  // Price text shown beside the button once CHECKOUT_URL is set ($2.99 one-time, sales tax/VAT added at checkout).
+  // Empty hides the price line. Keep it equal to the store price, which is tax-exclusive (owner's choice, Nov 2026).
+  PRICE_LABEL: '$2.99 + tax',
   // When the Pass goes on sale, as ISO time with a zone, for example '2026-12-01T15:00:00Z'. Founder's Gold is
   // for passes bought in the 30 days after this moment. The license Worker decides who qualifies (from the
   // purchase time Lemon Squeezy records), so this copy only drives the date shown in the Premium Garage.
