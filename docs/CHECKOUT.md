@@ -110,7 +110,7 @@ cd ..           # backend\
 
 ### 5. Fill `assets/commerce-config.js` and set SALES_START
 
-- `CHECKOUT_URL`, `STORE_ID`, `PRODUCT_ID`, `VARIANT_ID`, `WORKER_URL` from steps 1 to 3. `PRICE_LABEL` is already `$2.99`; it shows only once `CHECKOUT_URL` is set.
+- `CHECKOUT_URL`, `STORE_ID`, `PRODUCT_ID`, `VARIANT_ID`, `WORKER_URL` from steps 1 to 3. `PRICE_LABEL` is already `$2.99 + tax`; it shows only once `CHECKOUT_URL` is set.
 - `SALES_START`: the exact moment you announce the Pass (ISO with a zone, e.g. `2026-12-01T15:00:00Z`). Put the **same value** in `backend/license/wrangler.jsonc` and redeploy the license Worker **before** the site goes live. The Worker is what decides Founder's Gold; the game copy only uses it to print the closing date.
 - `node --test tests/*.test.mjs` fails if the config file and `wrangler.jsonc` disagree.
 - Run `node tools/stamp-assets.mjs` (cache tag) and `node tools/csp-hash.mjs --check`.
@@ -205,15 +205,19 @@ refused, and after a refund restore answered `revoked`.
 
 Findings: the sandbox charge had **no receipt number** (sandbox doesn't send receipts), so card last 4 is the
 primary restore proof. Stripe **added sales tax on top** ($2.99 + $0.27 in Georgia = $3.26) because prices are
-tax-exclusive by default; to charge exactly $2.99 tax-included, turn on **Settings → Tax → Include tax in
-prices** (or create the live price with `tax_behavior=inclusive`).
+tax-exclusive by default.
+
+**Decision (owner, November 2026): $2.99 + tax.** Prices are tax-exclusive (`tax_behavior=exclusive`, set
+explicitly on the sandbox price) and the button reads `$2.99 + tax`, matching how Steam, the App Store and Google
+Play price games in the US. Revisit if EU/UK sales grow: consumer prices there are expected to include VAT
+(Directive 98/6/EC Art. 2(a)); a separate tax-inclusive EUR/GBP price would cover it.
 
 ## Go-live steps (Stripe)
 
 1. Finish activating the live Stripe account and turn on **Managed Payments** (Dashboard → Settings → Managed
    Payments). Stripe runs an eligibility review.
 2. In live mode create the product (name CREASE Premium, tax code `txcd_10201000`, $2.99 one-time, tax behavior
-   decided above), then a Payment Link with Managed Payments on and **After payment → redirect** to
+   **exclusive**, i.e. `tax_behavior=exclusive`), then a Payment Link with Managed Payments on and **After payment → redirect** to
    `https://playcrease.app/?cs={CHECKOUT_SESSION_ID}`.
 3. Create a **restricted key** (Developers → API keys → Create restricted key) with **Read** on Checkout
    Sessions, Charges and PaymentIntents only, then:
