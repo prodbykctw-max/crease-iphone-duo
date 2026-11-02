@@ -99,7 +99,7 @@ for (const name of Object.keys(TARGETS)) {
     }
     // the only absolute URLs are the SDK tag, its CSP entry and the SVG namespace
     const urls = [...new Set([...joined.matchAll(/https?:\/\/[^\s"'<>);]+/g)].map(m => m[0]))].sort();
-    const allowed = { youtube: ['https://www.youtube.com/game_api/v1', 'http://www.w3.org/2000/svg'], crazygames: ['https://sdk.crazygames.com/crazygames-sdk-v3.js', 'http://www.w3.org/2000/svg'] }[name];
+    const allowed = { youtube: ['https://www.youtube.com/game_api/v1', 'http://www.w3.org/2000/svg'], crazygames: ['https://sdk.crazygames.com/crazygames-sdk-v3.js', 'http://www.w3.org/2000/svg'], itch: ['http://www.w3.org/2000/svg'] }[name];
     assert.deepEqual(urls.filter(u => !u.startsWith('http://www.w3.org/')), allowed.filter(u => !u.startsWith('http://www.w3.org/')));
     assert.ok(!/<a [^>]*href="(https?:|mailto:)/.test(joined), 'no outbound anchors');
   });
@@ -123,8 +123,11 @@ for (const name of Object.keys(TARGETS)) {
       assert.ok(f.bytes < 30 * 1024 * 1024);
     }
     const total = files.reduce((s, f) => s + f.bytes, 0);
-    assert.ok(files.length <= (name === 'youtube' ? 8000 : 1500));
-    assert.ok(total < (name === 'youtube' ? 15 : 50) * 1024 * 1024, 'initial download ' + total);
+    // YouTube: 8000 files / 15 MB initial; CrazyGames: 1500 files / 50 MB; itch.io: 1000 files, 500 MB extracted,
+    // 200 MB per file, paths under 240 characters (https://itch.io/docs/creators/html5).
+    assert.ok(files.length <= ({ youtube: 8000, crazygames: 1500, itch: 1000 })[name]);
+    assert.ok(total < ({ youtube: 15, crazygames: 50, itch: 500 })[name] * 1024 * 1024, 'initial download ' + total);
+    for (const f of files) assert.ok(f.file.length < 240, 'path length: ' + f.file);
     const html = readFileSync(path.join(dir, 'index.html'), 'utf8');
     assert.ok(!/(src|href)="\//.test(html), 'no absolute paths');
     if (name === 'youtube') {
@@ -133,8 +136,22 @@ for (const name of Object.keys(TARGETS)) {
       assert.match(html, /<script src="https:\/\/www\.youtube\.com\/game_api\/v1"><\/script>\s*<style>/, 'SDK tag precedes every game script');
       assert.match(html, /Content-Security-Policy/);
     }
+    if (name === 'itch') {
+      // nothing is loaded from outside the ZIP, there are no ads, and the strict CSP blocks anything else
+      assert.ok(!/<script src="https?:/.test(html), 'no outside script');
+      assert.match(html, /Content-Security-Policy" content="default-src 'none'; script-src 'self';/);
+      const cfg = readFileSync(path.join(dir, 'assets/lite/config.js'), 'utf8');
+      assert.match(cfg, /"target":"itch"/); assert.match(cfg, /"ads":false/); assert.match(cfg, /"rewarded":false/);
+      assert.match(readFileSync(path.join(dir, 'assets/lite/host.js'), 'utf8'), /name: 'itch'/);
+    }
   });
 }
+
+test('itch: --rewarded never turns ads on for the itch build', () => {
+  const dir = buildTarget('itch', { out, rewarded: true });
+  const cfg = readFileSync(path.join(dir, 'assets/lite/config.js'), 'utf8');
+  assert.match(cfg, /"ads":false/); assert.match(cfg, /"rewarded":false/);
+});
 
 test('audit finds only documented hits', () => {
   const dir = buildTarget('youtube', { out });

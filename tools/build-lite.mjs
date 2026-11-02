@@ -1,8 +1,9 @@
 #!/usr/bin/env node
-// Build "CREASE Lite": the offline, ads-only variant for YouTube Playables and CrazyGames.
+// Build "CREASE Lite": the offline, free variant for YouTube Playables, CrazyGames (both with host
+// ads) and itch.io (no ads, no SDK).
 //
-//   node tools/build-lite.mjs                      build both targets into dist-lite/
-//   node tools/build-lite.mjs --target youtube     one target (youtube | crazygames | all)
+//   node tools/build-lite.mjs                      build every target into dist-lite/
+//   node tools/build-lite.mjs --target youtube     one target (youtube | crazygames | itch | all)
 //   node tools/build-lite.mjs --rewarded           also enable the optional rewarded-video hook
 //   node tools/build-lite.mjs --audit              print the external-call audit and sizes
 //
@@ -38,6 +39,17 @@ export const TARGETS = {
     clearData: true,
     pageVisibility: true,
     haptics: true,
+  },
+  // itch.io HTML5 embed: no SDK, no ads, nothing loaded from outside the ZIP.
+  itch: {
+    sdk: '',
+    hostFile: 'host-itch.js',
+    csp: "default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob:; font-src 'self' data:; connect-src 'self' blob: data:; object-src 'none'; base-uri 'none'; form-action 'none'",
+    userSound: true,
+    clearData: true,
+    pageVisibility: true,
+    haptics: true,
+    ads: false,
   },
 };
 
@@ -153,7 +165,7 @@ export function buildTarget(name, { out = path.join(ROOT, 'dist-lite'), rewarded
 
   const body = transformBody(html.slice(bodyStart, scriptsAt), t);
   const game = transformGame(html.slice(gameAt + '<script>\n'.length, gameEnd + '\n})();'.length), t, { rewarded });
-  const flags = { ads: true, rewarded: !!rewarded };
+  const flags = { ads: t.ads !== false, rewarded: t.ads !== false && !!rewarded };
 
   const page = `<!DOCTYPE html>
 <html lang="en">
