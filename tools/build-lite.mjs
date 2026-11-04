@@ -195,7 +195,11 @@ ${body}<script src="assets/lite/config.js"></script>
   const shipLite = (from, to) => writeFileSync(path.join(dir, 'assets', 'lite', to), readLite(from).replace(/^\/\*[\s\S]*?\*\/\n/, ''));
   for (const f of ['storage.js', 'loader.js', 'product.js']) shipLite(f, f);
   shipLite(t.hostFile, 'host.js');
-  for (const f of ['crease-logo.js', 'arena-engine.js', 'progression.js', 'crease-wordmark.svg', 'kctw_logo.webp']) copyFileSync(path.join(ROOT, 'assets', f), path.join(dir, 'assets', f));
+  for (const f of ['crease-logo.js', 'arena-engine.js', 'progression.js', 'crease-wordmark.svg']) copyFileSync(path.join(ROOT, 'assets', f), path.join(dir, 'assets', f));
+  // Studio splash logo: Lite ships a compressed copy (same 440x440 art pre-composited on the splash's #000,
+  // 40 frames at 100 ms = the same 4 s loop, 473 KiB) so every file stays under Playables' 512 KiB per-file
+  // guideline. The full site keeps the original 1.78 MiB assets/kctw_logo.webp.
+  copyFileSync(path.join(ROOT, 'tools', 'lite', 'kctw_logo.lite.webp'), path.join(dir, 'assets', 'kctw_logo.webp'));
   mkdirSync(path.join(dir, 'assets', 'arenas'), { recursive: true });
   for (const f of readdirSync(path.join(ROOT, 'assets', 'arenas'))) copyFileSync(path.join(ROOT, 'assets', 'arenas', f), path.join(dir, 'assets', 'arenas', f));
   return dir;
