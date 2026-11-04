@@ -113,6 +113,8 @@ for (const name of Object.keys(TARGETS)) {
     for (const f of ['assets/kctw_logo.webp', 'assets/crease-wordmark.svg', 'assets/game.js']) assert.ok(files.includes(f), f);
     const game = readFileSync(path.join(dir, 'assets/game.js'), 'utf8');
     assert.ok(game.includes('function playIntro()') && game.includes('INTRO_END'));
+    // the splash logo is the compressed Lite copy, byte for byte
+    assert.deepEqual(readFileSync(path.join(dir, 'assets/kctw_logo.webp')), readFileSync(new URL('../tools/lite/kctw_logo.lite.webp', import.meta.url)));
   });
 
   test(`${name}: file names, paths, counts and sizes satisfy the host's published limits`, () => {
@@ -121,6 +123,8 @@ for (const name of Object.keys(TARGETS)) {
     for (const f of files) {
       assert.match(f.file, /^[A-Za-z0-9_\-./]+$/, 'file name characters: ' + f.file);
       assert.ok(f.bytes < 30 * 1024 * 1024);
+      // Playables certification: each file SHOULD be at most 512 KiB (kept for every target)
+      assert.ok(f.bytes <= 512 * 1024, `${f.file} is ${f.bytes} bytes, over 512 KiB`);
     }
     const total = files.reduce((s, f) => s + f.bytes, 0);
     // YouTube: 8000 files / 15 MB initial; CrazyGames: 1500 files / 50 MB; itch.io: 1000 files, 500 MB extracted,
