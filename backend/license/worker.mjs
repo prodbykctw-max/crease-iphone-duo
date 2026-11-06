@@ -12,7 +12,8 @@
 // The same Worker also serves Stripe purchases (POST /stripe/redeem and /stripe/restore, see stripe.mjs).
 // Both routes share the origin check, the rate limits, the body limit and the token format below.
 import { signToken } from './token.mjs';
-import { isFounder, parseIso } from './founder.mjs';
+import { parseIso } from './founder.mjs';
+import { redeemFounder, foundersLeft } from './founder-codes.mjs';
 import { redeemSession, restorePurchase } from './stripe.mjs';
 
 const LS_API = 'https://api.lemonsqueezy.com/v1/licenses/';
@@ -21,7 +22,7 @@ export const PASS_ID = 'crease-premium-pass';
 const KEY = /^[A-Za-z0-9_-]{8,100}$/;
 const INSTANCE = /^[A-Za-z0-9-]{8,64}$/;
 const MAX_BODY = 1024;
-const ROUTES = ['/license/activate', '/stripe/redeem', '/stripe/restore'];
+const ROUTES = ['/license/activate', '/stripe/redeem', '/stripe/restore', '/founder/redeem', '/founder/left'];
 
 export default {
   async fetch(request, env) {
@@ -35,7 +36,16 @@ export default {
     const path = new URL(request.url).pathname;
     if (!ROUTES.includes(path)) return text('Not found', 404);
     if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: { ...cors,
-      'Access-Control-Allow-Methods': 'POST', 'Access-Control-Allow-Headers': 'Content-Type', 'Access-Control-Max-Age': '600' } });
+      'Access-Control-Allow-Methods': path === '/founder/left' ? 'GET' : 'POST', 'Access-Control-Allow-Headers': 'Content-Type', 'Access-Control-Max-Age': '600' } });
+    // How many of the 100 free Founder's Gold codes are still unclaimed (cached about 30 s inside foundersLeft).
+    if (path === '/founder/left') {
+      if (request.method !== 'GET') return text('Method not allowed', 405);
+      try {
+        return new Response(JSON.stringify({ left: await foundersLeft(env) }), { status: 200, headers: { ...cors, 'Cache-Control': 'public, max-age=30', 'Content-Type': 'application/json' } });
+      } catch (_) {
+        return json({ left: null }, 503);
+      }
+    }
     if (request.method !== 'POST') return text('Method not allowed', 405);
     if (!request.headers.get('Content-Type')?.startsWith('application/json')) return text('JSON required', 415);
 
@@ -50,6 +60,14 @@ export default {
     if (raw === null) return text('Too large', 413);
     let body;
     try { body = JSON.parse(raw); } catch (_) { return text('Invalid JSON', 400); }
+    if (path === '/founder/redeem') {
+      try {
+        const r = await redeemFounder(body, env);
+        return json(r.body, r.status);
+      } catch (_) {
+        return json({ ok: false, reason: 'unavailable' }, 503);
+      }
+    }
     if (path !== '/license/activate') {
       try {
         return await (path === '/stripe/redeem' ? redeemSession : restorePurchase)(body, env, json, PASS_ID);
@@ -92,9 +110,9 @@ export default {
         if (typeof instance !== 'string' || !INSTANCE.test(instance)) return json({ verified: false, reason: 'unavailable' }, 503);
       }
       const createdAt = info.license_key.created_at;
-      const founder = isFounder(createdAt, env.SALES_START);
-      const token = await signToken({ p: PASS_ID, c: createdAt, i: instance, f: founder, iat: Math.floor(Date.now() / 1000) }, env.SIGNING_SECRET);
-      return json({ verified: true, token, product: PASS_ID, founder, instanceId: instance });
+      // Founder's Gold is no longer granted by buying: a Pass is never a Founder pass (see founder-codes.mjs).
+      const token = await signToken({ p: PASS_ID, c: createdAt, i: instance, f: false, iat: Math.floor(Date.now() / 1000) }, env.SIGNING_SECRET);
+      return json({ verified: true, token, product: PASS_ID, founder: false, instanceId: instance });
     } catch (_) {
       return json({ verified: false, reason: 'unavailable' }, 503);
     }

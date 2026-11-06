@@ -1,4 +1,4 @@
-// Premium Pass checkout: signed tokens, Founder's Gold window, the license Worker (Lemon Squeezy mocked),
+// Premium Pass checkout: signed tokens, the Pass never being a Founder pass, the license Worker (Lemon Squeezy mocked),
 // the browser-side redeem flow, config consistency, and "nothing old is left in the repo".
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -7,7 +7,7 @@ import path from 'node:path';
 import vm from 'node:vm';
 import { fileURLToPath } from 'node:url';
 import { signToken, verifyToken } from '../backend/license/token.mjs';
-import { FOUNDER_DAYS, founderCutoff, isFounder, parseIso } from '../backend/license/founder.mjs';
+import { parseIso } from '../backend/license/founder.mjs';
 import license, { PASS_ID } from '../backend/license/worker.mjs';
 import metrics from '../backend/worker.mjs';
 
@@ -41,43 +41,20 @@ test('token: the payload holds product, created_at, instance and founder only (n
   assert.deepEqual(Object.keys(payload).sort(), ['c', 'f', 'i', 'iat', 'p', 'v']);
 });
 
-// ---------------------------------------------------------------- founder window
-test('founder window: 30 days after SALES_START, computed from calendar dates', () => {
-  assert.equal(FOUNDER_DAYS, 30);
-  const start = '2026-12-01T15:00:00Z';
-  const cutoff = Date.UTC(2026, 11, 31, 15, 0, 0);   // 1 Dec + 30 days = 31 Dec
-  assert.equal(founderCutoff(start), cutoff);
-  assert.equal(founderCutoff(start) - Date.parse(start), 30 * 24 * 3600 * 1000);
-  const iso = ms => new Date(ms).toISOString();
-  assert.equal(isFounder(iso(cutoff - 1), start), true, '1 ms before the cutoff is in the window');
-  assert.equal(isFounder(iso(cutoff), start), false, 'the cutoff instant itself is out');
-  assert.equal(isFounder(iso(cutoff + 1), start), false);
-  assert.equal(isFounder(iso(Date.parse(start)), start), true, 'a purchase at the very start counts');
-  assert.equal(isFounder(iso(Date.parse(start) - 86400000), start), true, 'a test purchase before go-live is not penalised');
-});
-
-test('founder window: month and year ends, a US daylight-saving change, leap year', () => {
-  assert.equal(founderCutoff('2027-03-01T00:00:00Z'), Date.UTC(2027, 2, 31, 0, 0, 0));      // March has the DST switch in the US; UTC does not shift
-  assert.equal(founderCutoff('2027-01-15T12:00:00Z'), Date.UTC(2027, 1, 14, 12, 0, 0));     // 15 Jan + 30 d = 14 Feb
-  assert.equal(founderCutoff('2028-02-01T00:00:00Z'), Date.UTC(2028, 2, 2, 0, 0, 0));       // 2028 is a leap year: Feb has 29 days
-  assert.equal(founderCutoff('2026-12-20T00:00:00Z'), Date.UTC(2027, 0, 19, 0, 0, 0));      // across New Year
-});
-
-test('founder window: Lemon Squeezy timestamps (six fractional digits) and zone offsets parse exactly', () => {
+// ---------------------------------------------------------------- dates, and no Founder window any more
+test('dates: Lemon Squeezy timestamps (six fractional digits) and zone offsets parse exactly', () => {
   assert.equal(parseIso('2021-01-24T14:15:07.000000Z'), Date.UTC(2021, 0, 24, 14, 15, 7));
   assert.equal(parseIso('2021-01-24T14:15:07.123456Z'), Date.UTC(2021, 0, 24, 14, 15, 7, 123));
   assert.equal(parseIso('2026-12-01T17:00:00+02:00'), Date.UTC(2026, 11, 1, 15, 0, 0));
-  assert.equal(isFounder('2026-12-31T16:59:59.999999+02:00', '2026-12-01T15:00:00Z'), true);   // 14:59:59.999 UTC
-  assert.equal(isFounder('2026-12-31T17:00:00+02:00', '2026-12-01T15:00:00Z'), false);         // exactly 15:00 UTC
+  for (const bad of ['', undefined, null, 'soon', '2026-12-01', '2026-12-01T15:00:00', 20261201]) assert.equal(parseIso(bad), null);
 });
 
-test('founder window: nobody is a Founder until SALES_START is set to a valid, zoned time', () => {
-  for (const bad of ['', undefined, null, 'soon', '2026-12-01', '2026-12-01T15:00:00', 20261201]) {
-    assert.equal(founderCutoff(bad), null);
-    assert.equal(isFounder('2026-12-02T00:00:00Z', bad), false);
+test('founder: buying is no longer how Founder\'s Gold is earned (the 30-day window code is gone)', async () => {
+  const mod = await import('../backend/license/founder.mjs');
+  for (const gone of ['FOUNDER_DAYS', 'founderCutoff', 'isFounder']) assert.equal(mod[gone], undefined, gone + ' is removed');
+  for (const f of ['backend/license/worker.mjs', 'backend/license/stripe.mjs', 'assets/monetization.js']) {
+    assert.ok(!/isFounder\(createdAt|founderWindowEnd|FOUNDER_DAYS|SALES_START \+ 30/.test(read(f)), f + ' has no purchase-time Founder rule');
   }
-  assert.equal(isFounder('not a date', '2026-12-01T15:00:00Z'), false);
-  assert.equal(isFounder(undefined, '2026-12-01T15:00:00Z'), false);
 });
 
 // ---------------------------------------------------------------- license Worker, Lemon Squeezy mocked
@@ -114,9 +91,9 @@ test('license Worker: a valid key activates once, checks ids, and returns a sign
     const out = await res.json();
     assert.deepEqual(Object.keys(out).sort(), ['founder', 'instanceId', 'product', 'token', 'verified']);
     assert.equal(out.verified, true); assert.equal(out.product, PASS_ID); assert.equal(out.instanceId, INSTANCE);
-    assert.equal(out.founder, true, 'created 5 Dec is inside 1 Dec + 30 days');
+    assert.equal(out.founder, false, 'a Pass is never a Founder pass, even bought on day one');
     const payload = await verifyToken(out.token, SECRET);
-    assert.deepEqual({ p: payload.p, c: payload.c, i: payload.i, f: payload.f }, { p: PASS_ID, c: '2026-12-05T10:00:00.000000Z', i: INSTANCE, f: true });
+    assert.deepEqual({ p: payload.p, c: payload.c, i: payload.i, f: payload.f }, { p: PASS_ID, c: '2026-12-05T10:00:00.000000Z', i: INSTANCE, f: false });
     // exactly one Lemon Squeezy call: POST /activate, form-encoded, Accept json, generic User-Agent
     assert.equal(calls.length, 1);
     const c = calls[0];
@@ -136,16 +113,17 @@ test('license Worker: a valid key activates once, checks ids, and returns a sign
   });
 });
 
-test('license Worker: Founder comes from Lemon Squeezy created_at, not the clock', async () => {
-  const cutoff = Date.UTC(2026, 11, 31, 15, 0, 0), iso = ms => new Date(ms).toISOString().replace('.000Z', '.000000Z');
-  for (const [created, expected] of [[iso(cutoff - 1000), true], [iso(cutoff), false], [iso(cutoff + 86400000), false]]) {
-    await withLemon({ activate: okActivate({ license_key: lic({ created_at: created }) }) }, async () => {
-      assert.equal((await (await post({ license_key: KEY })).json()).founder, expected, created);
-    });
+test('license Worker: a Pass is never a Founder pass, whenever it was bought or whatever SALES_START says', async () => {
+  const iso = ms => new Date(ms).toISOString().replace('.000Z', '.000000Z');
+  for (const created of [iso(Date.UTC(2026, 11, 1, 15, 0, 1)), iso(Date.UTC(2026, 11, 31, 14, 59, 59)), iso(Date.UTC(2027, 5, 1))]) {
+    for (const sales of [SALES_START, '']) {
+      await withLemon({ activate: okActivate({ license_key: lic({ created_at: created }) }) }, async () => {
+        const out = await (await post({ license_key: KEY }, baseEnv({ SALES_START: sales }))).json();
+        assert.equal(out.founder, false, created);
+        assert.equal((await verifyToken(out.token, SECRET)).f, false);
+      });
+    }
   }
-  await withLemon({ activate: okActivate() }, async () => {   // SALES_START still empty: nobody is a Founder
-    assert.equal((await (await post({ license_key: KEY }, baseEnv({ SALES_START: '' }))).json()).founder, false);
-  });
 });
 
 test('license Worker: an unknown key is "invalid"', async () => {
@@ -266,7 +244,7 @@ test('license Worker: origin, method, content type, size, rate limits', async ()
 // ---------------------------------------------------------------- browser side (assets/monetization.js)
 function loadClient({ store = {}, config, fetchImpl } = {}) {
   const window = { CREASE_COMMERCE: config, fetch: fetchImpl };
-  const context = { window, URL, URLSearchParams, AbortController, setTimeout, clearTimeout,
+  const context = { window, URL, URLSearchParams, AbortController, setTimeout, clearTimeout, atob, btoa,
     localStorage: { getItem: k => Object.hasOwn(store, k) ? store[k] : null, setItem: (k, v) => { store[k] = String(v); } } };
   vm.runInNewContext(read('assets/monetization.js'), context);
   return { api: window.CreaseProduct, store };
@@ -294,29 +272,29 @@ test('client: restore needs an https Worker URL', () => {
   assert.equal(loadClient({ config: liveConfig }).api.restoreReady(), true);
 });
 
-test('client: a key unlocks the pass only when the Worker says verified, and Founder comes from the Worker', async () => {
+test('client: a key unlocks the pass only when the Worker says verified, and a Pass never carries Founder\'s Gold', async () => {
   const sent = [];
   const fetchImpl = async (url, init) => { sent.push({ url, init, body: JSON.parse(init.body) }); return new Response(JSON.stringify({ verified: true, token: 'tok.en', product: PASS_ID, founder: true, instanceId: INSTANCE })); };
   const { api, store } = loadClient({ config: liveConfig, fetchImpl });
   assert.equal(api.isPremium(), false);
-  assert.deepEqual(plain(await api.redeemKey(' ' + KEY.slice(0, 18) + '\n' + KEY.slice(18) + ' ')), { ok: true, founder: true });
+  assert.deepEqual(plain(await api.redeemKey(' ' + KEY.slice(0, 18) + '\n' + KEY.slice(18) + ' ')), { ok: true });
   assert.equal(sent[0].url, 'https://crease-license.prodbykctw.workers.dev/license/activate');
   assert.deepEqual(sent[0].body, { license_key: KEY });
   assert.equal(sent[0].init.credentials, 'omit');
-  assert.equal(api.isPremium(), true); assert.equal(api.isFounder(), true); assert.equal(api.canUse('founder'), true);
+  assert.equal(api.isPremium(), true); assert.equal(api.isFounder(), false, 'even a Worker reply that says founder:true is ignored'); assert.equal(api.canUse('founder'), false);
   const saved = JSON.parse(store['crease.entitlement.v1']);
-  assert.equal(saved.token, 'tok.en'); assert.equal(saved.instanceId, INSTANCE); assert.equal(saved.founder, true);
+  assert.equal(saved.token, 'tok.en'); assert.equal(saved.instanceId, INSTANCE); assert.equal(saved.founder, undefined);
   assert.ok(!JSON.stringify(store).includes(KEY), 'the license key itself is never stored');
   // asking again from this device sends the instance back so no new activation is used
   await api.redeemKey(KEY);
   assert.deepEqual(sent[1].body, { license_key: KEY, instance_id: INSTANCE });
   // a reload keeps the pass
-  assert.equal(loadClient({ store, config: liveConfig }).api.isFounder(), true);
+  assert.equal(loadClient({ store, config: liveConfig }).api.isPremium(), true); assert.equal(loadClient({ store, config: liveConfig }).api.isFounder(), false);
 });
 
-test('client: a non-Founder pass cannot use Founder\'s Gold, whatever the device clock says', async () => {
+test('client: a Pass cannot use Founder\'s Gold, whatever the device clock says', async () => {
   const { api } = loadClient({ config: liveConfig, fetchImpl: reply({ verified: true, token: 't', product: PASS_ID, founder: false, instanceId: INSTANCE }) });
-  assert.deepEqual(plain(await api.redeemKey(KEY)), { ok: true, founder: false });
+  assert.deepEqual(plain(await api.redeemKey(KEY)), { ok: true });
   assert.equal(api.isPremium(), true); assert.equal(api.canUse('prism'), true);
   assert.equal(api.isFounder(), false); assert.equal(api.canUse('founder'), false); assert.equal(api.setPaddleStyle('founder'), false);
 });
@@ -445,12 +423,21 @@ test('repo: no copy of the old Nov 1 founder date and no Instagram checkout link
   assert.ok(!/instagram\.com[^"']*/.test(/function renderPremium\(\)\{[\s\S]*?\n\}/.exec(html)[0]));
 });
 
-test('repo: every player-facing mention of Founder\'s Gold uses the launch-window wording', () => {
-  const sentence = 'Launch-window exclusive: Premium Passes bought in the Pass’s first 30 days on sale. Never sold again.';
+test('repo: every player-facing mention of Founder\'s Gold says it is free, by code, first 100, never sold', () => {
+  const sentence = 'Only 100 will ever exist. Free to the first 100 players who DM @playcrease to claim one. Never sold.';
   assert.ok(read('assets/monetization.js').includes(sentence));
   assert.ok(read('terms/index.html').includes(sentence));
-  assert.match(read('llms-full.txt'), /Founder's Gold is a launch-window exclusive: Premium Passes bought in the Pass’s first 30 days on sale\. Never sold again\./);
+  assert.ok(read('llms-full.txt').includes(sentence));
   assert.ok(read('docs/CHECKOUT.md').includes(sentence));
+  const terms = read('terms/index.html');
+  assert.match(terms, /Founder\u2019s Gold is free and is not part of the Premium Pass; buying the Pass does not give it to you\. It goes to the first 100 players who claim it by direct message to @playcrease on Instagram, X or TikTok, one per player, each with a one-time code\. It is not sold and has no cash value\./);
+  // the old launch-window promise is gone everywhere a player (or a crawler) can read it
+  const hits = [];
+  for (const f of walk(fileURLToPath(ROOT))) {
+    if (/tests[\\/]/.test(f) || /\.(png|webp|jpg|jpeg|mp3|ogg|wav|svg|woff2?)$/i.test(f)) continue;
+    if (/launch-window exclusive|first 30 days on sale|30-day window/i.test(fs.readFileSync(f, 'utf8'))) hits.push(path.basename(f));
+  }
+  assert.deepEqual(hits, []);
 });
 
 test('copy: terms and privacy name Stripe as merchant of record and processor, with a refund line', () => {

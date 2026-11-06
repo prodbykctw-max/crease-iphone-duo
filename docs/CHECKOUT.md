@@ -9,7 +9,7 @@ The Premium Pass is a one-time **$2.99** purchase on Lemon Squeezy, with a **lic
 3. **Redirect back.** The product's confirmation-modal button and receipt button point at `https://playcrease.app/#pass=[license_key]`. The game reads the key from the link once, removes it from the address bar, and activates it automatically.
 4. **Restore / manual entry.** The Premium Garage has an "Enter license key" field (same flow). The same key restores the pass on a new device, or after browser data is cleared.
 5. **Verify.** The game POSTs the key to the license Worker (`backend/license/`). The Worker calls Lemon Squeezy's License API, checks the store/product (and variant) ids, and returns a signed token. The game unlocks the pass only when the Worker answers `verified: true`.
-6. **Founder's Gold.** The Worker compares the license's `created_at` (from Lemon Squeezy) with `SALES_START + 30 days` and puts the result in the signed token. The device clock is never consulted.
+6. **Founder's Gold.** Not part of the Pass. It is free to the first 100 players who DM @playcrease for a one-time code (see `## Founder's Gold` below). A Pass token always carries `f:false`.
 
 ### Why a small separate Worker, not a route on `crease-online`
 
@@ -24,11 +24,12 @@ The overlay needs `https://app.lemonsqueezy.com/js/lemon.js` in `script-src` (an
 | File | Role |
 | --- | --- |
 | `assets/commerce-config.js` | The one config file: `CHECKOUT_URL`, `STORE_ID`, `PRODUCT_ID`, `VARIANT_ID`, `PRICE_LABEL`, `SALES_START`, `WORKER_URL` |
-| `assets/monetization.js` | Pass state, `redeemKey`, `takeKeyFromUrl`, Founder logic (token only) |
+| `assets/monetization.js` | Pass state, `redeemKey`, `takeKeyFromUrl`, Founder code redeem, `?founder=` link, "N of 100 left" |
 | `index.html` | Premium Garage markup, COMING SOON / price / key field, funnel events |
 | `backend/license/worker.mjs` | `POST /license/activate` |
 | `backend/license/token.mjs` | HMAC-SHA256 token sign/verify (reusable by other Workers) |
-| `backend/license/founder.mjs` | Founder window math |
+| `backend/license/founder-codes.mjs` | Founder's Gold codes: `/founder/redeem`, `/founder/left` |
+| `backend/license/founder.mjs` | Strict ISO-8601 date parser |
 | `backend/license/wrangler.jsonc` | Worker config (ids, rate limits) |
 | `backend/worker.mjs` | Metrics Worker, now also accepts the four funnel events |
 | `tests/checkout.test.mjs` | Tests for all of the above |
@@ -111,7 +112,7 @@ cd ..           # backend\
 ### 5. Fill `assets/commerce-config.js` and set SALES_START
 
 - `CHECKOUT_URL`, `STORE_ID`, `PRODUCT_ID`, `VARIANT_ID`, `WORKER_URL` from steps 1 to 3. `PRICE_LABEL` is already `$2.99 + tax`; it shows only once `CHECKOUT_URL` is set.
-- `SALES_START`: the exact moment you announce the Pass (ISO with a zone, e.g. `2026-12-01T15:00:00Z`). Put the **same value** in `backend/license/wrangler.jsonc` and redeploy the license Worker **before** the site goes live. The Worker is what decides Founder's Gold; the game copy only uses it to print the closing date.
+- `SALES_START`: the exact moment you announce the Pass (ISO with a zone, e.g. `2026-12-01T15:00:00Z`). Put the **same value** in `backend/license/wrangler.jsonc` and redeploy the license Worker **before** the site goes live. `SALES_START` no longer affects Founder's Gold.
 - `node --test tests/*.test.mjs` fails if the config file and `wrangler.jsonc` disagree.
 - Run `node tools/stamp-assets.mjs` (cache tag) and `node tools/csp-hash.mjs --check`.
 
@@ -121,7 +122,7 @@ cd ..           # backend\
 2. Buy with a test card. Confirm the receipt has the key and the button lands on the game with the pass unlocked (and the address bar cleaned).
 3. Clear data, enter the key by hand: restores on the same device without a second activation (the game sends the stored instance back; check `activation_usage` in Lemon Squeezy).
 4. Enter the key on a second browser: activation_usage goes up. After 5, the game says the key is on its maximum.
-5. Confirm Founder's Gold is equipped only for a purchase made inside the 30-day window.
+5. Confirm a Pass purchase does NOT unlock Founder's Gold.
 
 ### 7. Go live
 
@@ -131,7 +132,13 @@ cd ..           # backend\
 
 ## Founder's Gold
 
-Rule: a pass is a Founder pass when the license's Lemon Squeezy `created_at` is **before `SALES_START` + 30 days** (30 x 86,400 seconds, UTC). Example: `SALES_START = 2026-12-01T15:00:00Z` gives a cutoff of `2026-12-31T15:00:00Z`. The result is written into the signed token at activation time. Empty `SALES_START` means nobody is a Founder. Public copy everywhere reads: "Launch-window exclusive: Premium Passes bought in the Pass’s first 30 days on sale. Never sold again."
+Founder's Gold is free. It goes to the first 100 players who claim it by DMing @playcrease on Instagram, X or TikTok, and buying the Pass does not give it. Each claimer gets a one-time code (`GOLD-XXXX-XXXX`) and enters it in the Premium Garage ("Have a Founder code?") or opens `https://playcrease.app/?founder=CODE`.
+
+- D1 table `founder_codes` (schema.sql) holds only SHA-256 hashes (of `crease-founder:` + the code, upper case, no spaces or dashes), a label (`public-001` ... `public-100`, plus `owner-000` outside the 100), `claimed_at` and the claiming browser's random device id.
+- `POST /founder/redeem {code, device}` claims an unclaimed code for that device and returns a signed token (`p:'founder'`, `f:true`). The same device asking again gets a fresh token (restore); another device gets `used`; an unknown code gets `invalid`. Rate-limited like the other endpoints.
+- `GET /founder/left` returns `{left: N}` for the 100 public codes only (cached about 30 s). The Garage shows "N of 100 left" and hides the number if it can't be read.
+- The plain codes are kept in a CSV outside the repository and are never committed (`.gitignore` also blocks `founder-codes.csv`).
+- Public copy everywhere reads: "Only 100 will ever exist. Free to the first 100 players who DM @playcrease to claim one. Never sold."
 
 ## Refunds and revoked keys
 
@@ -185,7 +192,7 @@ Premium Garage to Stripe mode; a Lemon Squeezy link keeps the license-key flow. 
    `crease-license` `/stripe/redeem`. `device_id` is a random 32-hex id the browser keeps (`crease.device.v1`).
 3. The Worker reads the Checkout Session from Stripe (line items + charge expanded) and unlocks only if it is
    complete and paid, in the same mode as the key (live key = live sales only), contains `STRIPE_PRICE_ID`, and
-   the charge is not refunded (even partly) or disputed. Founder's Gold uses the session's `created` time.
+   the charge is not refunded (even partly) or disputed. The token's `c` is the session's `created` time; a Pass never carries Founder's Gold.
 4. D1 (`crease-license`, table `devices`) counts devices per sale: at most 5. It stores a SHA-256 of the session
    id and the random device id, nothing else.
 5. **Restore** on another device: checkout email + the card's last 4 digits (or the receipt number). The Worker
