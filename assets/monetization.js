@@ -65,6 +65,21 @@
   const FX_NAMES={classic:'Classic sparks',prismA:'Prism shards',prismB:'Prism rays',solarA:'Solar embers',solarB:'Solar supernova',obsidianA:'Mint shockwaves',obsidianB:'Obsidian lightning'};
   const SET_KEYS=Object.keys(LOOKS).reduce((a,id)=>a.concat(LOOKS[id].map(l=>id+l.id)),[]);
   const MIX_LIMITS={hue:{min:-180,max:180,def:0},size:{min:.6,max:1.6,def:1},power:{min:.4,max:1.6,def:1}};
+  const SHAPES=[{id:'circle',name:'Circle'},{id:'rounded',name:'Rounded square'},{id:'hexagon',name:'Hexagon'},{id:'octagon',name:'Octagon'},{id:'diamond',name:'Diamond'},{id:'star',name:'Star'},{id:'gear',name:'Gear'},{id:'shield',name:'Shield'}];
+  const TEXTURES=[{id:'none',name:'None'},{id:'carbon',name:'Carbon fiber'},{id:'brushed',name:'Brushed metal'},{id:'glass',name:'Glass'},{id:'marble',name:'Marble'},{id:'holo',name:'Holographic'},{id:'wood',name:'Wood grain'},{id:'lava',name:'Lava'},{id:'circuit',name:'Circuit'},{id:'glitter',name:'Glitter'}];
+  const PAD_LIMITS={opacity:{min:.3,max:1,def:1},strength:{min:0,max:1,def:.6}};   // transparency never goes below 30%, so the paddle is always visible
+  // Color math for the Design Studio picker. RGB is whole numbers 0-255; CMYK and HSB are plain numbers (percent, degrees) so a round trip is exact.
+  const COLOR=(()=>{
+    const cl=(n,a,b)=>Math.min(b,Math.max(a,n)),h2=n=>Math.round(cl(n,0,255)).toString(16).padStart(2,'0');
+    const parseHex=s=>{if(typeof s!=='string')return null;let t=s.trim().replace(/^#/,'');if(/^[0-9a-f]{3}$/i.test(t))t=t.replace(/./g,'$&$&');return/^[0-9a-f]{6}$/i.test(t)?'#'+t.toLowerCase():null};
+    const hexToRgb=s=>{const h=parseHex(s);if(!h)return null;const n=parseInt(h.slice(1),16);return{r:n>>16&255,g:n>>8&255,b:n&255}};
+    const rgbToHex=(r,g,b)=>'#'+h2(r)+h2(g)+h2(b);
+    const rgbToCmyk=(r,g,b)=>{r=cl(r,0,255)/255;g=cl(g,0,255)/255;b=cl(b,0,255)/255;const k=1-Math.max(r,g,b);if(k>=1)return{c:0,m:0,y:0,k:100};return{c:(1-r-k)/(1-k)*100,m:(1-g-k)/(1-k)*100,y:(1-b-k)/(1-k)*100,k:k*100}};
+    const cmykToRgb=(c,m,y,k)=>{const f=v=>Math.round(255*(1-cl(+v||0,0,100)/100)*(1-cl(+k||0,0,100)/100));return{r:f(c),g:f(m),b:f(y)}};
+    const rgbToHsb=(r,g,b)=>{r=cl(r,0,255)/255;g=cl(g,0,255)/255;b=cl(b,0,255)/255;const mx=Math.max(r,g,b),d=mx-Math.min(r,g,b);let h=0;if(d){h=mx===r?((g-b)/d+6)%6:mx===g?(b-r)/d+2:(r-g)/d+4;h*=60}return{h,s:mx?d/mx*100:0,b:mx*100}};
+    const hsbToRgb=(h,s,v)=>{h=(((+h||0)%360)+360)%360;s=cl(+s||0,0,100)/100;v=cl(+v||0,0,100)/100;const f=n=>{const k=(n+h/60)%6;return Math.round((v-v*s*Math.max(0,Math.min(k,4-k,1)))*255)};return{r:f(5),g:f(3),b:f(1)}};
+    return{parseHex,hexToRgb,rgbToHex,rgbToCmyk,cmykToRgb,rgbToHsb,hsbToRgb};
+  })();
   const num=(v,lim)=>{const n=typeof v==='number'?v:typeof v==='string'&&v.trim()!==''?Number(v):NaN;return Number.isFinite(n)?Math.min(lim.max,Math.max(lim.min,n)):lim.def};
   const pick=(v,list,def)=>typeof v==='string'&&list.indexOf(v)>=0?v:def;
   const storedLooks=()=>{let o=null;try{o=JSON.parse(safe.get(LOOK_KEY)||'null')}catch{}const out={};for(const id of Object.keys(LOOKS)){const v=o&&typeof o==='object'?o[id]:null;out[id]=LOOKS[id].some(l=>l.id===v)?v:'A'}return out};
@@ -84,6 +99,22 @@
       const L=['classic','founder'].concat(SET_KEYS),F=['classic'].concat(SET_KEYS);
       return{base:pick(r.base,L,'classic'),hit:pick(r.hit,F,'classic'),goal:pick(r.goal,F,'classic'),
         tune:{hue:Math.round(num(t.hue,MIX_LIMITS.hue)),size:Math.round(num(t.size,MIX_LIMITS.size)*100)/100,power:Math.round(num(t.power,MIX_LIMITS.power)*100)/100}};
+    },
+    // ---- Design Studio: colors, paddle shape, texture and transparency ----
+    // Shapes and textures are visual only; the hitbox stays a circle. They belong to the Custom paddle look (the Classic base).
+    shapes:SHAPES,textures:TEXTURES,paddleLimits:PAD_LIMITS,color:COLOR,
+    // Any typed or saved color becomes '#rrggbb' (lowercase); anything else becomes def.
+    sanitizeColor(v,def){const h=COLOR.parseHex(v);return h||(typeof def==='string'?def:'')},
+    // Cleans the saved shape, texture and transparency. Unknown names fall back to defaults, numbers are clamped. Never throws.
+    sanitizePaddle(raw){
+      const r=raw&&typeof raw==='object'&&!Array.isArray(raw)?raw:{};
+      return{shape:pick(r.shape,SHAPES.map(s=>s.id),'circle'),texture:pick(r.texture,TEXTURES.map(s=>s.id),'none'),
+        opacity:Math.round(num(r.opacity,PAD_LIMITS.opacity)*100)/100,strength:Math.round(num(r.strength,PAD_LIMITS.strength)*100)/100};
+    },
+    // What actually draws: shape and texture only apply to the Custom (Classic base) look; transparency applies to every look.
+    paddleDesign(rawMix,rawCustom){
+      const base=looksApi.resolveMix(rawMix).base,c=looksApi.sanitizePaddle(rawCustom),custom=base==='classic';
+      return{base,custom,shape:custom?c.shape:'circle',texture:custom?c.texture:'none',strength:c.strength,opacity:c.opacity};
     },
     // The mix as it may actually play: anything the player does not own is swapped for the classic default.
     resolveMix(raw){const m=looksApi.sanitizeMix(raw);if(!api.canUseLook(m.base))m.base='classic';if(!api.canUseFx(m.hit))m.hit='classic';if(!api.canUseFx(m.goal))m.goal='classic';return m},
