@@ -18,7 +18,7 @@
     d=Array.from(c.getRandomValues(new Uint8Array(16)),b=>b.toString(16).padStart(2,'0')).join('');safe.set('crease.device.v1',d);return d};
   const workerBase=()=>{try{const u=new URL(String(cfg().WORKER_URL||'').trim());return u.protocol==='https:'?u.origin:''}catch{return ''}};
   const cleanKey=k=>{const s=String(k==null?'':k).replace(/\s+/g,'');return /^[A-Za-z0-9_-]{8,100}$/.test(s)?s:''};
-  const FOUNDER_DAYS=30,FOUNDER_TEXT='Launch-window exclusive: Premium Passes bought in the first 30 days after the Pass goes on sale. Never sold again.';
+  const FOUNDER_DAYS=30,FOUNDER_TEXT='Launch-window exclusive: Premium Passes bought in the Pass’s first 30 days on sale. Never sold again.';
   // The saved entitlement: whether a pass is active, the signed token the license Worker issued, whether the
   // Worker counted it as a launch-window (Founder) pass, and the activation instance (so asking again on this
   // device does not use up another activation).

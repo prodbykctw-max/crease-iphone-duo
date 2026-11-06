@@ -131,7 +131,7 @@ cd ..           # backend\
 
 ## Founder's Gold
 
-Rule: a pass is a Founder pass when the license's Lemon Squeezy `created_at` is **before `SALES_START` + 30 days** (30 x 86,400 seconds, UTC). Example: `SALES_START = 2026-12-01T15:00:00Z` gives a cutoff of `2026-12-31T15:00:00Z`. The result is written into the signed token at activation time. Empty `SALES_START` means nobody is a Founder. Public copy everywhere reads: "Launch-window exclusive: Premium Passes bought in the first 30 days after the Pass goes on sale. Never sold again."
+Rule: a pass is a Founder pass when the license's Lemon Squeezy `created_at` is **before `SALES_START` + 30 days** (30 x 86,400 seconds, UTC). Example: `SALES_START = 2026-12-01T15:00:00Z` gives a cutoff of `2026-12-31T15:00:00Z`. The result is written into the signed token at activation time. Empty `SALES_START` means nobody is a Founder. Public copy everywhere reads: "Launch-window exclusive: Premium Passes bought in the Pass’s first 30 days on sale. Never sold again."
 
 ## Refunds and revoked keys
 
