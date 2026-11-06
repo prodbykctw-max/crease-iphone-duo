@@ -446,10 +446,10 @@ test('repo: no copy of the old Nov 1 founder date and no Instagram checkout link
 });
 
 test('repo: every player-facing mention of Founder\'s Gold uses the launch-window wording', () => {
-  const sentence = 'Launch-window exclusive: Premium Passes bought in the first 30 days after the Pass goes on sale. Never sold again.';
+  const sentence = 'Launch-window exclusive: Premium Passes bought in the Pass’s first 30 days on sale. Never sold again.';
   assert.ok(read('assets/monetization.js').includes(sentence));
   assert.ok(read('terms/index.html').includes(sentence));
-  assert.match(read('llms-full.txt'), /Founder's Gold is a launch-window exclusive: Premium Passes bought in the first 30 days after the Pass goes on sale\. Never sold again\./);
+  assert.match(read('llms-full.txt'), /Founder's Gold is a launch-window exclusive: Premium Passes bought in the Pass’s first 30 days on sale\. Never sold again\./);
   assert.ok(read('docs/CHECKOUT.md').includes(sentence));
 });
 

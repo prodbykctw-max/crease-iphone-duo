@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="referrer" content="strict-origin-when-cross-origin">
 <!-- Content-Security-Policy: installed by the next script, except on a local test server (localhost / 127.0.0.1) where the capture harness rewrites the game script. Update hashes with: node tools/csp-hash.mjs -->
-<meta name="crease-csp" content="default-src 'self'; script-src 'self' 'sha256-9kyMFOQq/HLwXlyiVTgCTQzmo6H4oBBvtdWEJb0rIFI=' 'sha256-3O2x1nYoRInVGO/E/Fe2Eh3JGd9dGB4/QM6rx7n+2SE='; connect-src 'self' https://crease-metrics.prodbykctw.workers.dev https://crease-license.prodbykctw.workers.dev; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta name="crease-csp" content="default-src 'self'; script-src 'self' 'sha256-9kyMFOQq/HLwXlyiVTgCTQzmo6H4oBBvtdWEJb0rIFI=' 'sha256-8SktpNAhkyKeZ5VXI4qqNYs42nQYIsY7yFdOY3WTlww='; connect-src 'self' https://crease-metrics.prodbykctw.workers.dev https://crease-license.prodbykctw.workers.dev; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <script>(function(){var h=location.hostname;if(h==='localhost'||h==='127.0.0.1')return;var p=document.querySelector('meta[name="crease-csp"]'),m=document.createElement('meta');m.httpEquiv='Content-Security-Policy';m.content=p.content;document.head.appendChild(m);})();</script>
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -449,7 +449,7 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--p1);outline-offset:
 <script src="assets/arena-engine.js?v=839de2dcf7"></script>
 <script src="assets/progression.js?v=cba130d647"></script>
 <script src="assets/commerce-config.js?v=f9b1f7bc97"></script>
-<script src="assets/monetization.js?v=05c0c6d331"></script>
+<script src="assets/monetization.js?v=d14dc8d188"></script>
 <script>
 (() => {
 'use strict';
@@ -3258,7 +3258,7 @@ function renderPremium(){
   for(const [id,s] of Object.entries(CreaseProduct.styles)){
     const can=CreaseProduct.canUse(id);
     const card=document.createElement('article');card.className='product-card'+(!can?' locked':'');
-    const h=document.createElement('h3');h.textContent=s.name+(s.founder?' · FOUNDER':'');const p=document.createElement('p');p.textContent=s.desc||'';
+    const h=document.createElement('h3');h.textContent=s.name+(s.founder&&!/founder/i.test(s.name)?' · FOUNDER':'');const p=document.createElement('p');p.textContent=s.desc||'';
     const b=document.createElement('button');b.className='btn plain';b.textContent=!can?(s.founder?'FOUNDERS ONLY':'LOCKED'):(CreaseProduct.paddleStyle()===s?'EQUIPPED':'EQUIP');b.disabled=!can;b.onclick=()=>{if(CreaseProduct.setPaddleStyle(id))renderPremium();};card.append(h,p,b);grid.append(card);
   }
   const extra=document.createElement('article');extra.className='product-card'+(paid?'':' locked');extra.innerHTML='<h3>Round Carryover</h3><p>Collected BIG and WALL power-ups last 1.6× longer and persist into the next round, for both sides of the table. MULTI remains a round pickup. Online matches are not affected.</p>';grid.append(extra);
@@ -3280,7 +3280,7 @@ async function redeemKey(raw,fromLink){
   if(r.ok){
     track('key_verified');$('premiumKey').value='';renderPremium();refreshStageLock();
     status.textContent='';
-    if(fromLink)toast('PREMIUM PASS UNLOCKED',2.2);else $('premiumStatus').textContent+=' Premium Pass unlocked.';
+    if(fromLink)toast('PREMIUM PASS UNLOCKED',2.2);else $('premiumStatus').textContent='Unlocked! '+$('premiumStatus').textContent;
   }else{status.textContent=KEY_MESSAGES[r.reason]||KEY_MESSAGES.invalid;if(fromLink)$('premiumKey').value=key;}
 }
 $('premiumRedeem').onclick=()=>redeemKey($('premiumKey').value,false);
@@ -3296,7 +3296,7 @@ async function stripeUnlock(run,fromLink){
   const r=await run();
   restoring=false;$('premiumRestoreBtn').disabled=false;
   if(r.ok){track('key_verified');$('premiumProof').value='';renderPremium();refreshStageLock();status.textContent='';
-    if(fromLink)toast('PREMIUM PASS UNLOCKED',2.2);else $('premiumStatus').textContent+=' Premium Pass unlocked.';}
+    if(fromLink)toast('PREMIUM PASS UNLOCKED',2.2);else $('premiumStatus').textContent='Unlocked! '+$('premiumStatus').textContent;}
   else{renderPremium();status.textContent=STRIPE_MESSAGES[r.reason]||STRIPE_MESSAGES.invalid;if(fromLink&&!$('premium').open)$('premium').showModal();}
 }
 $('premiumRestoreBtn').onclick=()=>stripeUnlock(()=>CreaseProduct.restorePurchase($('premiumEmail').value,$('premiumProof').value),false);

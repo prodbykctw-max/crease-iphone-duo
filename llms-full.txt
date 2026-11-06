@@ -47,7 +47,7 @@ Q: What is CREASE?
 A: A free two-player neon air hockey game that runs in your browser — one screen, two players, first to 7. Solo vs CPU in portrait, head-to-head in landscape.
 
 Q: Is it free?
-A: Yes. CREASE is free to play, with no download and no account. An optional Premium Pass ($2.99 plus tax, a one-time purchase sold through Stripe, on sale since November 6, 2026) adds extras: every arena unlocked, the Design Studio, signature paddles, and power-ups (BIG and WALL) that last longer and carry into the next round for both sides of the table on that device. Online matches are not affected. Founder's Gold is a launch-window exclusive: Premium Passes bought in the first 30 days after the Pass goes on sale. Never sold again.
+A: Yes. CREASE is free to play, with no download and no account. An optional Premium Pass ($2.99 plus tax, a one-time purchase sold through Stripe, on sale since November 6, 2026) adds extras: every arena unlocked, the Design Studio, signature paddles, and power-ups (BIG and WALL) that last longer and carry into the next round for both sides of the table on that device. Online matches are not affected. Founder's Gold is a launch-window exclusive: Premium Passes bought in the Pass’s first 30 days on sale. Never sold again.
 
 Q: Can two people play on one phone?
 A: Yes. On the iPhone Duo, open it; on other phones, turn to landscape. Each player controls the paddle on their half of the screen.
