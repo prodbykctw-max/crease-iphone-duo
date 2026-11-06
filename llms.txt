@@ -1,6 +1,6 @@
 # CREASE
 
-> CREASE is a free neon air hockey game made for the iPhone Duo, Apple's foldable (pre-orders October 16, 2026; on sale October 23, 2026). Open the phone: full table, two players, one on each side. Close it: pocket table, you vs the CPU. Fold it mid-match and the game keeps going. First to 7. It runs in any modern browser today, with no download and no account. Made by prodbyKCTW (Melvin D. Brown III). Not affiliated with Apple Inc.
+> CREASE is a free neon air hockey game made for the iPhone Duo, Apple's foldable (pre-orders opened October 16, 2026; on sale since October 23, 2026). Open the phone: full table, two players, one on each side. Close it: pocket table, you vs the CPU. Fold it mid-match and the game keeps going. First to 7. It runs in any modern browser today, with no download and no account. Made by prodbyKCTW (Melvin D. Brown III). Not affiliated with Apple Inc.
 
 The full reference, with controls, mechanics and FAQ, is at [llms-full.txt](https://playcrease.app/llms-full.txt). Every public page is listed below.
 

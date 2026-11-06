@@ -55,7 +55,7 @@ h2{margin:0 0 6px;font-size:clamp(30px,8vmin,48px);font-weight:900;font-style:it
 .btns{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
 .btn{flex:1 1 150px;min-height:54px;border-radius:16px;border:2px solid currentColor;background:transparent;color:var(--ink);
   font-family:inherit;font-weight:800;font-size:17px;line-height:1;letter-spacing:.04em;cursor:pointer;position:relative}
-.btn small{display:block;font-size:11px;font-weight:600;opacity:.75;margin-top:5px;letter-spacing:.02em}
+.btn small{display:block;font-size:12.5px;font-weight:600;opacity:.75;margin-top:5px;letter-spacing:.02em}
 .btn.p1{color:var(--p1)} .btn.p2{color:var(--p2)} .btn.plain{color:var(--ink);border-color:var(--line)}
 .btn.daily{flex-basis:100%;color:#ffd23f;background:rgba(255,210,63,.08)}
 /* Gloss: a light streak that slides across buttons as the phone tilts */
@@ -76,19 +76,19 @@ h2{margin:0 0 6px;font-size:clamp(30px,8vmin,48px);font-weight:900;font-style:it
 .dots{display:flex;gap:6px;justify-content:center;margin-top:7px}
 .dots i{width:9px;height:9px;border-radius:50%;border:1px solid var(--line);cursor:pointer;display:block}
 .dots i.on{background:var(--p2);border-color:var(--p2);box-shadow:0 0 8px var(--p2)}
-.arrow{width:38px;height:38px;flex:none;border-radius:50%;border:1px solid var(--line);background:transparent;color:var(--ink);
+.arrow{width:44px;height:44px;flex:none;border-radius:50%;border:1px solid var(--line);background:transparent;color:var(--ink);
   font-family:inherit;font-size:20px;line-height:1;cursor:pointer}
 .arrow:active{transform:scale(.94)}
 .seg{display:inline-flex;margin:14px auto 4px;border:1px solid var(--line);border-radius:12px;overflow:hidden}
-.seg button{border:0;background:transparent;color:var(--dim);font-family:inherit;font-weight:700;font-size:14px;padding:10px 16px;min-height:40px;cursor:pointer}
+.seg button{border:0;background:transparent;color:var(--dim);font-family:inherit;font-weight:700;font-size:14px;padding:10px 16px;min-height:44px;cursor:pointer}
 .seg button.on{background:rgba(255,255,255,.12);color:var(--ink)}
 .row{flex-wrap:wrap;display:flex;justify-content:center;gap:18px;margin-top:8px}
-.link{background:none;border:0;color:var(--dim);font-family:inherit;font-weight:600;font-size:14px;padding:10px 4px;min-height:40px;cursor:pointer;text-decoration:underline;text-underline-offset:3px}
+.link{background:none;border:0;color:var(--dim);font-family:inherit;font-weight:600;font-size:14px;padding:10px 4px;min-height:44px;min-width:44px;cursor:pointer;text-decoration:underline;text-underline-offset:3px}
 .how{text-align:left;font-size:14px;line-height:1.5;color:var(--ink);margin:4px 0 14px;padding-left:18px}
 .how li{margin:6px 0}
 .how b{color:#fff}
 .chip{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:5px;vertical-align:0}
-#bPause{position:fixed;z-index:4;width:38px;height:38px;border-radius:50%;border:1px solid rgba(255,122,217,.6);box-shadow:0 0 12px rgba(176,38,255,.5);
+#bPause{position:fixed;z-index:4;width:44px;height:44px;border-radius:50%;border:1px solid rgba(255,122,217,.6);box-shadow:0 0 12px rgba(176,38,255,.5);
   background:rgba(12,1,28,.85);color:#fff;font-family:inherit;font-weight:800;font-size:12px;letter-spacing:1px;transform:translate(-50%,-50%);cursor:pointer;touch-action:manipulation}
 
 /* ---- boot gate (tap-to-boot, unlocks sound for the intro) ---- */
@@ -97,10 +97,10 @@ h2{margin:0 0 6px;font-size:clamp(30px,8vmin,48px);font-weight:900;font-style:it
   background:repeating-linear-gradient(0deg,rgba(255,255,255,.035) 0 1px,transparent 1px 3px);mix-blend-mode:screen;animation:scan 7s linear infinite}
 @keyframes scan{to{background-position:0 300px}}
 .bootbox{position:relative;width:100%;max-width:520px;text-align:center;font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace}
-.bl{font-size:11px;letter-spacing:.32em;margin:14px 0 0;text-transform:uppercase;padding-left:.32em}
+.bl{font-size:12px;letter-spacing:.3em;margin:14px 0 0;text-transform:uppercase;padding-left:.32em}
 .bl.dim{color:#5c6389}
 .markc{display:block;margin:0 auto;max-width:none}
-.about-crease{margin:14px 0 6px;text-align:center;color:#a99abf;font:12px/1.6 ui-monospace,"SF Mono",Menlo,Consolas,monospace;letter-spacing:.12em}.about-crease summary{cursor:pointer;color:#c9b8e8;letter-spacing:.2em;text-transform:uppercase}.about-crease p{margin:4px 0}
+.about-crease{margin:14px 0 6px;text-align:center;color:#a99abf;font:12px/1.6 ui-monospace,"SF Mono",Menlo,Consolas,monospace;letter-spacing:.12em}.about-crease summary{padding:14px 0;cursor:pointer;color:#c9b8e8;letter-spacing:.2em;text-transform:uppercase}.about-crease p{margin:4px 0}
 .bl.grn{color:#5dffb1;text-shadow:0 0 8px rgba(93,255,177,.45);min-height:16px;margin-top:12px}
 .bar{height:2px;width:min(78%,360px);margin:12px auto 0;background:rgba(255,255,255,.08);overflow:hidden}
 .bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,#2de2e6,#ffffff,#ff2a8a);box-shadow:0 0 10px #fff}
@@ -130,13 +130,13 @@ h2{margin:0 0 6px;font-size:clamp(30px,8vmin,48px);font-weight:900;font-style:it
 @media (orientation:landscape) and (max-height:760px){
   #how .card{max-width:760px} .how{font-size:13px;line-height:1.36;margin:2px 0 10px;columns:2;column-gap:26px} .how li{margin:0 0 6px;break-inside:avoid} #how h2{font-size:26px;margin-bottom:2px}
 }
-.creator{display:block;margin-top:12px;color:var(--ink);font-size:13px;line-height:1.5;text-underline-offset:3px}
+.creator{display:block;margin-top:0;padding:12px 0;min-height:44px;color:var(--ink);font-size:13px;line-height:1.5;text-underline-offset:3px}
 .share-status{font-size:13px;color:var(--p1);margin:8px 0;line-height:1.4}
 .share-url{box-sizing:border-box;width:100%;padding:12px;background:#12002a;color:#fff;border:1px solid var(--line);border-radius:8px;user-select:text;-webkit-user-select:text}
 .dots button{width:10px;height:10px;padding:0;border:1px solid #8c79a4;border-radius:50%;background:transparent;cursor:pointer}
 .dots button.on{background:var(--p1);border-color:var(--p1);box-shadow:0 0 9px var(--p1)}
 button:focus-visible,a:focus-visible{outline:2px solid var(--p1);outline-offset:4px}
-.legal{margin:10px 0 2px;color:var(--dim);font-size:12px;line-height:1.5}.legal a{color:var(--dim);text-underline-offset:3px}.legal p{margin:2px 0}
+.legal{margin:10px 0 2px;color:var(--dim);font-size:12px;line-height:1.5}.legal a{display:inline-flex;align-items:center;justify-content:center;min-height:44px;min-width:44px;padding:0 6px;color:var(--dim);text-underline-offset:3px}.legal p{margin:2px 0}
 #arenas{z-index:8;background:rgba(3,3,9,.96);backdrop-filter:none}
 .arena-shell{width:min(1040px,100%);max-height:92dvh;overflow:auto;border:1px solid #343344;border-radius:20px;background:#080810;padding:20px;touch-action:pan-y}
 .arena-heading{display:flex;align-items:center;justify-content:space-between;gap:16px}
@@ -151,13 +151,16 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--p1);outline-offset:
 .arena-tile{padding:0 0 10px;text-align:left;border:1px solid #30303f;border-radius:10px;background:#101019;color:#eae7f4;overflow:hidden;cursor:pointer;font:inherit}
 .arena-tile[aria-pressed=true]{border-color:var(--p1);box-shadow:0 0 0 1px var(--p1)}
 .arena-tile img{display:block;width:100%;aspect-ratio:2.7;object-fit:cover;margin-bottom:8px;pointer-events:none}
-.arena-tile strong{display:block;padding:0 10px;font-size:10px;letter-spacing:.08em}
-.arena-tile small{display:block;padding:5px 10px 0;color:#aaa3bf;font-size:10px;line-height:1.4}
+.arena-tile strong{display:block;padding:0 10px;font-size:12px;letter-spacing:.06em}
+.arena-tile small{display:block;padding:5px 10px 0;color:#aaa3bf;font-size:12px;line-height:1.4}
 .btn:disabled{opacity:.48;cursor:not-allowed}
 #achievements{color:#f5eaff;background:#0b0914;border:1px solid #554467;border-radius:18px;width:min(780px,92vw);max-height:88dvh;padding:20px;overflow:auto;touch-action:pan-y}
 #achievements::backdrop{background:rgba(0,0,0,.82)}
 .achievement-tools{display:flex;gap:10px;margin:14px 0;flex-wrap:wrap}
 .achievement-tools input,.achievement-tools select{min-height:44px;background:#181124;color:#fff;border:1px solid #625271;border-radius:8px;padding:10px;font:inherit;flex:1}
+/* iOS/WebKit paints a native light select and ignores the dark background above; drop the native look and draw our own arrow. */
+.achievement-tools select{color-scheme:dark;-webkit-appearance:none;appearance:none;padding-right:38px;background-color:#181124;color:#fff;background-image:linear-gradient(45deg,transparent 50%,#fff 50%),linear-gradient(135deg,#fff 50%,transparent 50%);background-position:calc(100% - 20px) 50%,calc(100% - 14px) 50%;background-size:6px 6px,6px 6px;background-repeat:no-repeat;cursor:pointer}
+.achievement-tools select option{background:#181124;color:#fff}
 .achievement-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:10px}
 .achievement-item{padding:13px;background:#171122;border:1px solid #372c46;border-radius:10px}
 .achievement-item.earned{border-color:#38baa3}

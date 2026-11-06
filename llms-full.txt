@@ -5,7 +5,7 @@ Canonical URL: https://playcrease.app/
 
 ## TL;DR
 
-CREASE is a free, browser-based neon air hockey game made for the iPhone Duo, Apple's foldable (pre-orders October 16, 2026; on sale October 23, 2026). Open the phone: full table, two players, one on each side. Close it: pocket table, you vs the CPU (Normal, Hard, CTW). Fold it mid-match and the game keeps going. First to 7. On any other phone, portrait is the pocket table and landscape is the wide two-player table, with the glowing center line, the "crease," between the two halves. You can also play a live match against another person online, or play in VR on Meta Quest. It has a dark vaporwave look, a tap-to-boot intro, an animated cutscene, smash and bump mechanics, power-ups, and a synthwave soundtrack. It was created specifically around the iPhone Duo foldable-phone experience and works on any modern mobile or desktop browser. Built by prodbyKCTW (Melvin D. Brown III, Atlanta, GA).
+CREASE is a free, browser-based neon air hockey game made for the iPhone Duo, Apple's foldable (pre-orders opened October 16, 2026; on sale since October 23, 2026). Open the phone: full table, two players, one on each side. Close it: pocket table, you vs the CPU (Normal, Hard, CTW). Fold it mid-match and the game keeps going. First to 7. On any other phone, portrait is the pocket table and landscape is the wide two-player table, with the glowing center line, the "crease," between the two halves. You can also play a live match against another person online, or play in VR on Meta Quest. It has a dark vaporwave look, a tap-to-boot intro, an animated cutscene, smash and bump mechanics, power-ups, and a synthwave soundtrack. It was created specifically around the iPhone Duo foldable-phone experience and works on any modern mobile or desktop browser. Built by prodbyKCTW (Melvin D. Brown III, Atlanta, GA).
 
 ## How to play
 
@@ -59,7 +59,7 @@ Q: Does it work on iPhone?
 A: Yes — Safari and as a home-screen app. It also runs in Android Chrome and desktop browsers.
 
 Q: Is CREASE made for iPhone Duo?
-A: Yes. CREASE was created as an iPhone Duo game: a pocket table on the outer screen when closed (you vs the CPU) and a full two-player table on the inner screen when open. Folding or unfolding mid-match pauses for a beat, then the match continues with the score kept. It also works on other modern phones and browsers. The iPhone Duo goes on sale October 23, 2026, so physical iPhone Duo testing is still pending.
+A: Yes. CREASE was created as an iPhone Duo game: a pocket table on the outer screen when closed (you vs the CPU) and a full two-player table on the inner screen when open. Folding or unfolding mid-match pauses for a beat, then the match continues with the score kept. It also works on other modern phones and browsers. The iPhone Duo went on sale October 23, 2026; testing on a physical iPhone Duo is still pending.
 
 Q: What are SMASH and BUMP?
 A: SMASH is flicking your paddle hard into the puck to make it faster. BUMP is bouncing the puck off the gold bumpers on the crease; scoring off one is a BANK SHOT.

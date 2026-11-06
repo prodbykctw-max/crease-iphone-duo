@@ -52,6 +52,12 @@ td:first-child{width:38%}
 footer{margin-top:52px;padding-top:22px;border-top:1px solid var(--line);font-size:13px;color:var(--dim)}
 footer p{margin:0 0 8px}
 @media (max-width:480px){body{font-size:16px}.lede{font-size:17.5px}th,td{padding:9px 6px}table{font-size:14px}}
+
+/* 44px hit areas for the header and footer links (tap targets) */
+.brand{min-height:44px}
+nav a,footer p a{display:inline-flex;align-items:center;justify-content:center;min-width:44px;min-height:44px;padding:0 4px}
+nav a{padding:0 2px}
+footer p a:first-child{margin-left:-4px}
 </style>
 </head>
 <body>
