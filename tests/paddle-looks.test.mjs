@@ -176,8 +176,8 @@ test('the preview switch is gone and the new screens are in the page', () => {
   // every control has a visible label
   const mix = html.slice(html.indexOf('<section class="studio-mix"'), html.indexOf('</section>', html.indexOf('<section class="studio-mix"')));
   assert.equal((mix.match(/<select /g) || []).length, 3);
-  assert.equal((mix.match(/<input type="range"/g) || []).length, 3);
-  assert.equal((mix.match(/<label class="mix-field">/g) || []).length, 6);
+  assert.equal((mix.match(/<input type="range"/g) || []).length, 5);   // color shift, size, intensity, texture strength, opacity
+  assert.equal((mix.match(/<label class="mix-field">/g) || []).length, 8);
   assert.ok(!/debug|todo|param|preview param|internal/i.test(mix.replace(/aria-label="[^"]*"/g, '').replace(/id="mixPreview"/, '')), 'no developer text on the Studio screen');
 });
 
