@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="referrer" content="strict-origin-when-cross-origin">
 <!-- Content-Security-Policy: installed by the next script, except on a local test server (localhost / 127.0.0.1) where the capture harness rewrites the game script. Update hashes with: node tools/csp-hash.mjs -->
-<meta name="crease-csp" content="default-src 'self'; script-src 'self' 'sha256-9kyMFOQq/HLwXlyiVTgCTQzmo6H4oBBvtdWEJb0rIFI=' 'sha256-QvmDvVGQJr4oXOl/e+IVWrzfEQX0I5M8aCbbjeXVuN0='; connect-src 'self' https://crease-metrics.prodbykctw.workers.dev https://crease-license.prodbykctw.workers.dev; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta name="crease-csp" content="default-src 'self'; script-src 'self' 'sha256-9kyMFOQq/HLwXlyiVTgCTQzmo6H4oBBvtdWEJb0rIFI=' 'sha256-foKIsfmyLCvqzfVOF4osWE8lrdb1lMcfD/G3GMm4LQE='; connect-src 'self' https://crease-metrics.prodbykctw.workers.dev https://crease-license.prodbykctw.workers.dev; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <script>(function(){var h=location.hostname;if(h==='localhost'||h==='127.0.0.1')return;var p=document.querySelector('meta[name="crease-csp"]'),m=document.createElement('meta');m.httpEquiv='Content-Security-Policy';m.content=p.content;document.head.appendChild(m);})();</script>
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -176,7 +176,7 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--p1);outline-offset:
 #designStudio.locked .studio-grid,#designStudio.locked .studio-mix{display:none}   /* locked: the controls are hidden behind the lock message, not left live */
 .product-dialog{color:#f5eaff;background:#0b0914;border:1px solid #554467;border-radius:18px;width:min(780px,92vw);max-height:88dvh;padding:20px;overflow:auto;touch-action:pan-y}
 .product-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;margin:14px 0}.product-card{border:1px solid #372c46;border-radius:10px;background:#171122;padding:14px}.product-card.locked{opacity:.62}.product-card h3{margin:0 0 7px;font-size:15px}.product-card p{margin:0;color:#c2b5d4;font-size:12px;line-height:1.5}.product-card button{margin-top:10px;width:100%;min-height:42px}
-.premium-price{margin:6px 0 10px;font-size:20px;font-weight:800;color:#ffd23f;letter-spacing:.02em}.premium-restore{margin-top:18px;padding-top:14px;border-top:1px solid #2b2337}.premium-restore h3{margin:0 0 4px;font-size:15px}.premium-restore .btn{margin-top:8px}#premiumSoon,#premiumCheckout{display:block;text-align:center;text-decoration:none}
+.product-card p.founder-left,.founder-left{color:#ffd23f;font-weight:800;font-size:13px}.product-card p.founder-left{margin-top:8px}.premium-price{margin:6px 0 10px;font-size:20px;font-weight:800;color:#ffd23f;letter-spacing:.02em}.premium-restore{margin-top:18px;padding-top:14px;border-top:1px solid #2b2337}.premium-restore h3{margin:0 0 4px;font-size:15px}.premium-restore .btn{margin-top:8px}#premiumSoon,#premiumCheckout{display:block;text-align:center;text-decoration:none}
 /* Premium Garage polish: centred CTA labels, stacked restore form, tidy focus rings (CSS only) */
 #premium .btn{min-height:52px;box-sizing:border-box}
 #premiumSoon,#premiumCheckout{display:flex;align-items:center;justify-content:center;width:100%;margin:0;padding:0 16px;line-height:1.1}
@@ -411,7 +411,7 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--p1);outline-offset:
 <dialog id="leaderboard" class="product-dialog" aria-labelledby="leaderboardTitle"><div class="arena-heading"><h2 id="leaderboardTitle">LEADERBOARD</h2><button id="bLeaderboardClose" class="link">Close</button></div><p class="hint">Your best matches, saved on this device.</p><label class="field">Display name<input id="leaderboardName" maxlength="24" autocomplete="nickname" placeholder="Player 1"></label><button id="saveLeaderboardName" class="btn plain">SAVE NAME</button><ol id="leaderboardList" class="leaderboard-list"></ol></dialog>
 <dialog id="designStudio" class="product-dialog" aria-labelledby="studioTitle"><div class="arena-heading"><h2 id="studioTitle">DESIGN STUDIO</h2><button id="bStudioClose" class="link">Close</button></div>
 <p id="studioStatus" class="hint">Make your own paddle, puck and stage. Your designs stay on this device.</p>
-<p id="studioLock" class="hint hidden"><b>Locked:</b> Design Studio is part of the Premium Pass (the unlocked version).</p>
+<p id="studioLock" class="hint hidden"><b>Locked:</b> Design Studio is included with the Premium Pass.</p>
 <canvas id="studioPreview" width="640" height="360" aria-label="Preview of your designs"></canvas>
 <div class="studio-grid">
   <fieldset><legend>Your paddle</legend>
@@ -470,7 +470,7 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--p1);outline-offset:
   <div class="cpk-h" id="cpkRecentLbl">RECENT COLORS</div><div class="cpk-recent" id="cpkRecent" role="group" aria-labelledby="cpkRecentLbl"></div>
 </div></div>
 </dialog>
-<dialog id="premium" class="product-dialog" aria-labelledby="premiumTitle"><div class="arena-heading"><h2 id="premiumTitle">PREMIUM GARAGE</h2><button id="bPremiumClose" class="link">Close</button></div><p id="premiumStatus" class="hint"></p><div id="premiumGrid" class="product-grid"></div><p id="premiumPrice" class="premium-price hidden"></p><a id="premiumCheckout" class="btn p1 hidden" target="_blank" rel="noopener noreferrer">GET PREMIUM PASS</a><button id="premiumSoon" class="btn p1" type="button" disabled>COMING SOON</button>
+<dialog id="premium" class="product-dialog" aria-labelledby="premiumTitle"><div class="arena-heading"><h2 id="premiumTitle">PREMIUM GARAGE</h2><button id="bPremiumClose" class="link">Close</button></div><p id="premiumStatus" class="hint"></p><div id="premiumGrid" class="product-grid"></div><div id="founderClaim" class="premium-restore"><div id="founderForm"><h3>Have a Founder code?</h3><p class="hint founder-left" data-founder-left hidden></p><label class="field">Founder code<input id="founderCode" maxlength="40" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="GOLD-XXXX-XXXX"></label><button id="founderRedeem" class="btn plain" type="button">CLAIM</button></div><p id="founderStatus" class="hint" role="status" aria-live="polite"></p></div><p id="premiumPrice" class="premium-price hidden"></p><a id="premiumCheckout" class="btn p1 hidden" target="_blank" rel="noopener noreferrer">GET PREMIUM PASS</a><button id="premiumSoon" class="btn p1" type="button" disabled>COMING SOON</button>
 <div id="premiumRestore" class="premium-restore hidden"><h3>Already bought it? Restore your pass</h3><p class="hint">Enter the license key from your Lemon Squeezy receipt email. It works on up to 5 of your devices.</p><label class="field">License key<input id="premiumKey" maxlength="100" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Paste your license key"></label><button id="premiumRedeem" class="btn plain" type="button">ENTER LICENSE KEY</button><p id="premiumKeyStatus" class="hint" role="status" aria-live="polite"></p></div><div id="premiumRestoreStripe" class="premium-restore hidden"><h3>Already bought it? Restore your pass</h3><p class="hint">Enter the email you used at checkout, plus the last 4 digits of the card you paid with (or the receipt number from your receipt email). It works on up to 5 of your devices.</p><label class="field">Email<input id="premiumEmail" type="email" maxlength="254" autocomplete="email" autocapitalize="off" spellcheck="false" placeholder="you@example.com"></label><label class="field">Card’s last 4 digits (or receipt number)<input id="premiumProof" maxlength="40" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="e.g. 4242"></label><button id="premiumRestoreBtn" class="btn plain" type="button">RESTORE PASS</button><p id="premiumRestoreStatus" class="hint" role="status" aria-live="polite"></p></div></dialog>
 <dialog id="clearData" class="product-dialog" aria-labelledby="clearDataTitle"><div class="arena-heading"><h2 id="clearDataTitle">CLEAR MY DATA</h2><button id="bClearDataClose" class="link">Cancel</button></div><p class="hint">This deletes everything CREASE has saved in this browser: progress, achievements, arena unlocks, records, your display name, daily results, Design Studio designs and pictures, your stage and paddle choice, play counts, and a Premium Pass activated on this device. It can’t be undone.</p><button id="bClearDataConfirm" class="btn p2">DELETE MY DATA</button></dialog>
 
@@ -492,6 +492,7 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--p1);outline-offset:
       <li><b>ARENA POWERS:</b> every world drops its own power orb on the centre line. Hit it to claim it: Midnight shooting star (every hit smashes), Toxic acid rain (their paddle shrinks), Ice deep freeze, Inferno lava ball, Ultraviolet blacklight, Miami riptide, Gold Rush golden goal (counts double), Void black hole, Sakura blossom wall, KCTW bass drop.</li>
       <li><b>CHALLENGE A FRIEND:</b> tap it on the menu, or after a match to send your final score, and share the link.</li>
       <li>Tip: Share → <b>Add to Home Screen</b> for true full-screen.</li>
+      <li>CTW (Change The World) is the hardest CPU.</li>
       <li>Your settings and stats stay on this device. Anonymous play data may be used to improve CREASE. No names or contact details are collected.</li>
     </ul>
     <button id="bHowClose" class="btn plain"><span>GOT IT</span></button>
@@ -554,8 +555,8 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--p1);outline-offset:
 <script src="assets/crease-logo.js?v=b9edba6bb1"></script>
 <script src="assets/arena-engine.js?v=839de2dcf7"></script>
 <script src="assets/progression.js?v=cba130d647"></script>
-<script src="assets/commerce-config.js?v=f9b1f7bc97"></script>
-<script src="assets/monetization.js?v=1080ca52f2"></script>
+<script src="assets/commerce-config.js?v=2852d1a5c2"></script>
+<script src="assets/monetization.js?v=91ac379839"></script>
 <script>
 (() => {
 'use strict';
@@ -4009,12 +4010,10 @@ function renderLeaderboard(){
     w.append((Number(row.wins)||0)+' W ',sm);li.append(n,who,w);list.append(li);});
 }
 function renderPremium(){
-  const paid=CreaseProduct.isPremium(),ready=CreaseProduct.checkoutReady(),price=CreaseProduct.priceLabel(),end=CreaseProduct.founderWindowEnd();
-  // Launch-window line. Once SALES_START is set the date the window closes is added (display only; the license server decides who qualifies).
-  let launch=CreaseProduct.founderText;
-  if(end)launch+=Date.now()<end?' The window closes '+new Date(end).toLocaleDateString(undefined,{year:'numeric',month:'long',day:'numeric'})+'.':' The launch window has closed.';
+  const paid=CreaseProduct.isPremium(),ready=CreaseProduct.checkoutReady(),price=CreaseProduct.priceLabel();
   const stripe=CreaseProduct.provider()==='stripe';
-  $('premiumStatus').textContent=paid?'Premium Pass active on this device.'+(CreaseProduct.isFounder()?' Founder’s Gold is yours.':'')+(stripe?' To use it on another device, open the Premium Garage there and restore it with your checkout email and your card’s last 4 digits (or your receipt number).':' To use it on another device, enter your license key there (it is in your Lemon Squeezy receipt email).'):'One-time Premium Pass: every arena unlocked now, the Design Studio, three signature paddles with their own hit sparks and goal explosions, and Founder’s Gold. '+launch+' It also changes power-ups in matches on this device: BIG and WALL last 1.6× longer and carry into the next round, for both sides of the table. Online matches are not affected.';
+  $('premiumStatus').textContent=paid?'Premium Pass active on this device.'+(stripe?' To use it on another device, open the Premium Garage there and restore it with your checkout email and your card’s last 4 digits (or your receipt number).':' To use it on another device, enter your license key there (it is in your Lemon Squeezy receipt email).'):'One-time Premium Pass: every arena unlocked now, the Design Studio, three signature paddles with their own hit sparks and goal explosions. It also changes power-ups in matches on this device: BIG and WALL last 1.6× longer and carry into the next round, for both sides of the table. Online matches are not affected.';
+  if(CreaseProduct.isFounder())$('premiumStatus').textContent=(paid?'':'Founder’s Gold is yours. ')+$('premiumStatus').textContent+(paid?' Founder’s Gold is yours.':'');
   // Not on sale yet (no checkout link in assets/commerce-config.js): a disabled COMING SOON button, no link, no price.
   const checkout=$('premiumCheckout');
   if(ready)checkout.href=CreaseProduct.checkout();else checkout.removeAttribute('href');
@@ -4027,11 +4026,22 @@ function renderPremium(){
     const can=CreaseProduct.canUse(id);
     const card=document.createElement('article');card.className='product-card'+(!can?' locked':'');
     const h=document.createElement('h3');h.textContent=s.name+(s.founder&&!/founder/i.test(s.name)?' · FOUNDER':'');const p=document.createElement('p');p.textContent=s.desc||'';
-    const b=document.createElement('button');b.className='btn plain';b.textContent=!can?(s.founder?'FOUNDERS ONLY':'LOCKED'):(CreaseProduct.paddleStyle()===s?'EQUIPPED':'EQUIP');b.disabled=!can;b.onclick=()=>{if(CreaseProduct.setPaddleStyle(id))renderPremium();};card.append(h);if(CreaseProduct.looks&&CreaseProduct.looks[id]){card.classList.add('has-looks');card.append(lookPreview(id),p,lookPicker(id,can));}else card.append(p);card.append(b);grid.append(card);
+    const b=document.createElement('button');b.className='btn plain';b.textContent=!can?(s.founder?'FOUNDERS ONLY':'LOCKED'):(CreaseProduct.paddleStyle()===s?'EQUIPPED':'EQUIP');b.disabled=!can;b.onclick=()=>{if(CreaseProduct.setPaddleStyle(id))renderPremium();};card.append(h);if(CreaseProduct.looks&&CreaseProduct.looks[id]){card.classList.add('has-looks');card.append(lookPreview(id),p,lookPicker(id,can));}else card.append(p);if(s.founder){const fl=document.createElement('p');fl.className='founder-left';fl.setAttribute('data-founder-left','');fl.hidden=true;card.append(fl);}card.append(b);grid.append(card);
   }
   const extra=document.createElement('article');extra.className='product-card'+(paid?'':' locked');extra.innerHTML='<h3>Round Carryover</h3><p>Collected BIG and WALL power-ups last 1.6× longer and persist into the next round, for both sides of the table. MULTI remains a round pickup. Online matches are not affected.</p>';grid.append(extra);
   const fire=document.createElement('article');fire.className='product-card';fire.innerHTML='<h3>Fire Mode</h3><p>Free gameplay feature: score three goals in a row to set your paddle, the puck and your side of the rails on fire for seven seconds.</p>';grid.append(fire);
   if(lookPrevs.length&&!lookRaf)lookRaf=requestAnimationFrame(lookLoop);
+  paintFounder();
+}
+// Founder’s Gold: the claim entry (hidden once owned) and the live "N of 100 left" lines. Those lines stay hidden whenever the number can’t be read, so a wrong one is never shown.
+let founderJustClaimed=false;   // keeps the success message on screen until the Garage is closed
+async function paintFounder(){
+  const owned=CreaseProduct.isFounder();
+  $('founderForm').classList.toggle('hidden',owned);$('founderClaim').classList.toggle('hidden',owned&&!founderJustClaimed);
+  document.querySelectorAll('[data-founder-left]').forEach(e=>{e.hidden=true;e.textContent='';});
+  const n=await CreaseProduct.founderLeft();
+  if(n===null)return;
+  document.querySelectorAll('[data-founder-left]').forEach(e=>{e.textContent=n===0?'All 100 have been claimed.':n+' of 100 left';e.hidden=false;});
 }
 // Premium Garage: look pickers. Each signature paddle shows its two looks; the chosen look is remembered and shown in the preview.
 const lookPrevs = []; let lookRaf = 0;
@@ -4102,6 +4112,26 @@ $('premiumRestoreBtn').onclick=()=>stripeUnlock(()=>CreaseProduct.restorePurchas
 $('premiumProof').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();$('premiumRestoreBtn').click();}});
 // Coming back from Stripe checkout (?cs=the Checkout Session id): unlock once, then drop it from the address bar.
 {const session=CreaseProduct.takeSessionFromUrl();if(session&&!CreaseProduct.isPremium()&&CreaseProduct.restoreReady())stripeUnlock(()=>CreaseProduct.redeemSession(session),true);}
+// Founder’s Gold: free, one-time code (DM @playcrease). Typed in the Garage, or opened as a link (?founder=CODE).
+const FOUNDER_MESSAGES={invalid:'That code isn’t valid.',used:'That code has already been claimed.',offline:'Couldn’t reach the server. Try again.'};
+let claiming=false;
+async function claimFounder(raw,fromLink){
+  if(claiming)return;
+  const status=$('founderStatus');claiming=true;$('founderRedeem').disabled=true;status.textContent=fromLink?'':'Checking your code…';
+  const r=await CreaseProduct.redeemFounder(raw);
+  claiming=false;$('founderRedeem').disabled=false;
+  if(r.ok){
+    CreaseProduct.setPaddleStyle('founder');$('founderCode').value='';founderJustClaimed=true;renderPremium();status.textContent='Founder’s Gold is yours. Welcome to the first 100.';
+    if(fromLink){const t=$('achievementToast');t.textContent='Founder’s Gold is yours. Welcome to the first 100.';show('achievementToast',true);clearTimeout(achievementHide);achievementHide=setTimeout(()=>show('achievementToast',false),5500);}
+  }else{
+    renderPremium();status.textContent=FOUNDER_MESSAGES[r.reason]||FOUNDER_MESSAGES.invalid;
+    if(fromLink){$('founderCode').value=CreaseProduct.cleanFounderCode(raw);if(!$('premium').open)$('premium').showModal();}
+  }
+}
+$('premium').addEventListener('close',()=>{founderJustClaimed=false;$('founderStatus').textContent='';});
+$('founderRedeem').onclick=()=>claimFounder($('founderCode').value,false);
+$('founderCode').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();$('founderRedeem').click();}});
+{const code=CreaseProduct.takeFounderFromUrl();if(code)claimFounder(code,true);}
 // Clear my data: removes every crease.* key this game saved in this browser, then reloads.
 $('bClearData').onclick=()=>$('clearData').showModal();$('bClearDataClose').onclick=()=>$('clearData').close();
 $('clearData').addEventListener('keydown',e=>e.stopPropagation());

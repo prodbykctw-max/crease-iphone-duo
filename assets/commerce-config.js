@@ -13,9 +13,8 @@ window.CREASE_COMMERCE = Object.freeze({
   // Price text shown beside the button once CHECKOUT_URL is set ($2.99 one-time, sales tax/VAT added at checkout).
   // Empty hides the price line. Keep it equal to the store price, which is tax-exclusive (owner's choice, Nov 2026).
   PRICE_LABEL: '$2.99 + tax',
-  // When the Pass went on sale, as ISO time with a zone. Founder's Gold is for passes bought in the 30 days
-  // after this moment. The license Worker decides who qualifies (from the purchase time Stripe or Lemon Squeezy
-  // records), so this copy only drives the date shown in the Premium Garage. Same value as in wrangler.jsonc.
+  // When the Pass went on sale, as ISO time with a zone. Same value as in wrangler.jsonc. It no longer decides
+  // Founder's Gold, which is free to the first 100 players who claim a one-time code (backend/license/founder-codes.mjs).
   SALES_START: '2026-11-06T06:18:00Z',
   // The deployed license Worker, https only: https://crease-license.<subdomain>.workers.dev
   WORKER_URL: 'https://crease-license.prodbykctw.workers.dev'

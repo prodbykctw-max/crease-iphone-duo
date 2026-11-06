@@ -6,16 +6,19 @@ import vm from 'node:vm';
 const html = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
 
 function load(store = {}) {
-  const context = { window: {}, localStorage: {
+  const context = { window: {}, atob, btoa, localStorage: {
     getItem: key => Object.hasOwn(store, key) ? store[key] : null,
     setItem: (key, value) => { store[key] = String(value); }
   } };
   vm.runInNewContext(fs.readFileSync(new URL('../assets/monetization.js', import.meta.url), 'utf8'), context);
   return { api: context.window.CreaseProduct, store };
 }
+const FOUNDER_TOKEN = Buffer.from(JSON.stringify({ v: 1, p: 'founder', c: '2026-11-07T00:00:00.000Z', i: 'a'.repeat(32), f: true, iat: 1 })).toString('base64url') + '.sig';
+// A Premium Pass, plus (founder = true) a Founder's Gold code claimed on this device. The two are separate entitlements.
 const owner = (store, founder = false) => {
+  if (founder) store['crease.founder.v1'] = JSON.stringify({ token: FOUNDER_TOKEN });
   const r = load(store);
-  assert.equal(r.api.activateProviderEntitlement({ product: r.api.PRODUCT.id, verified: true, founder }), true);
+  assert.equal(r.api.activateProviderEntitlement({ product: r.api.PRODUCT.id, verified: true }), true);
   return r;
 };
 const plain = v => JSON.parse(JSON.stringify(v));
@@ -160,7 +163,7 @@ test('Studio ownership: locked looks and effects never play', () => {
   assert.equal(r.tune.hue, 20);                                     // tuning is kept; only locked parts are swapped
   const pass = owner({}).api;
   for (const k of pass.lookSets) { assert.equal(pass.canUseLook(k), true, k); assert.equal(pass.canUseFx(k), true, k); }
-  assert.equal(pass.canUseLook('founder'), false);                  // Founder’s Gold needs a launch-window pass
+  assert.equal(pass.canUseLook('founder'), false);                  // a Pass alone never includes Founder’s Gold
   const p = pass.resolveMix(all);
   assert.deepEqual([p.base, p.hit, p.goal], ['solarB', 'prismA', 'obsidianB']);
   assert.equal(pass.resolveMix({ base: 'founder' }).base, 'classic');

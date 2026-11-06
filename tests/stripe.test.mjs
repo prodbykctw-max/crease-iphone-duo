@@ -57,15 +57,15 @@ const call = (route, body, e = env(), { origin = ORIGIN } = {}) => license.fetch
 const redeem = (body = { session_id: SID, device_id: DEV }, e) => call('/stripe/redeem', body, e);
 const restore = (body, e) => call('/stripe/restore', { device_id: DEV, ...body }, e);
 
-test('stripe redeem: a paid CREASE Premium session unlocks with a signed token, Founder from the purchase time', async () => {
+test('stripe redeem: a paid CREASE Premium session unlocks with a signed token that is never a Founder pass', async () => {
   await withStripe({}, async (calls, logged) => {
     const e = env();
     const res = await redeem(undefined, e);
     assert.equal(res.status, 200);
     const body = await res.json();
-    assert.equal(body.verified, true); assert.equal(body.product, PASS_ID); assert.equal(body.founder, true); assert.equal(body.instanceId, DEV);
+    assert.equal(body.verified, true); assert.equal(body.product, PASS_ID); assert.equal(body.founder, false); assert.equal(body.instanceId, DEV);
     const p = await verifyToken(body.token, SECRET);
-    assert.equal(p.p, PASS_ID); assert.equal(p.i, DEV); assert.equal(p.f, true); assert.equal(p.c, '2026-12-05T10:00:00.000Z');
+    assert.equal(p.p, PASS_ID); assert.equal(p.i, DEV); assert.equal(p.f, false); assert.equal(p.c, '2026-12-05T10:00:00.000Z');
     assert.equal(calls.length, 1);
     assert.equal(calls[0].url.pathname, '/v1/checkout/sessions/' + SID);
     assert.deepEqual(calls[0].url.searchParams.getAll('expand[]'), ['line_items', 'payment_intent.latest_charge']);
@@ -77,11 +77,11 @@ test('stripe redeem: a paid CREASE Premium session unlocks with a signed token, 
     assert.deepEqual(logged, [], 'nothing is logged');
     assert.ok(!JSON.stringify(body).includes(SID) && !JSON.stringify(body).includes('xample'), 'no session id or email in the reply');
   });
-  // bought after the 30-day window: a normal pass
+  // bought long after go-live: still not a Founder pass
   await withStripe({ retrieve: { json: session({ created: Date.parse('2027-01-01T00:00:00Z') / 1000 }) } }, async () => {
     assert.equal((await (await redeem()).json()).founder, false);
   });
-  // window not set yet: nobody is a Founder
+  // SALES_START no longer matters: a Pass is never a Founder pass
   await withStripe({}, async () => assert.equal((await (await redeem(undefined, env({ SALES_START: '' }))).json()).founder, false));
 });
 
@@ -217,7 +217,7 @@ test('config: the Worker has the D1 binding and the live Stripe price; secrets s
 // ---------------------------------------------------------------- browser side (assets/monetization.js)
 function loadClient({ store = {}, config, fetchImpl } = {}) {
   const window = { CREASE_COMMERCE: config, fetch: fetchImpl, crypto: globalThis.crypto };
-  const context = { window, URL, URLSearchParams, AbortController, setTimeout, clearTimeout,
+  const context = { window, atob, btoa, URL, URLSearchParams, AbortController, setTimeout, clearTimeout,
     localStorage: { getItem: k => Object.hasOwn(store, k) ? store[k] : null, setItem: (k, v) => { store[k] = String(v); } } };
   vm.runInNewContext(read('assets/monetization.js'), context);
   return { api: window.CreaseProduct, store };
@@ -245,13 +245,13 @@ test('client: the ?cs= return link is read once, removed from the address bar, a
   assert.equal(api.takeSessionFromUrl({ pathname: '/', search: '?cs=pi_nope', hash: '' }, hist), '', 'only a Checkout Session id is taken');
   assert.equal(replaced.length, 2, 'a bad value is still removed from the address bar');
   assert.equal(api.takeSessionFromUrl({ pathname: '/', search: '', hash: '' }, hist), '');
-  assert.deepEqual(plain(await api.redeemSession(SID)), { ok: true, founder: true });
+  assert.deepEqual(plain(await api.redeemSession(SID)), { ok: true });
   assert.equal(sent[0].url, 'https://crease-license.prodbykctw.workers.dev/stripe/redeem');
   assert.match(sent[0].body.device_id, /^[a-f0-9]{32}$/);
   assert.deepEqual(Object.keys(sent[0].body).sort(), ['device_id', 'session_id']);
   assert.equal(sent[0].init.credentials, 'omit');
   assert.equal(store['crease.device.v1'], sent[0].body.device_id, 'the device id is kept for next time');
-  assert.equal(api.isPremium(), true); assert.equal(api.isFounder(), true);
+  assert.equal(api.isPremium(), true); assert.equal(api.isFounder(), false, 'a Pass is not Founder’s Gold');
   // same browser later: same device id, so it never uses up another of the 5
   await loadClient({ store, config: stripeConfig, fetchImpl }).api.restorePurchase('buyer@example.com', '4242');
   assert.equal(sent[1].url, 'https://crease-license.prodbykctw.workers.dev/stripe/restore');

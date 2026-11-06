@@ -11,6 +11,7 @@
     "STORE_ID": "",
     "PRODUCT_ID": "",
     "VARIANT_ID": "",
+    // When the Pass went on sale. It no longer decides Founder's Gold (that is free, by code: founder-codes.mjs).
     "SALES_START": "2026-11-06T06:18:00Z",
     // Stripe: the live price id of CREASE Premium. Empty means the Stripe routes refuse everything (503).
     "STRIPE_PRICE_ID": "price_1UYfWOAKvkJ3OCtSYfn5mERx"

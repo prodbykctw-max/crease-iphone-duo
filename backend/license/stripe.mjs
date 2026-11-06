@@ -10,7 +10,6 @@
 // Nothing here writes to Stripe. A sale unlocks up to DEVICE_LIMIT devices; D1 holds only a SHA-256 of the
 // Checkout Session id and a random per-browser device id. No email, card digit, name or IP is stored or logged.
 import { signToken } from './token.mjs';
-import { isFounder } from './founder.mjs';
 
 const API = 'https://api.stripe.com/v1/';
 const STRIPE_VERSION = '2025-03-31.basil';
@@ -65,9 +64,9 @@ export async function claimDevice(db, sessionId, device) {
 async function grant(session, device, env, json, passId) {
   if (!(await claimDevice(env.DB, session.id, device))) return json({ verified: false, reason: 'limit' });
   const createdAt = new Date(session.created * 1000).toISOString();
-  const founder = isFounder(createdAt, env.SALES_START);
-  const token = await signToken({ p: passId, c: createdAt, i: device, f: founder, iat: Math.floor(Date.now() / 1000) }, env.SIGNING_SECRET);
-  return json({ verified: true, token, product: passId, founder, instanceId: device });
+  // Founder's Gold is no longer granted by buying: a Pass is never a Founder pass (see founder-codes.mjs).
+  const token = await signToken({ p: passId, c: createdAt, i: device, f: false, iat: Math.floor(Date.now() / 1000) }, env.SIGNING_SECRET);
+  return json({ verified: true, token, product: passId, founder: false, instanceId: device });
 }
 
 const deviceOf = body => (typeof body?.device_id === 'string' && DEVICE.test(body.device_id) ? body.device_id : '');

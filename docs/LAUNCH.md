@@ -28,5 +28,5 @@ Use ?src=instagram, ?src=tiktok, ?src=youtube, ?src=creator or ?src=store on the
 ## Monetization experiments
 1. Custom game commissions: existing Instagram inquiry link is the initial lead channel.
 2. Sponsored arena: scope artwork, usage term, approval rounds and price for each client.
-3. Optional premium arena/effects bundle: the Premium Pass is priced at $2.99 one-time (chosen by the owner, not a validated price). Checkout is Lemon Squeezy with license keys; see `docs/CHECKOUT.md`. Founder's Gold goes to passes bought in the first 30 days after the Pass goes on sale. The funnel (`premium_open`, `checkout_start`, `key_submit`, `key_verified`) is counted by the metrics Worker.
+3. Optional premium arena/effects bundle: the Premium Pass is priced at $2.99 one-time (chosen by the owner, not a validated price). Checkout is Lemon Squeezy with license keys; see `docs/CHECKOUT.md`. Founder's Gold is not part of the Pass: it is free to the first 100 players who DM @playcrease for a one-time code. The funnel (`premium_open`, `checkout_start`, `key_submit`, `key_verified`) is counted by the metrics Worker.
 

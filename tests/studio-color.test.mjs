@@ -7,16 +7,17 @@ const html = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8').
 const plain = v => JSON.parse(JSON.stringify(v));
 
 function load(store = {}) {
-  const context = { window: {}, localStorage: {
+  const context = { atob, btoa, window: {}, localStorage: {
     getItem: key => Object.hasOwn(store, key) ? store[key] : null,
     setItem: (key, value) => { store[key] = String(value); }
   } };
   vm.runInNewContext(fs.readFileSync(new URL('../assets/monetization.js', import.meta.url), 'utf8'), context);
   return { api: context.window.CreaseProduct, store, context };
 }
+const FOUNDER_TOKEN = Buffer.from(JSON.stringify({ v: 1, p: 'founder', c: '2026-11-07T00:00:00.000Z', i: 'a'.repeat(32), f: true, iat: 1 })).toString('base64url') + '.sig';
 const owner = (founder = false) => {
-  const r = load({});
-  assert.equal(r.api.activateProviderEntitlement({ product: r.api.PRODUCT.id, verified: true, founder }), true);
+  const r = load(founder ? { 'crease.founder.v1': JSON.stringify({ token: FOUNDER_TOKEN }) } : {});
+  assert.equal(r.api.activateProviderEntitlement({ product: r.api.PRODUCT.id, verified: true }), true);
   return r.api;
 };
 const { api: A } = load();

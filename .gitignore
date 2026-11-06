@@ -8,3 +8,6 @@ dist-lite/
 backend/.wrangler/
 .dev.vars
 **/.dev.vars
+# Founder's Gold plain codes: never commit them
+founder-codes.csv
+**/founder-codes.csv
