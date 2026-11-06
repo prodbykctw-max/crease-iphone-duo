@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="referrer" content="strict-origin-when-cross-origin">
 <!-- Content-Security-Policy: installed by the next script, except on a local test server (localhost / 127.0.0.1) where the capture harness rewrites the game script. Update hashes with: node tools/csp-hash.mjs -->
-<meta name="crease-csp" content="default-src 'self'; script-src 'self' 'sha256-9kyMFOQq/HLwXlyiVTgCTQzmo6H4oBBvtdWEJb0rIFI=' 'sha256-zDuZGEijgT9HySYzT/428MnhVECO/ilKl8aCF/wKMqQ='; connect-src 'self' https://crease-metrics.prodbykctw.workers.dev https://crease-license.prodbykctw.workers.dev; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta name="crease-csp" content="default-src 'self'; script-src 'self' 'sha256-9kyMFOQq/HLwXlyiVTgCTQzmo6H4oBBvtdWEJb0rIFI=' 'sha256-QvmDvVGQJr4oXOl/e+IVWrzfEQX0I5M8aCbbjeXVuN0='; connect-src 'self' https://crease-metrics.prodbykctw.workers.dev https://crease-license.prodbykctw.workers.dev; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <script>(function(){var h=location.hostname;if(h==='localhost'||h==='127.0.0.1')return;var p=document.querySelector('meta[name="crease-csp"]'),m=document.createElement('meta');m.httpEquiv='Content-Security-Policy';m.content=p.content;document.head.appendChild(m);})();</script>
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -223,8 +223,9 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--p1);outline-offset:
 .cbtn:disabled,.padchip:disabled{opacity:.45;cursor:not-allowed}
 #cpk{position:fixed;inset:0;z-index:60;display:flex;align-items:flex-end;justify-content:center;background:rgba(3,1,10,.72)}
 #cpk[hidden]{display:none}
-.cpk-card{width:100%;max-width:440px;max-height:100dvh;overflow:auto;box-sizing:border-box;padding:10px 14px calc(14px + env(safe-area-inset-bottom));background:#171122;border:1px solid #554467;border-radius:18px 18px 0 0;color:#f5eaff;text-align:left;touch-action:pan-y}
-@media (min-width:560px){#cpk{align-items:center}.cpk-card{border-radius:18px;max-height:94dvh}}
+.cpk-card{width:100%;max-width:440px;max-height:100vh;max-height:100dvh;overflow:auto;overscroll-behavior:contain;box-sizing:border-box;padding:10px 14px calc(14px + env(safe-area-inset-bottom));background:#171122;border:1px solid #554467;border-radius:18px 18px 0 0;color:#f5eaff;text-align:left;touch-action:pan-y}
+@media (min-width:560px){#cpk{align-items:center}.cpk-card{border-radius:18px;max-height:94vh;max-height:94dvh}}
+.cpk-sr{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
 .cpk-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px}.cpk-head h3{margin:0;font-size:16px}
 .cpk-head .btn{flex:none;width:auto;min-height:44px;min-width:110px;margin:0;padding:0 18px}
 .cpk-swatch{display:flex;height:64px;border-radius:12px;overflow:hidden;border:1px solid #554467;margin-bottom:8px}
@@ -461,6 +462,7 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--p1);outline-offset:
   <div class="cpk-head"><h3 id="cpkTitle">Pick a color</h3><button type="button" id="cpkDone" class="btn p1">DONE</button></div>
   <div class="cpk-swatch"><button type="button" id="cpkOld" aria-label="Go back to the color you started with"></button><div id="cpkNew" role="img" aria-label="Your new color"></div></div>
   <div class="cpk-sv" id="cpkSV" tabindex="0" role="application" aria-label="Saturation and brightness. Drag, or use the arrow keys."><canvas id="cpkSVc" width="320" height="188"></canvas><b id="cpkDot"></b></div>
+  <div id="cpkSVsr" class="cpk-sr" role="status" aria-live="polite"></div>
   <label class="cpk-slider"><span class="n">H</span><input type="range" id="cpkHue" min="0" max="360" step="1" value="0" aria-label="Hue strip"><output id="cpkHueOut" for="cpkHue">0°</output></label>
   <div class="cpk-tabs" role="tablist" aria-label="Slider mode"><button type="button" role="tab" id="cpkTabRgb" data-mode="rgb" aria-selected="true">RGB</button><button type="button" role="tab" id="cpkTabCmyk" data-mode="cmyk" aria-selected="false" tabindex="-1">CMYK</button><button type="button" role="tab" id="cpkTabHsb" data-mode="hsb" aria-selected="false" tabindex="-1">HSB</button></div>
   <div id="cpkSliders" role="tabpanel" aria-label="Color sliders"></div>
@@ -739,9 +741,21 @@ function padTexture(kind, ring, core, trail) {
   padTexCache.set(key, cv); return cv;
 }
 // o = { shape, texture, strength 0..1, ring, core, trail (#rrggbb), img (a decoded picture or null) }. Reuses `into` when given.
+// o.R (optional) is the radius to bake at, so a big paddle is not stretched; o.noGloss leaves out the tilt highlight, rim arc and center dot (the match draws those live).
+const padBakeR = want => Math.max(PAD_R, Math.min(384, Math.ceil(want / 64) * 64));
+// Highlight, glossy rim arc and center dot of the plain paddle, clipped to the paddle shape. (tu, tv) is the phone tilt; min is the thinnest rim line.
+function padGloss(x, shape, cx, cy, R, tu, tv, min, alpha) {
+  x.save(); padShape(x, shape, cx, cy, R); x.clip();
+  x.globalAlpha = .42 * alpha; x.fillStyle = '#ffffff'; x.beginPath(); x.ellipse(cx - R * (.26 + tu * .18), cy - R * (.30 + tv * .18), R * .23, R * .10, -.55, 0, PAD_TAU); x.fill();
+  const ra = Math.atan2(-.6 - tv, -.8 - tu); x.globalAlpha = .55 * alpha; x.strokeStyle = '#ffffff'; x.lineWidth = Math.max(min, R * .06); x.lineCap = 'round';
+  x.beginPath(); x.arc(cx, cy - R * .035, R * .84, ra - .55, ra + .55); x.stroke();
+  x.globalAlpha = alpha; x.fillStyle = 'rgba(255,255,255,.55)'; x.beginPath(); x.arc(cx - R * .12, cy - R * .12, R * .14, 0, PAD_TAU); x.fill();
+  x.restore();
+}
 function bakePaddleSprite(o, into) {
-  const cv = into || document.createElement('canvas'); cv.width = cv.height = PAD_S;
-  const x = cv.getContext('2d'), C = PAD_S / 2, R = PAD_R, ring = padHex(o.ring, '#2de2e6'), core = padHex(o.core, '#ffffff'), trail = padHex(o.trail, '#2de2e6');
+  const R = o.R || PAD_R, S = Math.round(R * PAD_S / PAD_R);
+  const cv = into || document.createElement('canvas'); cv.width = cv.height = S;
+  const x = cv.getContext('2d'), C = S / 2, ring = padHex(o.ring, '#2de2e6'), core = padHex(o.core, '#ffffff'), trail = padHex(o.trail, '#2de2e6');
   padShape(x, o.shape, C, C, R);
   const body = x.createRadialGradient(C - R * .34, C - R * .48, R * .06, C, C, R * 1.16);
   body.addColorStop(0, '#ffffff'); body.addColorStop(.08, hexA(ring, .95)); body.addColorStop(.31, '#17223e'); body.addColorStop(.7, '#070916'); body.addColorStop(1, '#01020a'); x.fillStyle = body; x.fill();
@@ -749,21 +763,24 @@ function bakePaddleSprite(o, into) {
   const glass = x.createRadialGradient(C - R * .17, C - R * .22, R * .02, C, C, R * .52); glass.addColorStop(0, '#ffffff'); glass.addColorStop(.16, hexA(ring, .95)); glass.addColorStop(.65, core); glass.addColorStop(1, '#101427');
   x.fillStyle = glass; padShape(x, o.shape, C, C - R * .025, R * .47); x.fill();
   if (o.img) { x.save(); padShape(x, o.shape, C, C - R * .025, R * .62); x.clip(); const w = R * 1.24; x.drawImage(o.img, C - w / 2, C - R * .025 - w / 2, w, w); x.restore(); }
-  if (o.texture && o.texture !== 'none' && o.strength > 0) { x.save(); padShape(x, o.shape, C, C, R); x.clip(); x.globalAlpha = o.strength; x.drawImage(padTexture(o.texture, ring, core, trail), 0, 0); x.restore(); }
-  x.save(); padShape(x, o.shape, C, C, R); x.clip(); x.globalAlpha = .4; x.fillStyle = '#ffffff'; x.beginPath(); x.ellipse(C - R * .26, C - R * .3, R * .23, R * .1, -.55, 0, PAD_TAU); x.fill(); x.restore();
+  if (o.texture && o.texture !== 'none' && o.strength > 0) { x.save(); padShape(x, o.shape, C, C, R); x.clip(); x.globalAlpha = o.strength; x.drawImage(padTexture(o.texture, ring, core, trail), 0, 0, S, S); x.restore(); }
+  if (!o.noGloss) padGloss(x, o.shape, C, C, R, 0, 0, 1.5, 1);   // same highlight, rim arc and center dot as the plain paddle (no tilt in a still sprite)
   return cv;
 }
 // In the match: draws player 1's custom-paddle sprite (rebuilt only when the design, colors or picture change).
-const padSpr = { D: null, ring: '', core: '', trail: '', im: null, cv: null };
+const padSpr = { D: null, ring: '', core: '', trail: '', im: null, cv: null, R: 0 };
 function drawCustomPaddle(pd, style, D) {
   const ring = pd.big > 0 ? COL.BIG : style.ring, im = studioImg('pad'), c = padSpr;
-  if (!c.cv || c.D !== D || c.ring !== ring || c.core !== style.core || c.trail !== style.trail || c.im !== im) {
-    c.D = D; c.ring = ring; c.core = style.core; c.trail = style.trail; c.im = im;
-    c.cv = bakePaddleSprite({ shape: D.shape, texture: D.texture, strength: D.strength, ring, core: style.core, trail: style.trail, img: im }, c.cv);
+  // Baked big enough for the biggest the paddle gets on this screen (BIG, hit punch, device pixels), so it is never stretched. The radius only grows, in 64 px steps.
+  const want = padBakeR(pd.r * view.s * view.dpr * 1.2);
+  if (!c.cv || c.D !== D || c.ring !== ring || c.core !== style.core || c.trail !== style.trail || c.im !== im || want > c.R) {
+    c.D = D; c.ring = ring; c.core = style.core; c.trail = style.trail; c.im = im; c.R = Math.max(c.R, want);
+    c.cv = bakePaddleSprite({ shape: D.shape, texture: D.texture, strength: D.strength, ring, core: style.core, trail: style.trail, img: im, R: c.R, noGloss: true }, c.cv);
   }
-  const op = D.opacity, w = PAD_S * pd.r / PAD_R;
+  const op = D.opacity, w = c.cv.width * pd.r / c.R;
   ctx.globalAlpha = .52 * op; ctx.fillStyle = '#000'; ctx.beginPath(); ctx.ellipse(pd.u + pd.r * .15, pd.v + pd.r * .22, pd.r * .98, pd.r * .70, 0, 0, Math.PI * 2); ctx.fill();
   ctx.globalAlpha = op; ctx.drawImage(c.cv, pd.u - w / 2, pd.v - w / 2, w, w);
+  { const tf = tiltField(); padGloss(ctx, D.shape, pd.u, pd.v, pd.r, tf.u, tf.v, 1.5 / view.s, op); }   // the tilt highlight, rim arc and center dot follow the phone like the plain paddle
   if (game.fire[pd.p - 1] > 0) { const px = 1 / view.s; ctx.globalAlpha = op; ctx.strokeStyle = '#ff8a1e'; ctx.lineWidth = Math.max(3 * px, pd.r * .12); ctx.beginPath(); ctx.arc(pd.u, pd.v - pd.r * .035, pd.r * .84, 0, Math.PI * 2); ctx.stroke(); ctx.strokeStyle = 'rgba(255,236,170,.9)'; ctx.lineWidth = Math.max(1.5 * px, pd.r * .04); ctx.stroke(); }
   ctx.globalAlpha = 1;
 }
@@ -2790,12 +2807,13 @@ function buildPaddleArt() {
   const bodyKey = (id, look) => SKEY[id] + look;
 
   // ---- the paddle body: c = any 2D context, (u,v) centre, r radius (same units as the hitbox); key is a look such as 'prismB' ----
-  function body(c, u, v, r, key, t, tfp, big, fire, gl) {
+  // noGlow skips only the additive glow, which bodyAlpha draws straight onto the main canvas instead.
+  function body(c, u, v, r, key, t, tfp, big, fire, gl, noGlow) {
     const id = key.slice(0, -1), fn = bodies[bodyKey(id, key.slice(-1))];
     if (!fn) return false;
     c.save(); c.globalAlpha = 1;
     c.fillStyle = 'rgba(0,0,0,.55)'; c.beginPath(); c.ellipse(u + r * .15, v + r * .24, r * .98, r * .72, 0, 0, TAU); c.fill();
-    c.save(); c.globalCompositeOperation = 'lighter'; c.globalAlpha = .5; const gs = r * (gl || 2.5); c.drawImage(glowS(PAL[id].g), u - gs, v - gs, gs * 2, gs * 2); c.restore();
+    if (!noGlow) { c.save(); c.globalCompositeOperation = 'lighter'; c.globalAlpha = .5; const gs = r * (gl || 2.5); c.drawImage(glowS(PAL[id].g), u - gs, v - gs, gs * 2, gs * 2); c.restore(); }
     c.translate(u, v); c.scale(r / 100, r / 100);
     fn(c, t);
     c.save(); c.globalAlpha = .42; c.fillStyle = '#fff'; c.beginPath(); c.ellipse(-26 - tfp.u * 18, -30 - tfp.v * 18, 23, 10, -.55, 0, TAU); c.fill(); c.restore();
@@ -3004,21 +3022,27 @@ function buildPaddleArt() {
   }
 
   // A premium body at partial opacity: its layers are drawn to a scratch canvas first so overlapping parts do not show through each other.
-  let scratch = null;
-  function bodyAlpha(c, u, v, r, key, t, tfp, big, fire, gl, alpha, scale) {
+  // The scratch canvas only ever grows (64 px steps) and each draw uses its top-left n x n corner, so an animated radius never reallocates it.
+  // `sc` is a { cv } holder: the match uses the shared one, the Studio mix preview passes its own so the two never fight over its size.
+  const scratchMain = { cv: null };
+  function bodyAlpha(c, u, v, r, key, t, tfp, big, fire, gl, alpha, scale, sc) {
     if (alpha >= 1) return body(c, u, v, r, key, t, tfp, big, fire, gl);
+    const id = key.slice(0, -1); if (!bodies[bodyKey(id, key.slice(-1))]) return false;
+    sc = sc || scratchMain;
     const n = Math.max(16, Math.min(1024, Math.ceil(r * 2.8 * scale)));
-    if (!scratch) scratch = document.createElement('canvas');
-    if (scratch.width !== n) scratch.width = scratch.height = n;
-    const s = scratch.getContext('2d'), k = n / (r * 2.8);
+    if (!sc.cv) sc.cv = document.createElement('canvas');
+    if (sc.cv.width < n) sc.cv.width = sc.cv.height = Math.min(1024, Math.ceil(n * 1.25 / 64) * 64);   // 25% headroom covers the hit punch (up to 1.18x), so it grows rarely
+    const s = sc.cv.getContext('2d'), k = n / (r * 2.8);
     s.setTransform(1, 0, 0, 1, 0, 0); s.clearRect(0, 0, n, n); s.setTransform(k, 0, 0, k, -(u - r * 1.4) * k, -(v - r * 1.4) * k);
-    if (!body(s, u, v, r, key, t, tfp, big, fire, gl || 1.4)) return false;
-    c.save(); c.globalAlpha = alpha; c.drawImage(scratch, u - r * 1.4, v - r * 1.4, r * 2.8, r * 2.8); c.restore();
+    // glow: straight onto the main canvas at half the paddle's opacity, so 99% looks like 100% only more see-through
+    c.save(); c.globalCompositeOperation = 'lighter'; c.globalAlpha = .5 * alpha; const gs = r * (gl || 2.5); c.drawImage(glowS(PAL[id].g), u - gs, v - gs, gs * 2, gs * 2); c.restore();
+    body(s, u, v, r, key, t, tfp, big, fire, gl, true);
+    c.save(); c.globalAlpha = alpha; c.drawImage(sc.cv, 0, 0, n, n, u - r * 1.4, v - r * 1.4, r * 2.8, r * 2.8); c.restore();
     return true;
   }
   return {
     hit, goal, tick, drawFx, shard: shardDraw, body, bodyAlpha, still, bodyOf: bodyKey,
-    paddleAlpha(pd, tfp, key, alpha) { return bodyAlpha(ctx, pd.u, pd.v, pd.r, key, still ? .7 : game.t, tfp, pd.big, game.fire[pd.p - 1], 0, alpha, view.s * view.dpr); },
+    paddleAlpha(pd, tfp, key, alpha) { return bodyAlpha(ctx, pd.u, pd.v, pd.r, key, still ? .7 : game.t, tfp, pd.big, game.fire[pd.p - 1], 0, alpha, view.s * Math.min(view.dpr, 2)); },
     // draws the paddle body for the match; key is a look such as 'prismB'
     paddle(pd, tfp, key) { return body(ctx, pd.u, pd.v, pd.r, key, still ? .7 : game.t, tfp, pd.big, game.fire[pd.p - 1]); },
   };
@@ -4086,7 +4110,14 @@ $('bClearDataConfirm').onclick=()=>{
   location.reload();
 };
 // ---------- Design Studio UI ----------
-function studioSave() { try { localStorage.setItem(STUDIO_KEY, JSON.stringify(studio.d)); } catch (_) { $('studioStatus').textContent = 'Couldn’t save on this device (storage is full or blocked). Try a smaller picture.'; } sceneLayers.key = ''; buildBg(); studioPreview(); }
+// bg = false skips the stage rebuild (the color picker passes it for paddle and puck colors, which are read at draw time).
+let studioPending = null, studioTimer = 0;   // color-picker changes not saved yet (see studioCommit)
+function studioSave(bg = true) {
+  studioPending = null; clearTimeout(studioTimer); studioTimer = 0;
+  try { localStorage.setItem(STUDIO_KEY, JSON.stringify(studio.d)); } catch (_) { $('studioStatus').textContent = 'Couldn’t save on this device (storage is full or blocked). Try a smaller picture.'; }
+  if (bg) { sceneLayers.key = ''; buildBg(); }
+  studioPreview();
+}
 // Shrink an uploaded picture to a square (paddle, puck) or 3:4 (stage) JPEG/PNG data URL so it fits in storage.
 function studioLoad(file, key, w, h) {
   if (!file || !/^image\//.test(file.type)) return;
@@ -4124,20 +4155,39 @@ function studioPreview() {
     x.fillStyle = core; x.beginPath(); x.arc(cx, cy, r * 0.47, 0, 7); x.fill();
     if (img) { x.save(); x.beginPath(); x.arc(cx, cy, r * 0.62, 0, 7); x.clip(); x.drawImage(img, cx - r * 0.62, cy - r * 0.62, r * 1.24, r * 1.24); x.restore(); }
   };
-  const PD = studioPaddleDesign();
+  // Colors are what the match draws at every opacity: the player's own Ring, Core and Trail, falling back to the base look's colors (Founder’s Gold or Classic).
+  const PD = studioPaddleDesign(), sk = PD && PD.base === 'founder' ? CreaseProduct.styles.founder : CreaseProduct.styles.classic;
+  const pc = { ring: d.ring || sk.ring, core: d.core || sk.core, trail: d.trail || sk.trail };
   if (PD && (PD.shape !== 'circle' || PD.texture !== 'none' || PD.opacity < 1)) {
-    const f = PD.base === 'founder' ? CreaseProduct.styles.founder : d;
-    studioSpr = bakePaddleSprite({ shape: PD.shape, texture: PD.texture, strength: PD.strength, ring: f.ring || '#2de2e6', core: f.core || '#ffffff', trail: f.trail || '#2de2e6', img: studioImg('pad') }, studioSpr);
+    studioSpr = bakePaddleSprite({ shape: PD.shape, texture: PD.texture, strength: PD.strength, ring: pc.ring, core: pc.core, trail: pc.trail, img: studioImg('pad') }, studioSpr);
     const w = PAD_S * 80 / PAD_R; x.save(); x.globalAlpha = PD.opacity; x.drawImage(studioSpr, W * 0.3 - w / 2, H * 0.55 - w / 2, w, w); x.restore();
-  } else disc(W * 0.3, H * 0.55, 80, d.ring || '#2de2e6', d.core || '#ffffff', studioImg('pad'));
+  } else disc(W * 0.3, H * 0.55, 80, pc.ring, pc.core, studioImg('pad'));
   const pr = 36; x.fillStyle = d.puck || '#ffffff'; x.beginPath(); x.arc(W * 0.68, H * 0.5, pr, 0, 7); x.fill();
   const pi = studioImg('puck'); if (pi) { x.save(); x.beginPath(); x.arc(W * 0.68, H * 0.5, pr * 0.9, 0, 7); x.clip(); x.drawImage(pi, W * 0.68 - pr * 0.9, H * 0.5 - pr * 0.9, pr * 1.8, pr * 1.8); x.restore(); }
   const waiting = (d.padImg && !studioImg('pad')) || (d.puckImg && !studioImg('puck')) || (d.stageImg && !studioImg('stage'));
   if (waiting) setTimeout(() => { if ($('designStudio').open) studioPreview(); }, 150);   // a picture is still decoding
 }
-for (const [id, k] of Object.entries(SD)) $(id).addEventListener('click', () => CPK.open({ title: SD_NAME[id] + ' color', hex: $(id).dataset.color, opener: $(id), onInput: hex => {
-  studio.d[k] = hex; studio.d[(id === 'sdPuck' ? 'puck' : /Sky|Grid/.test(id) ? 'stage' : 'pad') + 'On'] = true; studioFill(); studioSave();
-} }));
+// Dragging in the picker only updates the color, its button and the small preview. Saving to the device and rebuilding the stage happen once, when the picker closes
+// (Done, Close, Escape, tapping outside, or closing the Studio), with a short pause-based safety net so a color is never lost.
+// Safety net: 300 ms after the last change, save it. It waits while a finger is still down in the picker, so a slow frame in the middle of a drag never triggers a save.
+function studioArm() { clearTimeout(studioTimer); studioTimer = setTimeout(() => { if (CPK.isOpen && CPK.pressed) studioArm(); else studioCommit(); }, 300); }
+function studioCommit() {
+  clearTimeout(studioTimer); studioTimer = 0;
+  if (!studioPending) return;
+  const stage = studioPending.stage; studioPending = null;
+  studioSave(stage);
+}
+for (const [id, k] of Object.entries(SD)) $(id).addEventListener('click', () => CPK.open({ title: SD_NAME[id] + ' color', hex: $(id).dataset.color, opener: $(id),
+  onInput: hex => {
+    const on = id === 'sdPuck' ? 'puck' : /Sky|Grid/.test(id) ? 'stage' : 'pad';
+    studio.d[k] = hex; studio.d[on + 'On'] = true; sdSet(id, hex); $('sd' + on[0].toUpperCase() + on.slice(1) + 'On').checked = true;
+    studioPending = { stage: !!(studioPending && studioPending.stage) || k === 'skyA' || k === 'skyB' || k === 'grid' };   // buildBg() only for the stage colors
+    studioPreview();
+    studioArm();
+  },
+  onClose: studioCommit,
+}));
+addEventListener('pagehide', studioCommit);
 for (const [id, k] of [['sdPadOn', 'padOn'], ['sdPuckOn', 'puckOn'], ['sdStageOn', 'stageOn']]) $(id).addEventListener('change', () => { studio.d[k] = $(id).checked; studioSave(); });
 $('sdPadImg').addEventListener('change', e => studioLoad(e.target.files[0], 'pad', 256, 256));
 $('sdPuckImg').addEventListener('change', e => studioLoad(e.target.files[0], 'puck', 192, 192));
@@ -4236,34 +4286,47 @@ const CPK = (() => {
   // hue strip
   hueIn.addEventListener('input', () => { st.h = +hueIn.value; const t = C.hsbToRgb(st.h, st.s, st.v); fromRgb(t.r, t.g, t.b, 'hsb'); changed(); });
   // saturation / brightness square: drag or tap (pointer events, so it works with a thumb), arrow keys too
-  let drag = false;
-  const svAt = e => { const r = svBox.getBoundingClientRect(); st.s = clamp((e.clientX - r.left) / r.width * 100, 0, 100); st.v = clamp(100 - (e.clientY - r.top) / r.height * 100, 0, 100); const t = C.hsbToRgb(st.h, st.s, st.v); fromRgb(t.r, t.g, t.b, 'hsb'); changed(); };
-  svBox.addEventListener('pointerdown', e => { drag = true; try { svBox.setPointerCapture(e.pointerId); } catch (_) {} e.preventDefault(); svBox.focus(); svAt(e); });
-  svBox.addEventListener('pointermove', e => { if (drag) svAt(e); });
-  for (const ev of ['pointerup', 'pointercancel', 'lostpointercapture']) svBox.addEventListener(ev, () => { drag = false; });
+  let drag = false, dragId = null, srTimer = 0;
+  // The square is a 2D control with no native screen reader role, so changes are spoken through a polite live region (after a short pause, so a drag is not a flood).
+  const announce = () => { clearTimeout(srTimer); srTimer = setTimeout(() => { $('cpkSVsr').textContent = 'Saturation ' + Math.round(st.s) + '%, brightness ' + Math.round(st.v) + '%'; }, 250); };
+  const svAt = e => { const r = svBox.getBoundingClientRect(); st.s = clamp((e.clientX - r.left) / r.width * 100, 0, 100); st.v = clamp(100 - (e.clientY - r.top) / r.height * 100, 0, 100); const t = C.hsbToRgb(st.h, st.s, st.v); fromRgb(t.r, t.g, t.b, 'hsb'); changed(); announce(); };
+  // Only the first finger drives the square; a second finger's move, up or cancel is ignored.
+  svBox.addEventListener('pointerdown', e => { if (drag) return; drag = true; dragId = e.pointerId; try { svBox.setPointerCapture(e.pointerId); } catch (_) {} e.preventDefault(); svBox.focus(); svAt(e); });
+  svBox.addEventListener('pointermove', e => { if (drag && e.pointerId === dragId) svAt(e); });
+  for (const ev of ['pointerup', 'pointercancel', 'lostpointercapture']) svBox.addEventListener(ev, e => { if (e.pointerId === dragId) { drag = false; dragId = null; } });
   svBox.addEventListener('keydown', e => {
     const step = e.shiftKey ? 10 : 1, d = { ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, step], ArrowDown: [0, -step] }[e.key]; if (!d) return;
-    e.preventDefault(); st.s = clamp(st.s + d[0], 0, 100); st.v = clamp(st.v + d[1], 0, 100); const t = C.hsbToRgb(st.h, st.s, st.v); fromRgb(t.r, t.g, t.b, 'hsb'); changed();
+    e.preventDefault(); st.s = clamp(st.s + d[0], 0, 100); st.v = clamp(st.v + d[1], 0, 100); const t = C.hsbToRgb(st.h, st.s, st.v); fromRgb(t.r, t.g, t.b, 'hsb'); changed(); announce();
   });
-  // hex field: valid six-digit colors apply right away; anything else is flagged and nothing changes
+  // hex field: while typing, only a full six-digit color is applied (so "#abc" on the way to "#abcdef" never jumps to #aabbcc). Three-digit shorthand counts on Enter or when leaving the field.
+  const hexSix = v => { const s = String(v).trim().replace(/^#/, ''); return /^[0-9a-f]{6}$/i.test(s) ? C.parseHex(s) : null; };
+  const HEX_ERR = 'Use six characters like #2DE2E6.';
   hexIn.addEventListener('input', () => {
-    const h = C.parseHex(hexIn.value);
+    const h = hexSix(hexIn.value);
     if (h) { setHex(h); changed(true); hexIn.removeAttribute('aria-invalid'); $('cpkHexErr').textContent = ''; }
-    else { hexIn.setAttribute('aria-invalid', 'true'); $('cpkHexErr').textContent = hexIn.value.replace('#', '').length >= 6 ? 'Use six characters like #2DE2E6.' : ''; }
+    else { hexIn.setAttribute('aria-invalid', 'true'); $('cpkHexErr').textContent = hexIn.value.replace('#', '').length >= 6 ? HEX_ERR : ''; }
   });
-  hexIn.addEventListener('blur', () => paint());
-  hexIn.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); if (!C.parseHex(hexIn.value)) $('cpkHexErr').textContent = 'Use six characters like #2DE2E6.'; else hexIn.blur(); } });
+  hexIn.addEventListener('blur', () => { const h = C.parseHex(hexIn.value); if (h) { setHex(h); changed(); } paint(); });
+  hexIn.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); if (!C.parseHex(hexIn.value)) $('cpkHexErr').textContent = HEX_ERR; else hexIn.blur(); } });
   $('cpkOld').addEventListener('click', () => { setHex(startHex); changed(); });
+  // Escape closes only the picker. The flag stays set a moment past the key event, so the Studio dialog's own cancel event (which can arrive after the picker is hidden) is still held back.
+  let escUntil = 0;
   function close() {
     if (root.hidden) return;
     const h = hex(); if (raf) { cancelAnimationFrame(raf); raf = 0; if (cfg && h !== lastEmit) { lastEmit = h; cfg.onInput(h); } }
     if (h !== startHex) remember(h);
-    root.hidden = true; const o = cfg && cfg.opener; cfg = null; drag = false; if (o && o.isConnected) o.focus();
+    const c = cfg; root.hidden = true; const o = c && c.opener; cfg = null; drag = false; dragId = null; clearTimeout(srTimer);
+    if (c && c.onClose) c.onClose();   // the owner saves and rebuilds once, now that the color is final
+    if (o && o.isConnected) o.focus();
   }
   $('cpkDone').addEventListener('click', close);
-  root.addEventListener('click', e => { if (e.target === root) close(); });
+  // A tap on the dim backdrop closes the picker only if the press started there too: a slider drag that ends over it must not.
+  let downOnBackdrop = false, pressed = false;
+  root.addEventListener('pointerdown', e => { downOnBackdrop = e.target === root; pressed = true; });
+  for (const ev of ['pointerup', 'pointercancel']) addEventListener(ev, () => { pressed = false; }, true);
+  root.addEventListener('click', e => { const ok = downOnBackdrop; downOnBackdrop = false; if (e.target === root && ok) close(); });
   root.addEventListener('keydown', e => {
-    if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); close(); return; }
+    if (e.key === 'Escape') { escUntil = performance.now() + 400; e.preventDefault(); e.stopPropagation(); close(); return; }
     if (e.key !== 'Tab') return;
     const f = [...card.querySelectorAll('button,input,[tabindex="0"]')].filter(z => !z.disabled && z.tabIndex >= 0 && z.offsetParent !== null);
     if (!f.length) return; const a = f[0], z = f[f.length - 1];
@@ -4271,6 +4334,8 @@ const CPK = (() => {
   });
   return {
     get isOpen() { return !root.hidden; },
+    get pressed() { return pressed; },   // a finger or mouse button is down in the picker (a drag is going on)
+    get escaping() { return performance.now() < escUntil; },   // true for a moment after Escape closed the picker
     close,
     open(c) {
       cfg = c; startHex = C.parseHex(c.hex) || '#000000'; lastEmit = startHex; hueDrawn = -1; setHex(startHex);
@@ -4284,6 +4349,7 @@ const CPK = (() => {
 // Everything is cleaned by CreaseProduct.sanitizeMix / resolveMix, so bad or old saved data falls back to defaults and locked parts never play.
 const MIX_S = 786, MIX_L = 600 / 786, MIX_PX = 1 / 393, MIX_STILL = matchMedia('(prefers-reduced-motion: reduce)').matches;
 let mixCustom = { shape: 'circle', texture: 'none', strength: .6, opacity: 1 }, mixSpr = null, mixSprKey = '';
+const mixScr = { cv: null };   // the mix preview's own scratch canvas for see-through premium looks (the match has another)
 let mixDraft = null, mixRaf = 0, mixLast = 0, mixAuto = 0, mixQueue = [], mixDebounce = 0, mixBg = null;
 const mixSim = { fx: [], parts: [], L: MIX_L };
 function mixOut() {
@@ -4376,7 +4442,7 @@ function mixDraw(x, t) {
   x.setTransform(1, 0, 0, 1, 0, 0); x.globalAlpha = 1; x.drawImage(mixBg, 0, 0);
   x.setTransform(MIX_S, 0, 0, MIX_S, 0, 0);
   const key = mixDraft.base, r = .11, u = .5, v = .62, op = mixCustom.opacity;
-  if (key !== 'classic' && key !== 'founder') PA().bodyAlpha(x, u, v, r, key, MIX_STILL ? .7 : t, { u: 0, v: 0 }, 0, 0, 0, op, MIX_S);
+  if (key !== 'classic' && key !== 'founder') PA().bodyAlpha(x, u, v, r, key, MIX_STILL ? .7 : t, { u: 0, v: 0 }, 0, 0, 0, op, MIX_S, mixScr);
   else {
     // The Custom look (and Founder’s Gold): the sprite is baked again only when a setting, a color or the picture changes.
     const st = key === 'founder' ? CreaseProduct.styles.founder : { ring: studio.d.ring || '#2de2e6', core: studio.d.core || '#ffffff', trail: studio.d.trail || '#2de2e6' };
@@ -4430,7 +4496,7 @@ $('mixSave').onclick = () => {
 };
 $('mixClear').onclick = () => { delete studio.d.mix; delete studio.d.custom; studioSave(); mixFill(); $('mixStatus').textContent = 'Mix cleared. Your equipped paddle plays as usual.'; };
 $('designStudio').addEventListener('close', () => { cancelAnimationFrame(mixRaf); mixRaf = 0; CPK.close(); });
-$('designStudio').addEventListener('cancel', e => { if (CPK.isOpen) { e.preventDefault(); CPK.close(); } });
+$('designStudio').addEventListener('cancel', e => { if (CPK.isOpen || CPK.escaping) { e.preventDefault(); CPK.close(); } });   // one Escape closes only the picker, not the Studio behind it
 $('designStudio').addEventListener('keydown', e => e.stopPropagation());$('bPremiumClose').onclick=()=>$('premium').close();
 $('leaderboard').addEventListener('keydown',e=>e.stopPropagation());$('premium').addEventListener('keydown',e=>e.stopPropagation());
 let arenaRaf = 0, arenaLastFrame = -Infinity;
