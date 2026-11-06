@@ -23,7 +23,7 @@ Other pages on the same site:
 - Juiced hits and scoring: freeze-frames, shake, pop-up text, race-to-7 bars on the rails, and a procedural synthwave loop (96 BPM, synthesized in Web Audio — no audio files) whose kick the table pulses to.
 - **Ten arenas** (Midnight, Toxic, Ice, Inferno, Ultraviolet, Miami, Gold Rush, Void, Sakura, prodby KCTW) with photographic plates in `assets/arenas/` and a shared WebGL centerpiece on the crease. Midnight is always available; the rest unlock through play (`assets/progression.js`).
 - **Progress:** achievements and a local Records/leaderboard list, saved per device in `localStorage`.
-- **Garage:** arena picker and a Premium Garage of paddle styles. The Premium Pass is sold through Lemon Squeezy with license keys; until the store is set up in `assets/commerce-config.js` the button reads **COMING SOON** and links nowhere. Setup and go-live steps: [`docs/CHECKOUT.md`](docs/CHECKOUT.md).
+- **Garage:** arena picker and a Premium Garage of paddle styles. The Premium Pass ($2.99 + tax) is sold through a Stripe Payment Link with Managed Payments; the license Worker verifies the Checkout Session and unlocks the pass (Lemon Squeezy license keys remain supported in code but are not on sale). With an empty `CHECKOUT_URL` in `assets/commerce-config.js` the button reads **COMING SOON** and links nowhere. Setup and go-live steps: [`docs/CHECKOUT.md`](docs/CHECKOUT.md).
 - **Challenge a friend / Share result:** uses the native share sheet when available, otherwise a copyable link. Challenge links carry `?challenge=1`.
 - A "Built by KCTW" link to Instagram appears on the menu and result screens for custom game inquiries.
 - Share → Add to Home Screen for full-screen (`manifest.webmanifest`).
