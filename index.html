@@ -175,6 +175,22 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--p1);outline-offset:
 .product-dialog{color:#f5eaff;background:#0b0914;border:1px solid #554467;border-radius:18px;width:min(780px,92vw);max-height:88dvh;padding:20px;overflow:auto;touch-action:pan-y}
 .product-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;margin:14px 0}.product-card{border:1px solid #372c46;border-radius:10px;background:#171122;padding:14px}.product-card.locked{opacity:.62}.product-card h3{margin:0 0 7px;font-size:15px}.product-card p{margin:0;color:#c2b5d4;font-size:12px;line-height:1.5}.product-card button{margin-top:10px;width:100%;min-height:42px}
 .premium-price{margin:6px 0 10px;font-size:20px;font-weight:800;color:#ffd23f;letter-spacing:.02em}.premium-restore{margin-top:18px;padding-top:14px;border-top:1px solid #2b2337}.premium-restore h3{margin:0 0 4px;font-size:15px}.premium-restore .btn{margin-top:8px}#premiumSoon,#premiumCheckout{display:block;text-align:center;text-decoration:none}
+/* Premium Garage polish: centred CTA labels, stacked restore form, tidy focus rings (CSS only) */
+#premium .btn{min-height:52px;box-sizing:border-box}
+#premiumSoon,#premiumCheckout{display:flex;align-items:center;justify-content:center;width:100%;margin:0;padding:0 16px;line-height:1.1}
+#premium #premiumPrice{text-align:center;margin:14px 0 12px}
+#premium .premium-restore{margin-top:22px;padding-top:18px}
+#premium .premium-restore h3{margin:0 0 6px;font-size:16px;line-height:1.3}
+#premium .premium-restore .hint{margin:0 0 14px}
+#premium .premium-restore .field{display:flex;flex-direction:column;align-items:stretch;gap:6px;margin:0 0 14px;color:#c2b5d4;font-size:14px;font-weight:600;line-height:1.3;text-align:left}
+#premium .premium-restore .field input{display:block;box-sizing:border-box;width:100%;min-width:0;min-height:48px;margin:0;padding:10px 14px;background:#181124;color:#fff;border:1px solid #625271;border-radius:12px;font:inherit;font-size:16px;font-weight:400;line-height:1.3;-webkit-appearance:none;appearance:none}
+#premium .premium-restore .field input::placeholder{color:#7d6f93;opacity:1}
+#premium .premium-restore .field input:focus{outline:2px solid var(--p1);outline-offset:1px;border-color:var(--p1)}
+#premium .premium-restore .btn{display:block;width:100%;margin:2px 0 0}
+#premium .premium-restore .hint[role=status]{margin:12px 0 0;text-align:center;min-height:0}
+#premium .arena-heading .link{padding:10px 0 10px 14px;min-width:44px;border-radius:8px}
+#premium button:focus-visible,#premium a:focus-visible{outline:2px solid var(--p1);outline-offset:2px}
+#premium .product-card button{min-height:52px}
 .leaderboard-list{margin:14px 0;padding:0;list-style:none}.leaderboard-list li{display:grid;grid-template-columns:32px 1fr auto;gap:10px;padding:12px 8px;border-bottom:1px solid #2b2337}.leaderboard-list small{color:#a99fba}
 @media(max-width:650px){.arena-shell{padding:14px}.arena-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.arena-copy{align-items:stretch;flex-direction:column}.arena-copy .btn{flex:auto}.arena-heading h2{font-size:20px}}
 
