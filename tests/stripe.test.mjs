@@ -204,9 +204,9 @@ test('stripe routes share the origin check, method rule and rate limits with /li
   });
 });
 
-test('config: the Worker has the D1 binding and an empty Stripe price until go-live; secrets stay out of the repo', () => {
+test('config: the Worker has the D1 binding and the live Stripe price; secrets stay out of the repo', () => {
   const w = read('backend/license/wrangler.jsonc');
-  assert.match(w, /"STRIPE_PRICE_ID": ""/);
+  assert.match(w, /"STRIPE_PRICE_ID": "price_1UYfWOAKvkJ3OCtSYfn5mERx"/);
   assert.match(w, /"binding": "DB", "database_name": "crease-license"/);
   assert.match(read('backend/license/schema.sql'), /PRIMARY KEY \(sale, device\)/);
   assert.match(read('.gitignore'), /\.dev\.vars/);

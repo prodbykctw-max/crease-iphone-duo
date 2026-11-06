@@ -370,10 +370,14 @@ function clientConfig() {
   return window.CREASE_COMMERCE;
 }
 
-test('config: the shipped client config is empty placeholders (price aside) and matches the Worker vars', () => {
+test('config: the shipped client config is the live Stripe setup (Lemon Squeezy ids empty) and matches the Worker vars', () => {
   const c = clientConfig();
   assert.deepEqual(Object.keys(c).sort(), ['CHECKOUT_URL', 'PRICE_LABEL', 'PRODUCT_ID', 'SALES_START', 'STORE_ID', 'VARIANT_ID', 'WORKER_URL']);
-  for (const k of ['CHECKOUT_URL', 'STORE_ID', 'PRODUCT_ID', 'VARIANT_ID', 'SALES_START', 'WORKER_URL']) assert.equal(c[k], '', k + ' stays empty until go-live');
+  for (const k of ['STORE_ID', 'PRODUCT_ID', 'VARIANT_ID']) assert.equal(c[k], '', k + ' stays empty: Lemon Squeezy is not in use');
+  assert.equal(c.CHECKOUT_URL, 'https://buy.stripe.com/6oU4gycj9ag0fJC2Ys5AQ02');
+  assert.equal(c.WORKER_URL, 'https://crease-license.prodbykctw.workers.dev');
+  assert.match(c.SALES_START, /^2026-11-\d\dT\d\d:\d\d:00Z$/);
+  assert.ok(Number.isFinite(Date.parse(c.SALES_START)));
   assert.equal(c.PRICE_LABEL, '$2.99 + tax', 'prices are tax-exclusive, so the label says tax is added');
   const v = wranglerVars();
   for (const k of ['STORE_ID', 'PRODUCT_ID', 'VARIANT_ID', 'SALES_START']) assert.equal(v[k], c[k], k + ' must be the same in commerce-config.js and backend/license/wrangler.jsonc');
@@ -449,13 +453,17 @@ test('repo: every player-facing mention of Founder\'s Gold uses the launch-windo
   assert.ok(read('docs/CHECKOUT.md').includes(sentence));
 });
 
-test('copy: terms and privacy name Lemon Squeezy as merchant of record and processor, with a refund line', () => {
+test('copy: terms and privacy name Stripe as merchant of record and processor, with a refund line', () => {
   const terms = read('terms/index.html'), privacy = read('privacy/index.html');
-  assert.match(terms, /Lemon Squeezy[^<]*<\/a>, which acts as the merchant of record and payment processor/);
-  assert.match(terms, /<strong>Refunds\.<\/strong> Lemon Squeezy, as merchant of record, handles refunds/);
+  assert.match(terms, /Stripe<\/a> is the merchant of record and the payment processor/);
+  assert.match(terms, /<strong>Refunds\.<\/strong> You can ask for a refund within 14 days of buying: email .*prodbykctw@gmail\.com/);
+  assert.match(terms, /Stripe, as merchant of record, handles refunds/);
   assert.match(terms, /sold by Melvin D\. Brown III \(KCTW\)/);
-  assert.match(privacy, /Lemon Squeezy<\/a>, which is the merchant of record and payment processor/);
-  assert.match(privacy, /does not store or log the key, your email or your IP address/);
+  assert.match(terms, /up to 5 devices/);
+  assert.match(privacy, /Stripe<\/a> is the merchant of record and payment processor/);
+  assert.match(privacy, /checks them against Stripe and does not store or log them/);
+  assert.match(privacy, /Effective November 6, 2026/); assert.match(terms, /Effective November 6, 2026/);
+  for (const page of [terms, privacy]) assert.ok(!/lemon squeezy/i.test(page), 'no page names Lemon Squeezy as a seller');
   for (const page of [terms, privacy]) assert.ok(!/instagram direct messages/i.test(page), 'the old Instagram-DM sales wording is gone');
 });
 
