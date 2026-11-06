@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="referrer" content="strict-origin-when-cross-origin">
 <!-- Content-Security-Policy: installed by the next script, except on a local test server (localhost / 127.0.0.1) where the capture harness rewrites the game script. Update hashes with: node tools/csp-hash.mjs -->
-<meta name="crease-csp" content="default-src 'self'; script-src 'self' 'sha256-9kyMFOQq/HLwXlyiVTgCTQzmo6H4oBBvtdWEJb0rIFI=' 'sha256-8SktpNAhkyKeZ5VXI4qqNYs42nQYIsY7yFdOY3WTlww='; connect-src 'self' https://crease-metrics.prodbykctw.workers.dev https://crease-license.prodbykctw.workers.dev; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta name="crease-csp" content="default-src 'self'; script-src 'self' 'sha256-9kyMFOQq/HLwXlyiVTgCTQzmo6H4oBBvtdWEJb0rIFI=' 'sha256-ffZSxPeVh4Xw+x5U5Z967sTL68J9VxsXe97dtepsw/w='; connect-src 'self' https://crease-metrics.prodbykctw.workers.dev https://crease-license.prodbykctw.workers.dev; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <script>(function(){var h=location.hostname;if(h==='localhost'||h==='127.0.0.1')return;var p=document.querySelector('meta[name="crease-csp"]'),m=document.createElement('meta');m.httpEquiv='Content-Security-Policy';m.content=p.content;document.head.appendChild(m);})();</script>
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -167,14 +167,14 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--p1);outline-offset:
 .achievement-item h3{font-size:14px;margin:0 0 7px}.achievement-item p{font-size:12px;color:#c2b5d4;margin:0 0 8px;line-height:1.5}
 .achievement-item progress{width:100%;accent-color:#34d9ca}
 #achievementToast{position:fixed;bottom:max(18px,env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);z-index:12;max-width:90vw;padding:12px 18px;border:1px solid #58ebc0;background:#0c1821;color:#fff;border-radius:12px;pointer-events:none;text-align:center;font-size:13px}
-.studio-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin:12px 0}
+.studio-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(250px,100%),1fr));gap:10px;margin:12px 0}
 .studio-grid fieldset{border:1px solid #372c46;border-radius:10px;background:#171122;padding:10px 12px;display:flex;flex-direction:column;gap:8px}
 .studio-grid legend{font-weight:800;letter-spacing:.06em;font-size:13px;padding:0 6px}
 .studio-grid label{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:13px;color:#d9ccec}
 .studio-grid input[type=color]{width:46px;height:30px;border:0;background:none;padding:0}
 .studio-grid .sd-file{flex-direction:column;align-items:stretch}.studio-grid .sd-check{justify-content:flex-start}
 #studioPreview{width:100%;height:auto;border-radius:12px;background:#05060f;display:block}
-#designStudio.locked .studio-grid{opacity:.45;pointer-events:none}
+#designStudio.locked .studio-grid,#designStudio.locked .studio-mix{display:none}   /* locked: the controls are hidden behind the lock message, not left live */
 .product-dialog{color:#f5eaff;background:#0b0914;border:1px solid #554467;border-radius:18px;width:min(780px,92vw);max-height:88dvh;padding:20px;overflow:auto;touch-action:pan-y}
 .product-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;margin:14px 0}.product-card{border:1px solid #372c46;border-radius:10px;background:#171122;padding:14px}.product-card.locked{opacity:.62}.product-card h3{margin:0 0 7px;font-size:15px}.product-card p{margin:0;color:#c2b5d4;font-size:12px;line-height:1.5}.product-card button{margin-top:10px;width:100%;min-height:42px}
 .premium-price{margin:6px 0 10px;font-size:20px;font-weight:800;color:#ffd23f;letter-spacing:.02em}.premium-restore{margin-top:18px;padding-top:14px;border-top:1px solid #2b2337}.premium-restore h3{margin:0 0 4px;font-size:15px}.premium-restore .btn{margin-top:8px}#premiumSoon,#premiumCheckout{display:block;text-align:center;text-decoration:none}
@@ -194,6 +194,28 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--p1);outline-offset:
 #premium .arena-heading .link{padding:10px 0 10px 14px;min-width:44px;border-radius:8px}
 #premium button:focus-visible,#premium a:focus-visible{outline:2px solid var(--p1);outline-offset:2px}
 #premium .product-card button{min-height:52px}
+.look-preview{display:block;width:120px;height:120px;margin:0 auto 8px}
+.product-card.has-looks p{margin-bottom:12px}
+.look-picker{display:flex;gap:8px;margin:0}
+#premium .product-card .look-opt{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-height:84px;margin:0;padding:8px 6px;border:1px solid #372c46;border-radius:12px;background:#120d1c;color:#f5eaff;font:inherit;font-size:14px;font-weight:700;cursor:pointer}
+.look-opt canvas{width:44px;height:44px;display:block}
+.look-opt[aria-checked=true]{border-color:var(--p1);box-shadow:0 0 0 2px var(--p1)}
+.look-opt:disabled{opacity:.6;cursor:not-allowed}
+.studio-mix{margin:14px 0 4px;padding:16px 14px;border:1px solid #372c46;border-radius:12px;background:#171122;text-align:center}
+.studio-mix h3{margin:0 0 6px;font-size:16px}.studio-mix .hint{margin:0 0 12px}
+#mixPreview{display:block;width:100%;max-width:520px;height:auto;aspect-ratio:786/600;margin:0 auto 10px;border-radius:12px;background:#05060f}
+.mix-play{display:flex;gap:8px;max-width:520px;margin:0 auto 14px}.mix-play .btn{flex:1;min-height:48px;box-sizing:border-box}
+.mix-fields,.mix-sliders{display:grid;gap:12px;max-width:520px;margin:0 auto 12px;text-align:left}
+.mix-field{display:flex;flex-direction:column;gap:6px;font-size:14px;font-weight:600;color:#d9ccec;line-height:1.3}
+.mix-field select{box-sizing:border-box;width:100%;min-height:48px;padding:8px 12px;font:inherit;font-size:16px;font-weight:400;color:#fff;background:#181124;border:1px solid #625271;border-radius:12px;color-scheme:dark}
+.mix-field select:focus-visible,.mix-field input:focus-visible{outline:2px solid var(--p1);outline-offset:2px}
+.mix-row{display:flex;justify-content:space-between;gap:8px}.mix-row output{color:var(--p1);font-weight:800}
+.mix-field input[type=range]{width:100%;height:44px;margin:0;font-size:16px;accent-color:var(--p1)}
+#mixSave{display:block;width:100%;max-width:520px;margin:6px auto 0;min-height:52px;box-sizing:border-box}
+#mixClear{display:block;margin:6px auto 0;min-height:44px;padding:10px 16px}
+#mixStatus{margin:8px 0 0;min-height:0}
+#designStudio .studio-grid fieldset{min-width:0;box-sizing:border-box}#designStudio input,#designStudio select,#designStudio button{font-size:16px}#designStudio input[type=file]{width:100%;max-width:100%;min-width:0;box-sizing:border-box}#designStudio input[type=checkbox]{width:24px;height:24px;margin:0}#designStudio .studio-grid label{min-height:44px}#designStudio .studio-grid input[type=color]{width:56px;height:44px}
+#designStudio .studio-grid .link[data-clear]{min-height:44px}#designStudio .arena-heading .link{min-width:44px;min-height:44px}
 .leaderboard-list{margin:14px 0;padding:0;list-style:none}.leaderboard-list li{display:grid;grid-template-columns:32px 1fr auto;gap:10px;padding:12px 8px;border-bottom:1px solid #2b2337}.leaderboard-list small{color:#a99fba}
 @media(max-width:650px){.arena-shell{padding:14px}.arena-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.arena-copy{align-items:stretch;flex-direction:column}.arena-copy .btn{flex:auto}.arena-heading h2{font-size:20px}}
 
@@ -366,6 +388,25 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--p1);outline-offset:
     <label class="sd-file">Stage picture <input type="file" id="sdStageImg" accept="image/*"></label><button type="button" class="link" data-clear="stage">Remove picture</button>
     <label class="sd-check"><input type="checkbox" id="sdStageOn"> Use my stage</label></fieldset>
 </div>
+<section class="studio-mix" aria-labelledby="mixTitle">
+  <h3 id="mixTitle">Mix and tune your paddle</h3>
+  <p class="hint">Pick a look, a hit effect and a goal effect, tune them, then save. Anything marked locked comes with a paddle you don’t own yet. Pictures only show on the Classic Cyan and Founder’s Gold looks.</p>
+  <canvas id="mixPreview" width="786" height="600" role="img" aria-label="Live preview of your paddle with your hit and goal effects"></canvas>
+  <div class="mix-play"><button type="button" id="mixPlayHit" class="btn plain">PLAY HIT</button><button type="button" id="mixPlayGoal" class="btn plain">PLAY GOAL</button></div>
+  <div class="mix-fields">
+    <label class="mix-field">Paddle look<select id="mixBase"></select></label>
+    <label class="mix-field">Hit effect<select id="mixHit"></select></label>
+    <label class="mix-field">Goal effect<select id="mixGoal"></select></label>
+  </div>
+  <div class="mix-sliders">
+    <label class="mix-field"><span class="mix-row"><span>Color shift</span><output id="mixHueOut" for="mixHue">0°</output></span><input type="range" id="mixHue" min="-180" max="180" step="5" value="0"></label>
+    <label class="mix-field"><span class="mix-row"><span>Size</span><output id="mixSizeOut" for="mixSize">100%</output></span><input type="range" id="mixSize" min="60" max="160" step="5" value="100"></label>
+    <label class="mix-field"><span class="mix-row"><span>Intensity</span><output id="mixPowerOut" for="mixPower">100%</output></span><input type="range" id="mixPower" min="40" max="160" step="5" value="100"></label>
+  </div>
+  <button type="button" id="mixSave" class="btn p1">SAVE MY PADDLE</button>
+  <button type="button" id="mixClear" class="link">Clear my mix</button>
+  <p id="mixStatus" class="hint" role="status" aria-live="polite"></p>
+</section>
 </dialog>
 <dialog id="premium" class="product-dialog" aria-labelledby="premiumTitle"><div class="arena-heading"><h2 id="premiumTitle">PREMIUM GARAGE</h2><button id="bPremiumClose" class="link">Close</button></div><p id="premiumStatus" class="hint"></p><div id="premiumGrid" class="product-grid"></div><p id="premiumPrice" class="premium-price hidden"></p><a id="premiumCheckout" class="btn p1 hidden" target="_blank" rel="noopener noreferrer">GET PREMIUM PASS</a><button id="premiumSoon" class="btn p1" type="button" disabled>COMING SOON</button>
 <div id="premiumRestore" class="premium-restore hidden"><h3>Already bought it? Restore your pass</h3><p class="hint">Enter the license key from your Lemon Squeezy receipt email. It works on up to 5 of your devices.</p><label class="field">License key<input id="premiumKey" maxlength="100" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Paste your license key"></label><button id="premiumRedeem" class="btn plain" type="button">ENTER LICENSE KEY</button><p id="premiumKeyStatus" class="hint" role="status" aria-live="polite"></p></div><div id="premiumRestoreStripe" class="premium-restore hidden"><h3>Already bought it? Restore your pass</h3><p class="hint">Enter the email you used at checkout, plus the last 4 digits of the card you paid with (or the receipt number from your receipt email). It works on up to 5 of your devices.</p><label class="field">Email<input id="premiumEmail" type="email" maxlength="254" autocomplete="email" autocapitalize="off" spellcheck="false" placeholder="you@example.com"></label><label class="field">Card’s last 4 digits (or receipt number)<input id="premiumProof" maxlength="40" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="e.g. 4242"></label><button id="premiumRestoreBtn" class="btn plain" type="button">RESTORE PASS</button><p id="premiumRestoreStatus" class="hint" role="status" aria-live="polite"></p></div></dialog>
@@ -452,7 +493,7 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--p1);outline-offset:
 <script src="assets/arena-engine.js?v=839de2dcf7"></script>
 <script src="assets/progression.js?v=cba130d647"></script>
 <script src="assets/commerce-config.js?v=f9b1f7bc97"></script>
-<script src="assets/monetization.js?v=d14dc8d188"></script>
+<script src="assets/monetization.js?v=7b4bef75b6"></script>
 <script>
 (() => {
 'use strict';
@@ -1135,8 +1176,9 @@ function hitPaddle(pk, pd) {
       if (pk.rallyHits === 5) toast('RALLY · KEEP IT CLEAN', 1.15);
     }
     const col = pd.p === 1 ? COL.p1 : COL.p2;
-    const sig = pd.p === 1 && CreaseProduct.paddleStyle().fx;   // premium paddle signature sparks
-    if (sig) for (let i = 0; i < sig.length; i++) sparks(pk.u, pk.v, nu, nv, sig[i], 3, 0.9 + i * 0.15);
+    const s1 = pd.p === 1 ? p1Sig() : null, sigFx = pd.p === 1 && CreaseProduct.paddleStyle().fx;   // premium paddle signature sparks
+    if (s1 && s1.hit) PA().hit(pk.u, pk.v, nu, nv, Math.min(1, j / 3), s1.hit, s1.tune);
+    else if (sigFx && !(s1 && s1.mixed)) for (let i = 0; i < sigFx.length; i++) sparks(pk.u, pk.v, nu, nv, sigFx[i], 3, 0.9 + i * 0.15);
     const push = Math.max(0, pd.vu * nu + pd.vv * nv);   // paddle speed driving into the puck
     pd.punch = Math.min(1, (pd.punch || 0) + 0.25 + Math.min(1, j / 3) * 0.5);
     const starHit = envOn('STAR', pd.p) && pk.smashT < 0.45;
@@ -1405,8 +1447,9 @@ function scored(scorer, pk) {
   progress.goal({scorer,lastTouch:pk.lastTouch,smash:pk.lastTouch===scorer&&pk.smashT>0,bank:pk.lastTouch===scorer&&pk.bumped});
   game.flash[scorer - 1] = 1;
   const col = scorer === 1 ? COL.p1 : COL.p2, gv = scorer === 1 ? 0 : L;
-  const sigGoal = scorer === 1 && CreaseProduct.paddleStyle().fx;   // premium paddle goal explosion
-  if (sigGoal) { sigGoal.forEach((c, i) => { burst(0.5, gv, c, 26, 2.4 + i * 0.3); surge(0.5, gv, c, 1.6 + i * 0.2); }); game.rings.push({ u: 0.5, v: gv, age: 0, life: 0.7, col: sigGoal[0], max: 0.45 }); }
+  const s1 = scorer === 1 ? p1Sig() : null, sigGoal = scorer === 1 && CreaseProduct.paddleStyle().fx;   // premium paddle goal explosion
+  if (s1 && s1.goal) PA().goal(gv, s1.goal, s1.tune);
+  else if (sigGoal && !(s1 && s1.mixed)) { sigGoal.forEach((c, i) => { burst(0.5, gv, c, 26, 2.4 + i * 0.3); surge(0.5, gv, c, 1.6 + i * 0.2); }); game.rings.push({ u: 0.5, v: gv, age: 0, life: 0.7, col: sigGoal[0], max: 0.45 }); }
   burst(0.5, gv, col, 40, 2); burst(0.5, gv, '#ffffff', 16, 1.4);
   game.rings.push({ u: 0.5, v: gv, age: 0, life: 0.6, col, max: 0.4 });
   const label = pk.smashT > 0 ? 'SMASH GOAL' : pk.bumped ? 'BANK SHOT' : 'GOAL';
@@ -1502,6 +1545,7 @@ function update(dt, raw = dt) {
   game.flashW = Math.max(0, game.flashW - dt * 2.5);
   for (const r of game.rings) r.age += dt;
   game.rings = game.rings.filter(r => r.age < r.life);
+  if (PAi) PAi.tick(dt);
 
   for (const p of game.pops) p.t += dt;
   game.pops = game.pops.filter(p => p.t < p.life);
@@ -2289,15 +2333,516 @@ function drawRings() {
   }
   ctx.globalAlpha = 1;
 }
+// ---------- signature paddle art ----------
+// The three premium paddles (Prism Glass, Solar Flare, Obsidian Mint) each have two looks, A and B, and a library of hit and goal
+// effects that a custom paddle can mix. All art is baked once into small offscreen canvases (the first time it is needed);
+// each frame only blits them, so nothing allocates while playing.
+
+// What player 1's paddle shows and plays right now: look to draw (body), effect sets for a hit and a goal, and the tune.
+// Sets are keys like 'solarB'; '' means the plain default. mixed = a saved custom-paddle mix is playing.
+const sig = { body: '', hit: '', goal: '', tune: null, skin: null, mixed: false };
+const sigSeen = { st: null, mix: null, prem: null, look: null };
+function p1Sig() {
+  const P = CreaseProduct, st = P.paddleStyle(), prem = P.isPremium(), raw = studioOn('pad') && studio.d.mix ? studio.d.mix : null;
+  let id = ''; for (const k in P.styles) if (P.styles[k] === st) id = k;
+  const look = P.paddleLook ? P.paddleLook(id) : '';
+  if (sigSeen.st === st && sigSeen.mix === raw && sigSeen.prem === prem && sigSeen.look === look) return sig;
+  sigSeen.st = st; sigSeen.mix = raw; sigSeen.prem = prem; sigSeen.look = look;
+  sig.body = sig.hit = sig.goal = ''; sig.tune = null; sig.skin = null; sig.mixed = false;
+  if (raw && P.resolveMix) {
+    const m = P.resolveMix(raw);
+    sig.mixed = true; sig.skin = m.base === 'founder' ? P.styles.founder : P.styles.classic; sig.tune = m.tune;
+    sig.body = m.base === 'classic' || m.base === 'founder' ? '' : m.base;
+    sig.hit = m.hit === 'classic' ? '' : m.hit; sig.goal = m.goal === 'classic' ? '' : m.goal;
+  } else if (id && P.effectsFor && P.effectsFor(id, look)) {
+    sig.body = id + look; sig.hit = sig.goal = P.effectsFor(id, look);   // both looks play the paddle's B effects
+  }
+  return sig;
+}
+let PAi = null;
+const PA = () => PAi || (PAi = buildPaddleArt());
+setTimeout(() => { try { if (CreaseProduct.isPremium()) PA(); } catch (_) {} }, 1500);   // bake while the menu is showing, not on the first hit
+function buildPaddleArt() {
+  const TAU = Math.PI * 2, S = 256, C = 128, SPEC = ['#ff4d6d', '#ffb02e', '#ffe94d', '#4dff88', '#2de2e6', '#4d8bff', '#b36bff'];
+  const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const mkS = (w, h, fn) => { const cv = document.createElement('canvas'); cv.width = w; cv.height = h; fn(cv.getContext('2d'), w, h); return cv; };
+  const mk = fn => mkS(S, S, x => { x.translate(C, C); fn(x); });
+  const poly = (x, n, rad, rot) => { x.beginPath(); for (let i = 0; i < n; i++) { const a = rot + i / n * TAU, px = Math.cos(a) * rad, py = Math.sin(a) * rad; i ? x.lineTo(px, py) : x.moveTo(px, py); } x.closePath(); };
+  const polyP = (n, rad, rot, p) => { p = p || new Path2D(); for (let i = 0; i < n; i++) { const a = rot + i / n * TAU, px = Math.cos(a) * rad, py = Math.sin(a) * rad; i ? p.lineTo(px, py) : p.moveTo(px, py); } p.closePath(); return p; };
+  const stops = (g, st) => { for (let i = 0; i < st.length; i += 2) g.addColorStop(st[i], st[i + 1]); return g; };
+  const lg = (x, x0, y0, x1, y1, st) => stops(x.createLinearGradient(x0, y0, x1, y1), st);
+  const rg = (x, x0, y0, r0, x1, y1, r1, st) => stops(x.createRadialGradient(x0, y0, r0, x1, y1, r1), st);
+  const conic = (x, a, st) => x.createConicGradient ? stops(x.createConicGradient(a, 0, 0), st) : lg(x, -100, 0, 100, 0, st);
+  const specSt = []; SPEC.forEach((c, i) => specSt.push(i / 7, c)); specSt.push(1, SPEC[0]);
+  const srnd = seed => () => { seed = (seed * 16807) % 2147483647; return (seed - 1) / 2147483646; };
+
+  // ---- small shared sprites (glows, beams, washes) keyed by color ----
+  const glows = {}, beams = {}, washes = {};
+  const glowS = col => glows[col] || (glows[col] = mkS(64, 64, x => { x.fillStyle = rg(x, 32, 32, 0, 32, 32, 32, [0, '#ffffff', .22, col, 1, hexA(col, 0)]); x.fillRect(0, 0, 64, 64); }));
+  const beamS = col => beams[col] || (beams[col] = mkS(64, 256, (x, w, h) => {
+    x.fillStyle = lg(x, 0, 0, 0, h, [0, hexA(col, 1), .35, hexA(col, .55), 1, hexA(col, 0)]); x.fillRect(0, 0, w, h);
+    x.globalCompositeOperation = 'destination-in'; x.fillStyle = lg(x, 0, 0, w, 0, [0, 'rgba(0,0,0,0)', .38, 'rgba(0,0,0,.8)', .5, '#000', .62, 'rgba(0,0,0,.8)', 1, 'rgba(0,0,0,0)']); x.fillRect(0, 0, w, h);
+  }));
+  const washS = col => washes[col] || (washes[col] = mkS(8, 128, (x, w, h) => { x.fillStyle = lg(x, 0, 0, 0, h, [0, hexA(col, .95), .5, hexA(col, .35), 1, hexA(col, 0)]); x.fillRect(0, 0, w, h); }));
+
+  // ---- shared band + rainbow ----
+  const band = mkS(60, 320, (x, w, h) => { x.fillStyle = lg(x, 0, 0, w, 0, [0, 'rgba(255,255,255,0)', .3, 'rgba(255,110,200,.55)', .5, 'rgba(255,255,255,.95)', .7, 'rgba(70,225,255,.55)', 1, 'rgba(255,255,255,0)']); x.fillRect(0, 0, w, h); });
+  const rainbow = mk(x => { x.fillStyle = conic(x, 0, specSt); x.fillRect(-C, -C, S, S); });
+  const sheen = mkS(70, 320, (x, w, h) => { x.fillStyle = lg(x, 0, 0, w, 0, [0, 'rgba(160,255,225,0)', .45, 'rgba(160,255,225,.5)', .55, 'rgba(255,255,255,.9)', 1, 'rgba(160,255,225,0)']); x.fillRect(0, 0, w, h); });
+
+  // ================= PRISM GLASS =================
+  const OCT = Math.PI / 8;
+  const prismA = {
+    base: mk(x => {
+      poly(x, 8, 100, OCT); x.fillStyle = lg(x, -80, -90, 80, 90, [0, '#4a36a0', .5, '#150e44', 1, '#05031a']); x.fill();
+      const cols = ['rgba(170,225,255,.62)', 'rgba(130,95,255,.55)', 'rgba(255,150,230,.5)', 'rgba(90,70,210,.6)'];
+      for (let i = 0; i < 8; i++) {
+        const a0 = OCT + i / 8 * TAU, a1 = OCT + (i + 1) / 8 * TAU, am = (a0 + a1) / 2;
+        x.beginPath(); x.moveTo(Math.cos(a0) * 98, Math.sin(a0) * 98); x.lineTo(Math.cos(a1) * 98, Math.sin(a1) * 98);
+        x.lineTo(Math.cos(a1) * 50, Math.sin(a1) * 50); x.lineTo(Math.cos(a0) * 50, Math.sin(a0) * 50); x.closePath();
+        x.fillStyle = lg(x, Math.cos(am) * 98, Math.sin(am) * 98, Math.cos(am) * 50, Math.sin(am) * 50, [0, cols[i & 3], 1, 'rgba(255,255,255,.1)']); x.fill();
+        x.strokeStyle = 'rgba(255,255,255,.55)'; x.lineWidth = 1.6; x.stroke();
+      }
+      poly(x, 8, 50, OCT); x.fillStyle = lg(x, -40, -45, 40, 45, [0, 'rgba(255,255,255,.98)', .45, 'rgba(190,232,255,.7)', 1, 'rgba(150,120,255,.55)']); x.fill();
+      x.strokeStyle = '#fff'; x.lineWidth = 2.4; x.stroke();
+      x.strokeStyle = 'rgba(255,255,255,.7)'; x.lineWidth = 1.4; x.beginPath();
+      for (let i = 0; i < 4; i++) { const a = OCT + i / 4 * TAU; x.moveTo(0, 0); x.lineTo(Math.cos(a) * 50, Math.sin(a) * 50); } x.stroke();
+    }),
+    oct88: polyP(8, 90, OCT),
+    rim: (() => { const p = polyP(8, 100, OCT); polyP(8, 79, OCT, p); return p; })(),
+  };
+  const prismB = {
+    base: mk(x => {
+      x.beginPath(); x.arc(0, 0, 100, 0, TAU); x.fillStyle = lg(x, -70, -80, 70, 80, [0, '#ffffff', .22, '#a6b4d8', .5, '#3b4266', .78, '#b4c0e0', 1, '#ffffff']); x.fill();
+      x.lineWidth = 3.4; x.strokeStyle = 'rgba(255,60,90,.85)'; x.beginPath(); x.arc(-2.4, 0, 97, 0, TAU); x.stroke();
+      x.strokeStyle = 'rgba(60,235,255,.85)'; x.beginPath(); x.arc(2.4, 0, 97, 0, TAU); x.stroke();
+      x.beginPath(); x.arc(0, 0, 76, 0, TAU); x.fillStyle = '#05030f'; x.fill();
+      x.beginPath(); x.arc(0, 0, 68, 0, TAU); x.fillStyle = rg(x, -14, -18, 4, 0, 0, 68, [0, '#2a2090', .6, '#0b0836', 1, '#03020f']); x.fill();
+      x.lineWidth = 2.2; for (let i = 0; i < 3; i++) { x.strokeStyle = hexA(SPEC[(i * 2 + 1) % 7], .5); x.beginPath(); x.arc(0, 0, 63 - i * 6, 0, TAU); x.stroke(); }
+    }),
+    emb: mk(x => {
+      for (let i = 0; i < 7; i++) {   // the light that comes out of the prism
+        x.strokeStyle = SPEC[i]; x.lineWidth = 5; x.lineCap = 'round'; x.globalAlpha = .9;
+        x.beginPath(); x.moveTo(14, 4); x.lineTo(60, -26 + i * 9); x.stroke();
+      }
+      x.globalAlpha = 1; x.strokeStyle = '#fff'; x.lineWidth = 5; x.beginPath(); x.moveTo(-64, 12); x.lineTo(-14, 6); x.stroke();
+      poly(x, 3, 36, -Math.PI / 2); x.fillStyle = lg(x, -30, -30, 30, 34, [0, 'rgba(255,255,255,.95)', .5, 'rgba(160,205,255,.5)', 1, 'rgba(120,90,255,.65)']); x.fill();
+      x.lineWidth = 3.4; x.strokeStyle = '#fff'; x.lineJoin = 'round'; x.stroke();
+    }),
+    fan: mk(x => { x.fillStyle = conic(x, 0, specSt); x.beginPath(); x.arc(0, 0, 64, 0, TAU); x.fill(); }),
+    lens: (() => { const p = new Path2D(); p.arc(0, 0, 66, 0, TAU); return p; })(),
+  };
+
+  // ================= SOLAR FLARE =================
+  const solarA = {
+    base: mk(x => {
+      x.beginPath(); x.arc(0, 0, 100, 0, TAU); x.fillStyle = lg(x, -60, -70, 60, 80, [0, '#8a3a18', .5, '#3a1408', 1, '#100402']); x.fill();
+      x.beginPath(); x.arc(0, 0, 91, 0, TAU); x.fillStyle = rg(x, -30, -35, 4, 0, 0, 92, [0, '#4a1c0c', .65, '#1c0804', 1, '#080201']); x.fill();
+      const r = srnd(7);
+      for (let k = 0; k < 3; k++) for (let i = 0; i < 15; i++) {
+        let a = i / 15 * TAU + r() * .3, rad = 34;
+        x.beginPath(); x.moveTo(Math.cos(a) * rad, Math.sin(a) * rad);
+        for (let s = 0; s < 4; s++) { a += (r() - .5) * .45; rad += 15 + r() * 6; x.lineTo(Math.cos(a) * rad, Math.sin(a) * rad); }
+        x.lineJoin = 'round'; x.lineCap = 'round';
+        if (k === 0) { x.strokeStyle = 'rgba(255,80,16,.4)'; x.lineWidth = 10; } else if (k === 1) { x.strokeStyle = '#ff8a2a'; x.lineWidth = 3.6; } else { x.strokeStyle = '#ffeaa8'; x.lineWidth = 1.3; }
+        x.stroke();
+      }
+      x.strokeStyle = 'rgba(255,170,70,.55)'; x.lineWidth = 3; x.beginPath(); x.arc(0, 0, 95, 0, TAU); x.stroke();
+    }),
+    core: mk(x => { x.fillStyle = rg(x, 0, 0, 0, 0, 0, 60, [0, '#ffffff', .22, '#fff1a0', .5, '#ffa01e', .82, '#e8400a', 1, 'rgba(170,20,5,0)']); x.fillRect(-C, -C, S, S); }),
+    cor1: mk(x => {
+      x.beginPath(); for (let i = 0; i < 28; i++) { const a = i / 28 * TAU - .06 * 0, rr = i & 1 ? 84 : (i % 4 === 0 ? 124 : 112); const px = Math.cos(a) * rr, py = Math.sin(a) * rr; i ? x.lineTo(px, py) : x.moveTo(px, py); } x.closePath();
+      x.fillStyle = rg(x, 0, 0, 82, 0, 0, 124, [0, 'rgba(255,205,90,.95)', 1, 'rgba(255,60,10,0)']); x.fill();
+    }),
+    cor2: mk(x => {
+      x.beginPath(); for (let i = 0; i < 20; i++) { const a = i / 20 * TAU + .15, rr = i & 1 ? 86 : 108; const px = Math.cos(a) * rr, py = Math.sin(a) * rr; i ? x.lineTo(px, py) : x.moveTo(px, py); } x.closePath();
+      x.fillStyle = rg(x, 0, 0, 84, 0, 0, 110, [0, 'rgba(255,240,170,.8)', 1, 'rgba(255,140,30,0)']); x.fill();
+    }),
+  };
+  const solarB = {
+    base: mk(x => {
+      x.beginPath(); x.arc(0, 0, 80, 0, TAU); x.fillStyle = rg(x, -20, -26, 4, 0, 0, 80, [0, '#2a110a', 1, '#030101']); x.fill();
+      x.lineCap = 'round'; x.strokeStyle = 'rgba(255,170,60,.45)'; x.lineWidth = 14; x.beginPath(); x.arc(0, 0, 76, Math.PI * 1.05, Math.PI * 1.75); x.stroke();
+      x.strokeStyle = '#fff6c8'; x.lineWidth = 5; x.beginPath(); x.arc(0, 0, 76, Math.PI * 1.1, Math.PI * 1.7); x.stroke();
+      x.strokeStyle = 'rgba(255,138,30,.75)'; x.lineWidth = 2.6; x.beginPath(); x.arc(0, 0, 52, 0, TAU); x.stroke();
+      x.strokeStyle = 'rgba(255,138,30,.45)'; x.lineWidth = 1.6; x.beginPath(); x.arc(0, 0, 38, 0, TAU); x.stroke();
+      x.fillStyle = rg(x, 0, 0, 0, 0, 0, 22, [0, '#fff', .35, '#ffc24d', 1, 'rgba(255,90,20,0)']); x.beginPath(); x.arc(0, 0, 22, 0, TAU); x.fill();
+    }),
+    gear: mk(x => {
+      x.beginPath(); for (let i = 0; i < 40; i++) { const a = i / 40 * TAU, rr = i & 1 ? 83 : 100; const px = Math.cos(a) * rr, py = Math.sin(a) * rr; i ? x.lineTo(px, py) : x.moveTo(px, py); } x.closePath();
+      x.fillStyle = lg(x, -70, -80, 70, 80, [0, '#fff3b0', .45, '#ffad24', 1, '#b53c08']); x.fill();
+      x.globalCompositeOperation = 'destination-out'; x.beginPath(); x.arc(0, 0, 72, 0, TAU); x.fill();
+      x.globalCompositeOperation = 'source-over'; x.strokeStyle = 'rgba(120,30,0,.6)'; x.lineWidth = 2; x.beginPath(); x.arc(0, 0, 74, 0, TAU); x.stroke();
+    }),
+    prom: mk(x => {
+      x.lineCap = 'round';
+      for (let i = 0; i < 5; i++) {
+        const a = i / 5 * TAU, a2 = a + .62;
+        for (let k = 0; k < 2; k++) {
+          x.strokeStyle = k ? '#fff0a8' : 'rgba(255,110,24,.85)'; x.lineWidth = k ? 2.2 : 6;
+          x.beginPath(); x.moveTo(Math.cos(a) * 76, Math.sin(a) * 76);
+          x.quadraticCurveTo(Math.cos(a + .31) * (112 - k * 4), Math.sin(a + .31) * (112 - k * 4), Math.cos(a2) * 76, Math.sin(a2) * 76); x.stroke();
+        }
+      }
+    }),
+  };
+
+  // ================= OBSIDIAN MINT =================
+  const MINT = '#62f6c6';
+  const obsInlay = (x, col, lw) => {
+    x.strokeStyle = col; x.fillStyle = col; x.lineCap = 'round'; x.lineJoin = 'round';
+    x.lineWidth = lw * 1.25; for (let i = 0; i < 8; i++) { x.beginPath(); x.arc(0, 0, 80, i / 8 * TAU + .12, (i + 1) / 8 * TAU - .12); x.stroke(); }
+    x.lineWidth = lw; for (let i = 0; i < 6; i++) { x.beginPath(); x.arc(0, 0, 58, i / 6 * TAU + .15, (i + 1) / 6 * TAU - .15); x.stroke(); }
+    x.lineWidth = lw * .75; for (let i = 0; i < 8; i++) {
+      const a = i / 8 * TAU + .39; x.beginPath(); x.moveTo(Math.cos(a) * 58, Math.sin(a) * 58); x.lineTo(Math.cos(a) * 80, Math.sin(a) * 80); x.stroke();
+      x.beginPath(); x.arc(Math.cos(a) * 80, Math.sin(a) * 80, lw * .9, 0, TAU); x.fill();
+    }
+    x.lineWidth = lw; poly(x, 6, 24, -Math.PI / 2); x.stroke(); x.beginPath(); x.arc(0, 0, lw * 1.3, 0, TAU); x.fill();
+  };
+  const obsA = {
+    base: mk(x => {
+      x.beginPath(); x.arc(0, 0, 100, 0, TAU); x.fillStyle = lg(x, -70, -80, 70, 80, [0, '#2a5a50', .5, '#0a1a18', 1, '#010605']); x.fill();
+      x.beginPath(); x.arc(0, 0, 93, 0, TAU); x.fillStyle = rg(x, -38, -44, 4, 0, 0, 96, [0, '#34464c', .3, '#0d161a', .75, '#030507', 1, '#000']); x.fill();
+      x.strokeStyle = 'rgba(190,255,235,.11)'; x.lineWidth = 1.6;   // conchoidal fracture lines in the glass
+      for (let i = 0; i < 5; i++) { x.beginPath(); x.arc(-60 + i * 22, 70 - i * 30, 40 + i * 9, -1.2 + i * .4, .6 + i * .35); x.stroke(); }
+      x.shadowColor = MINT; x.shadowBlur = 8; obsInlay(x, '#2fbf95', 4); x.shadowBlur = 0;
+      x.strokeStyle = 'rgba(98,246,198,.55)'; x.lineWidth = 2.4; x.beginPath(); x.arc(0, 0, 96, 0, TAU); x.stroke();
+    }),
+    glow: mk(x => { x.shadowColor = '#7dffd8'; x.shadowBlur = 22; obsInlay(x, '#b6ffe9', 5); }),
+  };
+  const HEX = -Math.PI / 2;
+  const obsB = {
+    base: mk(x => {
+      poly(x, 6, 100, HEX); x.fillStyle = lg(x, -80, -90, 80, 90, [0, '#2f6a5e', .5, '#0b1f1c', 1, '#010605']); x.fill();
+      const sh = ['#134238', '#06201b', '#1a574a', '#031512', '#0f3a31', '#04201a'];
+      for (let i = 0; i < 6; i++) {   // chamfered bevel: one face per side
+        const a0 = HEX + i / 6 * TAU, a1 = HEX + (i + 1) / 6 * TAU;
+        x.beginPath(); x.moveTo(Math.cos(a0) * 98, Math.sin(a0) * 98); x.lineTo(Math.cos(a1) * 98, Math.sin(a1) * 98);
+        x.lineTo(Math.cos(a1) * 78, Math.sin(a1) * 78); x.lineTo(Math.cos(a0) * 78, Math.sin(a0) * 78); x.closePath(); x.fillStyle = sh[i]; x.fill();
+        x.strokeStyle = 'rgba(150,255,225,.3)'; x.lineWidth = 1.4; x.stroke();
+      }
+      poly(x, 6, 78, HEX); x.fillStyle = rg(x, -28, -34, 4, 0, 0, 80, [0, '#2c3d44', .35, '#0b1317', 1, '#010305']); x.fill();
+      x.shadowColor = MINT; x.shadowBlur = 10; x.lineJoin = 'round';
+      poly(x, 6, 64, HEX); x.strokeStyle = MINT; x.lineWidth = 5; x.stroke();
+      poly(x, 6, 48, HEX); x.strokeStyle = 'rgba(98,246,198,.5)'; x.lineWidth = 2; x.stroke();
+      x.fillStyle = MINT; for (let i = 0; i < 6; i++) { const a = HEX + i / 6 * TAU; x.beginPath(); x.arc(Math.cos(a) * 64, Math.sin(a) * 64, 5.5, 0, TAU); x.fill(); }
+      x.shadowBlur = 0; x.strokeStyle = 'rgba(98,246,198,.4)'; x.lineWidth = 1.6; x.beginPath(); x.moveTo(-48, 0); x.lineTo(48, 0); x.moveTo(0, -48); x.lineTo(0, 48); x.stroke();
+      x.beginPath(); x.moveTo(0, -32); x.lineTo(28, 0); x.lineTo(0, 32); x.lineTo(-28, 0); x.closePath();
+      x.fillStyle = lg(x, -20, -26, 22, 28, [0, '#eafff8', .4, '#62f6c6', 1, '#0b4a38']); x.fill(); x.lineWidth = 2.6; x.strokeStyle = '#d7fff4'; x.stroke();
+    }),
+    gem: mk(x => { x.shadowColor = '#7dffd8'; x.shadowBlur = 20; x.fillStyle = '#9dffe0'; x.beginPath(); x.moveTo(0, -32); x.lineTo(28, 0); x.lineTo(0, 32); x.lineTo(-28, 0); x.closePath(); x.fill(); }),
+    hex: polyP(6, 97, HEX),
+  };
+  // point on the hexagon outline (radius 64) at travel s (0..1)
+  let hx = 0, hy = 0;
+  const hexAt = s => { const f = (((s % 1) + 1) % 1) * 6, i = Math.floor(f), t = f - i, a0 = HEX + i / 6 * TAU, a1 = HEX + (i + 1) / 6 * TAU; hx = (Math.cos(a0) * (1 - t) + Math.cos(a1) * t) * 64; hy = (Math.sin(a0) * (1 - t) + Math.sin(a1) * t) * 64; };
+
+  // ---- live drawing: everything below only blits the baked sprites ----
+  const lite = (c, fn) => { c.save(); c.globalCompositeOperation = 'lighter'; fn(); c.restore(); };
+  const bodies = {
+    prismA(c, t) {
+      c.drawImage(prismA.base, -C, -C);
+      c.save(); c.clip(prismA.oct88); c.globalCompositeOperation = 'lighter';   // refraction bands sweep across the gem
+      for (let i = 0; i < 2; i++) { c.save(); c.translate(-170 + ((t * .42 + i * .5) % 1) * 340, 0); c.rotate(-.55); c.globalAlpha = .95 - i * .3; c.drawImage(band, -30, -160); c.restore(); }
+      c.restore();
+      c.save(); c.clip(prismA.rim, 'evenodd'); c.rotate(t * 1.1); c.drawImage(rainbow, -C, -C); c.restore();
+      lite(c, () => {
+        c.strokeStyle = '#fff'; c.lineWidth = 2.6; c.lineCap = 'round';
+        for (let i = 0; i < 4; i++) {
+          const a = OCT + (i * 2 + 1) / 8 * TAU, tw = Math.max(0, Math.sin(t * 3.2 + i * 1.9)), px = Math.cos(a) * 72, py = Math.sin(a) * 72, L = 5 + 13 * tw;
+          c.globalAlpha = tw; c.beginPath(); c.moveTo(px - L, py); c.lineTo(px + L, py); c.moveTo(px, py - L); c.lineTo(px, py + L); c.stroke();
+        }
+      });
+    },
+    prismB(c, t) {
+      c.drawImage(prismB.base, -C, -C);
+      c.save(); c.clip(prismB.lens); c.globalCompositeOperation = 'lighter'; c.globalAlpha = .55; c.rotate(t * 1.3); c.drawImage(prismB.fan, -C, -C); c.restore();
+      c.save(); c.globalAlpha = .75 + .25 * Math.sin(t * 5); c.drawImage(prismB.emb, -C, -C); c.restore();
+      lite(c, () => {   // rainbow bezel glints that circle the silver ring
+        c.lineCap = 'round'; c.lineWidth = 7;
+        for (let i = 0; i < 3; i++) { const a = t * 1.7 + i * 2.09; c.strokeStyle = SPEC[(i * 2 + Math.floor(t * 2)) % 7]; c.globalAlpha = .95; c.beginPath(); c.arc(0, 0, 88, a, a + .5); c.stroke(); }
+      });
+    },
+    solarA(c, t) {
+      c.save(); c.globalCompositeOperation = 'lighter'; c.globalAlpha = .9 + .1 * Math.sin(t * 7);
+      c.save(); c.rotate(t * .7); c.drawImage(solarA.cor1, -C, -C); c.drawImage(solarA.cor1, -C, -C); c.restore();
+      c.save(); c.rotate(-t * 1.1); c.globalAlpha = .75; c.drawImage(solarA.cor2, -C, -C); c.restore(); c.restore();
+      c.drawImage(solarA.base, -C, -C);
+      const pu = 1 + .07 * Math.sin(t * 6) + .03 * Math.sin(t * 13);
+      lite(c, () => { c.scale(pu, pu); c.drawImage(solarA.core, -C, -C); });
+      lite(c, () => {   // heat shimmer: two wobbling air rings
+        c.lineWidth = 2.4; c.strokeStyle = '#ffb04a';
+        for (let k = 0; k < 2; k++) {
+          c.globalAlpha = .34 - k * .12; c.beginPath();
+          for (let i = 0; i <= 36; i++) { const a = i / 36 * TAU, rr = 104 + k * 7 + (4 + k * 2) * Math.sin(a * 7 + t * (6 + k * 3) * (k ? -1 : 1)); const px = Math.cos(a) * rr, py = Math.sin(a) * rr; i ? c.lineTo(px, py) : c.moveTo(px, py); }
+          c.stroke();
+        }
+      });
+    },
+    solarB(c, t) {
+      c.save(); c.rotate(t * .5); c.drawImage(solarB.gear, -C, -C); c.restore();
+      c.drawImage(solarB.base, -C, -C);
+      lite(c, () => { c.rotate(-t * .8); c.globalAlpha = .75 + .25 * Math.sin(t * 4); c.drawImage(solarB.prom, -C, -C); });
+      lite(c, () => { c.globalAlpha = .22 + .18 * Math.sin(t * 5); c.beginPath(); c.arc(0, 0, 100, 0, TAU); c.lineWidth = 12; c.strokeStyle = '#ffb02e'; c.stroke(); });
+    },
+    obsA(c, t) {
+      c.drawImage(obsA.base, -C, -C);
+      lite(c, () => { c.globalAlpha = .4 + .35 * Math.sin(t * 3.4); c.drawImage(obsA.glow, -C, -C); });
+      lite(c, () => {   // data pulses racing round the two inlay rings
+        c.lineCap = 'round'; c.strokeStyle = '#eafff8'; c.lineWidth = 8; c.globalAlpha = 1;
+        const a = t * 2.8; c.beginPath(); c.arc(0, 0, 80, a, a + .55); c.stroke();
+        c.lineWidth = 6; c.strokeStyle = '#9dffe0'; const b = -t * 3.6; c.beginPath(); c.arc(0, 0, 58, b, b + .5); c.stroke();
+      });
+    },
+    obsB(c, t) {
+      c.drawImage(obsB.base, -C, -C);
+      lite(c, () => { c.globalAlpha = .35 + .4 * Math.sin(t * 3.6); c.drawImage(obsB.gem, -C, -C); });
+      c.save(); c.clip(obsB.hex); c.globalCompositeOperation = 'lighter';
+      c.translate(-180 + ((t * .38) % 1) * 360, 0); c.rotate(-.6); c.globalAlpha = .85; c.drawImage(sheen, -35, -170); c.restore();
+      lite(c, () => {
+        c.lineCap = 'round'; c.strokeStyle = '#eafff8'; c.lineWidth = 8;
+        hexAt(t * .5); const x0 = hx, y0 = hy; hexAt(t * .5 - .03); c.beginPath(); c.moveTo(x0, y0); c.lineTo(hx, hy); c.stroke();
+        c.globalAlpha = .6; hexAt(t * .5 + .5); const x1 = hx, y1 = hy; hexAt(t * .5 + .47); c.beginPath(); c.moveTo(x1, y1); c.lineTo(hx, hy); c.stroke();
+      });
+    },
+  };
+  const SKEY = { prism: 'prism', solar: 'solar', obsidian: 'obs' };
+  const PAL = { prism: { m: '#c6a6ff', g: '#d18cff' }, solar: { m: '#ff9a2e', g: '#ff713b' }, obsidian: { m: '#62f6c6', g: '#47cfa4' } };
+  const bodyKey = (id, look) => SKEY[id] + look;
+
+  // ---- the paddle body: c = any 2D context, (u,v) centre, r radius (same units as the hitbox); key is a look such as 'prismB' ----
+  function body(c, u, v, r, key, t, tfp, big, fire, gl) {
+    const id = key.slice(0, -1), fn = bodies[bodyKey(id, key.slice(-1))];
+    if (!fn) return false;
+    c.save(); c.globalAlpha = 1;
+    c.fillStyle = 'rgba(0,0,0,.55)'; c.beginPath(); c.ellipse(u + r * .15, v + r * .24, r * .98, r * .72, 0, 0, TAU); c.fill();
+    c.save(); c.globalCompositeOperation = 'lighter'; c.globalAlpha = .5; const gs = r * (gl || 2.5); c.drawImage(glowS(PAL[id].g), u - gs, v - gs, gs * 2, gs * 2); c.restore();
+    c.translate(u, v); c.scale(r / 100, r / 100);
+    fn(c, t);
+    c.save(); c.globalAlpha = .42; c.fillStyle = '#fff'; c.beginPath(); c.ellipse(-26 - tfp.u * 18, -30 - tfp.v * 18, 23, 10, -.55, 0, TAU); c.fill(); c.restore();
+    if (big > 0) { c.strokeStyle = COL.BIG; c.lineWidth = 8; c.beginPath(); c.arc(0, 0, 95, 0, TAU); c.stroke(); c.strokeStyle = '#fff'; c.lineWidth = 2; c.stroke(); }
+    if (fire > 0) { c.strokeStyle = '#ff8a1e'; c.lineWidth = 12; c.beginPath(); c.arc(0, -4, 88, 0, TAU); c.stroke(); c.strokeStyle = 'rgba(255,236,170,.9)'; c.lineWidth = 4; c.stroke(); }
+    c.restore();
+    return true;
+  }
+
+  // ---- effects: short-lived records, drawn additively. One play uses one effect set (e.g. 'solarB') and one tune. ----
+  const DEFT = { hue: 0, size: 1, power: 1 };
+  let T = DEFT, outFx = null, outParts = null;
+  const calm = matchMedia('(prefers-reduced-motion: reduce)').matches;   // fewer, calmer particles
+  const hueMemo = {};
+  const rotHue = (hex, deg) => {
+    const n = parseInt(hex.slice(1), 16), r = (n >> 16 & 255) / 255, g = (n >> 8 & 255) / 255, b = (n & 255) / 255;
+    const mx = Math.max(r, g, b), mn = Math.min(r, g, b), d = mx - mn, l = (mx + mn) / 2;
+    let h = 0, s = 0;
+    if (d) { s = d / (1 - Math.abs(2 * l - 1)); h = mx === r ? ((g - b) / d + 6) % 6 : mx === g ? (b - r) / d + 2 : (r - g) / d + 4; h *= 60; }
+    h = (h + deg + 360) % 360;
+    const f = q => { const a = s * Math.min(l, 1 - l), kk = (q + h / 30) % 12; return l - a * Math.max(-1, Math.min(kk - 3, 9 - kk, 1)); };
+    const x = v => Math.round(v * 255).toString(16).padStart(2, '0');
+    return '#' + x(f(0)) + x(f(8)) + x(f(4));
+  };
+  // Shifts a #rrggbb color round the color wheel by the tune's hue. Steps of 10 degrees, worked out once per color.
+  const K = c => {
+    if (!c || !T.hue) return c;
+    const d = Math.round(T.hue / 10) * 10; if (!d) return c;
+    const per = hueMemo[d] || (hueMemo[d] = {});
+    return per[c] || (per[c] = rotHue(c, d));
+  };
+  const N = n => Math.max(1, Math.round(n * T.power * (calm ? .6 : 1)));   // particle count follows intensity
+  const pfx = o => { const a = outFx; if (a.length > 48) a.shift(); o.age = o.delay ? -o.delay : 0; o.ia = T.power; a.push(o); return o; };
+  const ring = (u, v, col, max, life, w, delay, n, c2) => pfx({ t: 'ring', u, v, col: K(col), max: max * T.size, life, w: w * T.size, delay, n: n || 0, c2: K(c2), rot: rand(0, TAU) });
+  const flash = (u, v, col, max, life, a) => pfx({ t: 'flash', u, v, col: K(col), max: max * T.size, life, a: a || 1 });
+  const rays = (u, v, o) => pfx(Object.assign({ t: 'rays', u, v, life: .4, w: 6, a: 1, rot: rand(0, TAU) }, o, { cols: o.cols && o.cols.map(K), col: K(o.col), max: o.max * T.size, w: (o.w || 6) * T.size }));
+  const part = (u, v, a, sp, life, sz, col, o) => {
+    const P = outParts; if (P.length >= 170) return null;   // one shared cap: a goal never puts more than 170 particles on screen
+    const p = { u, v, vu: Math.cos(a) * sp * T.size, vv: Math.sin(a) * sp * T.size, z: rand(-.05, .12), vz: rand(.3, .95), life, max: life, col: K(col), sz: sz * T.size, ia: T.power };
+    if (o) Object.assign(p, o); P.push(p); return p;
+  };
+  const shard = (u, v, a, sp, life, sz, col) => part(u, v, a, sp, life, sz, col, { shape: 1, rot: rand(0, TAU), vr: rand(-10, 10) });
+  const streaks = (u, v, base, cone, n, cols, pw, sz) => { for (let i = 0; i < n; i++) part(u, v, base + rand(-cone, cone), rand(.9, 2.8) * pw, rand(.25, .5), sz * rand(.8, 1.3), cols[i % cols.length], { streak: 1.3 + pw * .4 }); };
+  const HOT = ['#ff713b', '#ffc44d', '#fff5c2'];
+  const bolt = (u, v, a, len, life, col) => {   // jagged crack, built once when the effect starts
+    const n = 9, pts = new Float32Array(n * 2); let x = u, y = v, d = a; len *= T.size;
+    for (let i = 0; i < n; i++) { pts[i * 2] = x; pts[i * 2 + 1] = y; d += rand(-.55, .55); x += Math.cos(d) * len / n; y += Math.sin(d) * len / n; }
+    return pfx({ t: 'bolt', pts, n, life, col: K(col), c2: K('#ffffff') });
+  };
+  const SETRE = /^(prism|solar|obsidian)([AB])$/;
+  function begin(tune, env) { T = tune || DEFT; outFx = env ? env.fx : (game.pfx || (game.pfx = [])); outParts = env ? env.parts : game.parts; }
+
+  // Hit effect for one effect set. tune = { hue, size, power }; env = { fx, parts } to play somewhere other than the match.
+  function hit(u, v, nu, nv, k, set, tune, env) {
+    const m = SETRE.exec(set || ''); if (!m) return false;
+    begin(tune, env);
+    const id = m[1], A = m[2] === 'A', s = .55 + .45 * clamp(k, 0, 1), base = Math.atan2(nv, nu);
+    if (id === 'prism') {
+      flash(u, v, '#d9c8ff', .14, .22, .7);
+      if (A) {
+        ring(u, v, '#ff4d6d', .17, .36, 11, 0, 0, '#fff'); ring(u, v, '#2de2e6', .22, .44, 9, .05, 0, '#fff');
+        for (let i = 0, n = N(9 + Math.round(s * 7)); i < n; i++) shard(u, v, base + rand(-1.25, 1.25), rand(.5, 1.5) * (.8 + s), rand(.5, .9), rand(.011, .019), SPEC[i % 7]);
+        streaks(u, v, base, .9, N(10), SPEC, 1 + s * .4, .007);
+      } else {
+        rays(u, v, { cols: SPEC, n: 7, base, arc: 2.3, max: .3 + .12 * s, w: 9, life: .38 });
+        ring(u, v, '#ffffff', .2, .4, 9, 0, 0, '#c6a6ff');
+        for (let i = 0, n = N(6); i < n; i++) shard(u, v, base + rand(-1, 1), rand(.4, 1.1), rand(.4, .7), rand(.008, .013), SPEC[(i * 3) % 7]);
+        streaks(u, v, base, 1, N(12), SPEC, 1.1 + s * .4, .007);
+      }
+    } else if (id === 'solar') {
+      flash(u, v, '#ffb347', .17, .26, .7); flash(u, v, '#ffffff', .07, .12, .7);
+      if (A) {
+        ring(u, v, '#ff8a2a', .17, .34, 13, 0, 0, '#fff1b0');
+        for (let i = 0, n = N(14 + Math.round(s * 6)); i < n; i++) { const p = part(u, v, base + rand(-1.15, 1.15), rand(.3, 1.2) * (.8 + s), rand(.6, 1.1), rand(.008, .016), HOT[i % 3]); if (p) p.vv -= .38; }
+        streaks(u, v, base, .8, N(9), HOT, 1.2 + s * .4, .008);
+      } else {
+        rays(u, v, { cols: ['#ffd24d', '#fff5c2', '#ff9a2e'], n: 12, max: .24 + .1 * s, w: 7, life: .34 });
+        ring(u, v, '#ffc44d', .15, .3, 9, 0, 0, '#fff');
+        streaks(u, v, base, 1.5, N(12), HOT, 1.1 + s * .4, .008);
+      }
+    } else {
+      flash(u, v, '#62f6c6', .15, .24, .7);
+      if (A) {
+        ring(u, v, '#62f6c6', .18, .38, 15, 0, 0, '#eafff8'); ring(u, v, '#eafff8', .26, .46, 8, .06, 0, '#62f6c6');
+        for (let i = 0, n = N(10); i < n; i++) shard(u, v, base + rand(-1.2, 1.2), rand(.5, 1.4) * (.8 + s), rand(.5, .85), rand(.01, .017), i & 1 ? '#62f6c6' : '#d7fff4');
+        streaks(u, v, base, .9, N(9), ['#62f6c6', '#d7fff4'], 1.1 + s * .4, .007);
+      } else {
+        ring(u, v, '#62f6c6', .17, .36, 12, 0, 6, '#eafff8'); ring(u, v, '#9dffe0', .25, .46, 8, .07, 6, '#fff');
+        for (let i = 0, n = Math.min(9, N(6)); i < n; i++) bolt(u, v, base + rand(-1.4, 1.4), rand(.14, .26), .4, '#62f6c6');
+        streaks(u, v, base, 1, N(10), ['#62f6c6', '#d7fff4'], 1.1 + s * .4, .007);
+      }
+    }
+    T = DEFT; return true;
+  }
+
+  // Goal effect for one effect set, at the goal line gv (0 or the table length).
+  function goal(gv, set, tune, env) {
+    const m = SETRE.exec(set || ''); if (!m) return false;
+    begin(tune, env);
+    const id = m[1], A = m[2] === 'A', L = env ? env.L : view.L, dir = gv === 0 ? 1 : -1, mc = PAL[id].m, U = .5, into = dir > 0 ? Math.PI / 2 : -Math.PI / 2;
+    pfx({ t: 'wash', v: gv, dir, col: K(mc), a: id === 'obsidian' ? .26 : .36, life: 1.05, max: L * .5 * T.size });
+    pfx({ t: 'beam', u: U, v: gv, dir, col: K(mc), w: .24 * T.size, max: L * .55 * T.size, a: .65, life: .9 });
+    flash(U, gv, '#ffffff', .28, .2, .8); flash(U, gv, mc, .7, .55, .5);
+    const spread = (n, cols, spMin, spMax, szMin, szMax, shp) => { n = N(n); for (let i = 0; i < n; i++) { const a = into + rand(-1.5, 1.5), sp = rand(spMin, spMax), o = cols[i % cols.length]; shp ? shard(U + rand(-.14, .14), gv, a, sp, rand(.6, 1.2), rand(szMin, szMax), o) : part(U + rand(-.14, .14), gv, a, sp, rand(.6, 1.2), rand(szMin, szMax), o); } };
+    if (id === 'prism') {
+      if (A) {
+        for (let i = 0; i < 7; i++) ring(U, gv, SPEC[i], .3 + i * .045, .62, 13, i * .05, 0, '#fff');
+        rays(U, gv, { cols: SPEC, n: 9, base: into, arc: 2.7, max: .75, w: 11, life: .6 });
+        spread(34, SPEC, .8, 2.6, .012, .021, true);
+      } else {
+        pfx({ t: 'band', v: gv, dir, max: L * .6 * T.size, life: .95, cols: SPEC.map(K) });
+        rays(U, gv, { cols: ['#ff4d6d', '#ffe94d', '#4d8bff'], n: 5, base: into, arc: 1.6, max: .95, w: 26, life: .75, a: .8 });
+        ring(U, gv, '#ffffff', .42, .6, 14, 0, 0, '#c6a6ff');
+        spread(26, SPEC, .8, 2.4, .011, .018, true); spread(16, SPEC, .6, 1.8, .008, .014, false);
+      }
+    } else if (id === 'solar') {
+      if (A) {
+        rays(U, gv, { cols: ['#ffc44d', '#fff5c2', '#ff713b'], n: 15, base: into, arc: 3, max: .8, w: 15, life: .7 });
+        for (let i = 0; i < 3; i++) ring(U, gv, '#ff8a2a', .3 + i * .08, .6, 16, i * .08, 0, '#fff1b0');
+        spread(46, HOT, .5, 2.2, .01, .02, false);
+        for (let i = 0, n = N(12); i < n; i++) part(U + rand(-.1, .1), gv, into + rand(-.5, .5), rand(1.4, 2.8), rand(.8, 1.3), rand(.012, .02), '#fff5c2');
+      } else {
+        rays(U, gv, { cols: ['#ffd24d', '#fff5c2'], n: 28, base: into, arc: 3.1, max: 1.0, w: 8, life: .62 });
+        for (let i = 0; i < 3; i++) ring(U, gv, '#ffd24d', .34 + i * .1, .64, 14, i * .07, 0, '#fff');
+        for (let i = 0, n = N(36); i < n; i++) part(U, gv, into + rand(-1.55, 1.55), rand(.8, 2.6), rand(.6, 1.1), rand(.009, .017), i & 1 ? '#ffd24d' : '#fff5c2');
+      }
+    } else {
+      if (A) {
+        for (let i = 0; i < 4; i++) ring(U, gv, '#62f6c6', .3 + i * .1, .7, 18, i * .09, 0, '#eafff8');
+        ring(U, gv, '#ffffff', .25, .5, 10, .02, 0, '#62f6c6');
+        spread(32, ['#62f6c6', '#d7fff4', '#9dffe0'], .7, 2.4, .012, .02, true);
+      } else {
+        for (let i = 0, n = Math.min(12, N(9)); i < n; i++) bolt(U + rand(-.12, .12), gv, into + rand(-1.1, 1.1), rand(.5, 1.0), .55, i & 1 ? '#62f6c6' : '#d7fff4');
+        for (let i = 0; i < 3; i++) ring(U, gv, '#62f6c6', .3 + i * .1, .66, 18, i * .08, 6, '#eafff8');
+        spread(22, ['#62f6c6', '#d7fff4'], .7, 2.2, .011, .018, true); spread(14, ['#62f6c6'], .5, 1.6, .008, .013, false);
+      }
+    }
+    T = DEFT; return true;
+  }
+
+  function tick(dt, list) {
+    const a = list || game.pfx; if (!a || !a.length) return;
+    let w = 0; for (let i = 0; i < a.length; i++) { const f = a[i]; f.age += dt; if (f.age < f.life) a[w++] = f; } a.length = w;
+  }
+
+  // Draws a list of effect records onto c. px = world units per screen pixel (1 / view.s in a match).
+  function drawFx(c, list, px) {
+    c = c || ctx; const a = list || game.pfx; if (!a || !a.length) return;
+    if (!px) px = 1 / view.s;
+    c.save(); c.globalCompositeOperation = 'lighter'; c.lineCap = 'round'; c.lineJoin = 'round';
+    for (let i = 0; i < a.length; i++) {
+      const f = a[i]; if (f.age < 0) continue;
+      const k = f.age / f.life, e = 1 - (1 - k) * (1 - k) * (1 - k), al = 1 - k, ia = f.ia || 1;
+      switch (f.t) {
+        case 'ring': {
+          const rad = .015 + e * f.max;
+          for (let p = 0; p < 2; p++) {
+            c.globalAlpha = Math.min(1, (p ? al : al * .55) * ia); c.strokeStyle = p ? (f.c2 || '#fff') : f.col; c.lineWidth = p ? (f.w * al * .35 + 1.5) * px : (f.w * al + 4) * px * 1.7;
+            c.beginPath();
+            if (f.n > 2) { for (let j = 0; j < f.n; j++) { const an = f.rot + j / f.n * TAU, x = f.u + Math.cos(an) * rad, y = f.v + Math.sin(an) * rad; j ? c.lineTo(x, y) : c.moveTo(x, y); } c.closePath(); }
+            else c.arc(f.u, f.v, rad, 0, TAU);
+            c.stroke();
+          }
+          break;
+        }
+        case 'flash': { const s = f.max * (.5 + .9 * e); c.globalAlpha = Math.min(1, al * al * f.a * ia); c.drawImage(glowS(f.col), f.u - s, f.v - s, s * 2, s * 2); break; }
+        case 'rays': {
+          const n = f.n, len = f.max * e;
+          for (let j = 0; j < n; j++) {
+            const an = f.arc ? f.base + (j / (n - 1) - .5) * f.arc : f.rot + j / n * TAU, l1 = len * (.65 + .35 * ((j * 7) % 3) / 2), l0 = len * .18;
+            c.globalAlpha = Math.min(1, al * f.a * ia); c.strokeStyle = f.cols ? f.cols[j % f.cols.length] : f.col; c.lineWidth = (f.w * al + 1.5) * px;
+            c.beginPath(); c.moveTo(f.u + Math.cos(an) * l0, f.v + Math.sin(an) * l0); c.lineTo(f.u + Math.cos(an) * l1, f.v + Math.sin(an) * l1); c.stroke();
+          }
+          break;
+        }
+        case 'beam': { const w = f.w * (1 - k * .4), h = f.max * (.55 + .45 * e); c.globalAlpha = Math.min(1, al * f.a * ia); c.save(); c.translate(f.u, f.v); c.scale(1, f.dir); c.drawImage(beamS(f.col), -w / 2, 0, w, h); c.restore(); break; }
+        case 'wash': { c.globalAlpha = Math.min(1, al * f.a * ia); c.save(); c.translate(0, f.v); c.scale(1, f.dir); c.drawImage(washS(f.col), 0, 0, 1, f.max * (.5 + .5 * e)); c.restore(); break; }
+        case 'band': {
+          for (let j = 0; j < 7; j++) { const off = e * f.max - j * .05; if (off < 0) continue; c.globalAlpha = Math.min(1, al * .8 * ia); c.fillStyle = f.cols[j]; c.fillRect(0, f.v + f.dir * off - (f.dir < 0 ? .035 : 0), 1, .035); }
+          break;
+        }
+        case 'bolt': {
+          const n = Math.max(2, Math.ceil(Math.min(1, k * 5) * f.n)), fl = Math.min(1, al * (.65 + .35 * Math.sin(f.age * 70)) * ia);
+          for (let p = 0; p < 2; p++) {
+            c.globalAlpha = fl; c.strokeStyle = p ? f.c2 : f.col; c.lineWidth = p ? 2.2 * px : 9 * px;
+            c.beginPath(); c.moveTo(f.pts[0], f.pts[1]); for (let j = 1; j < n; j++) c.lineTo(f.pts[j * 2], f.pts[j * 2 + 1]); c.stroke();
+          }
+          break;
+        }
+      }
+    }
+    c.restore();
+  }
+
+  // a spinning glass shard: two diamonds, color then white core
+  function shardDraw(p, al, c) {
+    c = c || ctx; al = Math.min(1, al * (p.ia || 1));
+    const rot = p.rot + (p.max - p.life) * p.vr, r = p.sz * clamp(1 + (p.z || 0) * 1.7, .5, 1.9), cs = Math.cos(rot), sn = Math.sin(rot);
+    c.save(); c.globalCompositeOperation = 'lighter';
+    for (let k = 0; k < 2; k++) {
+      const q = k ? r * .45 : r;
+      c.globalAlpha = k ? al : al * .9; c.fillStyle = k ? '#ffffff' : p.col;
+      c.beginPath(); c.moveTo(p.u + cs * q * 1.7, p.v + sn * q * 1.7); c.lineTo(p.u - sn * q * .8, p.v + cs * q * .8); c.lineTo(p.u - cs * q * 1.7, p.v - sn * q * 1.7); c.lineTo(p.u + sn * q * .8, p.v - cs * q * .8); c.closePath(); c.fill();
+    }
+    c.restore();
+  }
+
+  return {
+    hit, goal, tick, drawFx, shard: shardDraw, body, still, bodyOf: bodyKey,
+    // draws the paddle body for the match; key is a look such as 'prismB'
+    paddle(pd, tfp, key) { return body(ctx, pd.u, pd.v, pd.r, key, still ? .7 : game.t, tfp, pd.big, game.fire[pd.p - 1]); },
+  };
+}
+
 function drawPaddle(pd, glowA) {
   const px = 1 / view.s;
   const col = pd.p === 1 ? COL.p1 : COL.p2;
   let style=CreaseProduct.paddleStyle();
+  const s1=pd.p===1?p1Sig():null;
+  if(s1&&s1.skin)style=s1.skin;
   const mine=pd.p===1&&studioOn('pad');
   if(mine)style={...style,ring:studio.d.ring||style.ring,core:studio.d.core||style.core,trail:studio.d.trail||style.trail};
   const ring = pd.big > 0 ? COL.BIG : col;
   glowCircle(pd.u, pd.v, pd.r * 1.7, style.trail, glowA+(game.fire[pd.p-1]>0?.18:0));
   drawFlames(pd.u, pd.v, pd.r, fireAmt(pd.p), pd.p);
+  if (s1 && s1.body && PA().paddle(pd, tiltField(), s1.body)) return;   // a signature look (equipped, or the base of a custom-paddle mix)
   // Raised glossy body: shadow, outer bevel, metallic rim, glass core.
   ctx.fillStyle = 'rgba(0,0,0,.52)';ctx.beginPath();ctx.ellipse(pd.u+pd.r*.15,pd.v+pd.r*.22,pd.r*.98,pd.r*.70,0,0,Math.PI*2);ctx.fill();
   const body=ctx.createRadialGradient(pd.u-pd.r*.34,pd.v-pd.r*.48,pd.r*.06,pd.u,pd.v,pd.r*1.16);
@@ -2439,8 +2984,9 @@ function drawGame(sx, sy) {
       ctx.lineCap = 'round';
       ctx.beginPath(); ctx.moveTo(p.u, p.v); ctx.lineTo(p.u - p.vu * 0.035 * p.streak, p.v - p.vv * 0.035 * p.streak); ctx.stroke();
       ctx.globalAlpha = 1;ctx.shadowBlur=0;
-    } else drawFxFragment(p, a);
+    } else if (p.shape) PAi.shard(p, a); else drawFxFragment(p, a);
   }
+  if (PAi) PAi.drawFx();
   for (const rh of game.railHits) {                          // rails flare where the puck struck
     const a = 1 - rh.t / 0.5;
     ctx.globalAlpha = a * (0.5 + rh.k * 0.5); ctx.strokeStyle = rh.col; ctx.lineCap = 'round';
@@ -3257,16 +3803,47 @@ function renderPremium(){
   $('premiumPrice').textContent=price;$('premiumPrice').classList.toggle('hidden',paid||!ready||!price);
   $('premiumRestore').classList.toggle('hidden',paid||!CreaseProduct.restoreReady()||stripe);
   $('premiumRestoreStripe').classList.toggle('hidden',paid||!CreaseProduct.restoreReady()||!stripe);
-  const grid=$('premiumGrid');grid.replaceChildren();
+  const grid=$('premiumGrid');grid.replaceChildren();lookPrevs.length=0;
   for(const [id,s] of Object.entries(CreaseProduct.styles)){
     const can=CreaseProduct.canUse(id);
     const card=document.createElement('article');card.className='product-card'+(!can?' locked':'');
     const h=document.createElement('h3');h.textContent=s.name+(s.founder&&!/founder/i.test(s.name)?' · FOUNDER':'');const p=document.createElement('p');p.textContent=s.desc||'';
-    const b=document.createElement('button');b.className='btn plain';b.textContent=!can?(s.founder?'FOUNDERS ONLY':'LOCKED'):(CreaseProduct.paddleStyle()===s?'EQUIPPED':'EQUIP');b.disabled=!can;b.onclick=()=>{if(CreaseProduct.setPaddleStyle(id))renderPremium();};card.append(h,p,b);grid.append(card);
+    const b=document.createElement('button');b.className='btn plain';b.textContent=!can?(s.founder?'FOUNDERS ONLY':'LOCKED'):(CreaseProduct.paddleStyle()===s?'EQUIPPED':'EQUIP');b.disabled=!can;b.onclick=()=>{if(CreaseProduct.setPaddleStyle(id))renderPremium();};card.append(h);if(CreaseProduct.looks&&CreaseProduct.looks[id]){card.classList.add('has-looks');card.append(lookPreview(id),p,lookPicker(id,can));}else card.append(p);card.append(b);grid.append(card);
   }
   const extra=document.createElement('article');extra.className='product-card'+(paid?'':' locked');extra.innerHTML='<h3>Round Carryover</h3><p>Collected BIG and WALL power-ups last 1.6× longer and persist into the next round, for both sides of the table. MULTI remains a round pickup. Online matches are not affected.</p>';grid.append(extra);
   const fire=document.createElement('article');fire.className='product-card';fire.innerHTML='<h3>Fire Mode</h3><p>Free gameplay feature: score three goals in a row to set your paddle, the puck and your side of the rails on fire for seven seconds.</p>';grid.append(fire);
+  if(lookPrevs.length&&!lookRaf)lookRaf=requestAnimationFrame(lookLoop);
 }
+// Premium Garage: look pickers. Each signature paddle shows its two looks; the chosen look is remembered and shown in the preview.
+const lookPrevs = []; let lookRaf = 0;
+const LOOK_STILL = matchMedia('(prefers-reduced-motion: reduce)').matches;
+function drawLook(cv, key, t, rf) {
+  const x = cv.getContext('2d'), W = cv.width; x.clearRect(0, 0, W, W);
+  PA().body(x, W / 2, W / 2, W * rf, key, t, { u: 0, v: 0 }, 0, 0, .5 / rf);   // glow kept inside the canvas
+}
+function lookLoop(now) {
+  lookRaf = 0; if (!$('premium').open) return;
+  for (const p of lookPrevs) drawLook(p.cv, p.key, LOOK_STILL ? .7 : now / 1000, .27);
+  if (!LOOK_STILL) lookRaf = requestAnimationFrame(lookLoop);
+}
+function lookPreview(id) {
+  const key = id + CreaseProduct.paddleLook(id), cv = document.createElement('canvas');
+  cv.width = cv.height = 240; cv.className = 'look-preview'; cv.setAttribute('role', 'img'); cv.setAttribute('aria-label', 'Preview of ' + CreaseProduct.lookName(key));
+  lookPrevs.push({ cv, key }); drawLook(cv, key, .7, .27); return cv;
+}
+function lookPicker(id, can) {
+  const P = CreaseProduct, wrap = document.createElement('div'), cur = P.paddleLook(id);
+  wrap.className = 'look-picker'; wrap.setAttribute('role', 'radiogroup'); wrap.setAttribute('aria-label', P.styles[id].name + ' look');
+  for (const l of P.looks[id]) {
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'look-opt'; b.setAttribute('role', 'radio'); b.setAttribute('aria-checked', String(l.id === cur)); b.dataset.look = id + l.id; b.disabled = !can;
+    const cv = document.createElement('canvas'); cv.width = cv.height = 96; cv.setAttribute('aria-hidden', 'true'); drawLook(cv, id + l.id, .7, .34);
+    const nm = document.createElement('span'); nm.textContent = l.name; b.append(cv, nm);
+    b.onclick = () => { if (P.setPaddleLook(id, l.id)) { renderPremium(); const again = $('premiumGrid').querySelector('[data-look="' + id + l.id + '"]'); if (again) again.focus(); } };
+    wrap.append(b);
+  }
+  return wrap;
+}
+
 $('bLeaderboard').onclick=()=>{renderLeaderboard();$('leaderboard').showModal();};$('bLeaderboardClose').onclick=()=>$('leaderboard').close();$('saveLeaderboardName').onclick=()=>{CreaseProduct.setName($('leaderboardName').value);renderLeaderboard();};
 $('bPremium').onclick=()=>{renderPremium();$('premium').showModal();track('premium_open');};
 $('premiumCheckout').addEventListener('click',()=>track('checkout_start'));
@@ -3332,6 +3909,7 @@ function studioFill() {
   for (const [id, k] of Object.entries(SD)) if (studio.d[k]) $(id).value = studio.d[k];
   $('sdPadOn').checked = !!studio.d.padOn; $('sdPuckOn').checked = !!studio.d.puckOn; $('sdStageOn').checked = !!studio.d.stageOn;
   const paid = CreaseProduct.isPremium(); $('designStudio').classList.toggle('locked', !paid); $('studioLock').classList.toggle('hidden', paid);
+  for (const e of $('designStudio').querySelectorAll('.studio-grid input,.studio-grid button,.studio-mix input,.studio-mix select,.studio-mix button')) e.disabled = !paid;   // locked means nothing here can be used
 }
 function studioPreview() {
   const c = $('studioPreview'), x = c.getContext('2d'), d = studio.d, W = c.width, H = c.height;
@@ -3356,8 +3934,123 @@ $('sdPadImg').addEventListener('change', e => studioLoad(e.target.files[0], 'pad
 $('sdPuckImg').addEventListener('change', e => studioLoad(e.target.files[0], 'puck', 192, 192));
 $('sdStageImg').addEventListener('change', e => studioLoad(e.target.files[0], 'stage', 600, 800));
 for (const b of document.querySelectorAll('#designStudio [data-clear]')) b.addEventListener('click', () => { delete studio.d[b.dataset.clear + 'Img']; studioSave(); });
-$('bStudio').onclick = () => { studioFill(); $('designStudio').showModal(); studioPreview(); };
+$('bStudio').onclick = () => { studioFill(); $('designStudio').showModal(); studioPreview(); mixFill(); if (CreaseProduct.isPremium()) mixStart(); };
 $('bStudioClose').onclick = () => $('designStudio').close();
+// ---------- Design Studio: mix and tune ----------
+// A saved mix (studio.d.mix) is what player 1's paddle shows and plays in a match: the look, the hit effect, the goal effect and the tune.
+// Everything is cleaned by CreaseProduct.sanitizeMix / resolveMix, so bad or old saved data falls back to defaults and locked parts never play.
+const MIX_S = 786, MIX_L = 600 / 786, MIX_PX = 1 / 393, MIX_STILL = matchMedia('(prefers-reduced-motion: reduce)').matches;
+let mixDraft = null, mixRaf = 0, mixLast = 0, mixAuto = 0, mixQueue = [], mixDebounce = 0, mixBg = null;
+const mixSim = { fx: [], parts: [], L: MIX_L };
+function mixOut() {
+  const h = +$('mixHue').value; $('mixHueOut').textContent = (h > 0 ? '+' : '') + h + '°';
+  $('mixSizeOut').textContent = $('mixSize').value + '%'; $('mixPowerOut').textContent = $('mixPower').value + '%';
+}
+function mixFill() {
+  const P = CreaseProduct;
+  mixDraft = P.resolveMix(studio.d.mix);
+  const fill = (id, keys, cur, look) => {
+    const sel = $(id); sel.replaceChildren();
+    for (const key of keys) {
+      const can = look ? P.canUseLook(key) : P.canUseFx(key);
+      if (key === 'founder' && !can) continue;
+      const o = document.createElement('option'); o.value = key; o.disabled = !can;
+      o.textContent = (look ? P.lookName(key) : P.fxNames[key]) + (can ? '' : ' (locked)'); sel.append(o);
+    }
+    sel.value = cur;
+  };
+  fill('mixBase', ['classic'].concat(P.lookSets, ['founder']), mixDraft.base, true);
+  fill('mixHit', ['classic'].concat(P.lookSets), mixDraft.hit, false);
+  fill('mixGoal', ['classic'].concat(P.lookSets), mixDraft.goal, false);
+  $('mixHue').value = mixDraft.tune.hue; $('mixSize').value = Math.round(mixDraft.tune.size * 100); $('mixPower').value = Math.round(mixDraft.tune.power * 100);
+  mixOut();
+}
+function mixRead() {
+  mixDraft = CreaseProduct.resolveMix({ base: $('mixBase').value, hit: $('mixHit').value, goal: $('mixGoal').value,
+    tune: { hue: +$('mixHue').value, size: +$('mixSize').value / 100, power: +$('mixPower').value / 100 } });
+}
+// The plain default effect, for the preview: a few cyan sparks on a hit, a small burst and ring on a goal.
+function mixPlain(kind) {
+  const s = mixSim, n = kind === 'hit' ? 8 : 30, v = kind === 'hit' ? .5 : 0, cols = ['#2de2e6', '#ffffff'];
+  for (let i = 0; i < n; i++) {
+    const a = kind === 'hit' ? -Math.PI / 2 + rand(-.9, .9) : Math.PI / 2 + rand(-1.5, 1.5), sp = rand(.4, 1.6);
+    s.parts.push({ u: .5, v, vu: Math.cos(a) * sp, vv: Math.sin(a) * sp, z: rand(0, .1), vz: rand(.3, .9), life: rand(.3, .7), max: .7, col: cols[i & 1], sz: rand(.005, .011), streak: kind === 'hit' ? 1.2 : 0 });
+  }
+  if (kind === 'goal') s.fx.push({ t: 'ring', u: .5, v: 0, col: '#2de2e6', c2: '#ffffff', max: .4, life: .6, w: 10, delay: 0, n: 0, rot: 0, age: 0, ia: 1 });
+}
+function mixPlay(kind) {
+  const set = kind === 'hit' ? mixDraft.hit : mixDraft.goal;
+  if (!set) { mixPlain(kind); return; }
+  if (kind === 'hit') PA().hit(.5, .52, 0, -1, .85, set, mixDraft.tune, mixSim); else PA().goal(0, set, mixDraft.tune, mixSim);
+}
+function mixReplay(which) {
+  clearTimeout(mixDebounce);
+  mixDebounce = setTimeout(() => {
+    mixQueue.length = 0;
+    if (which !== 'mixGoal') mixQueue.push({ at: 0, kind: 'hit' });
+    if (which !== 'mixHit') mixQueue.push({ at: which === 'mixGoal' ? 0 : 1.2, kind: 'goal' });
+  }, 180);
+}
+function mixDraw(x, t) {
+  if (!mixBg) {
+    mixBg = document.createElement('canvas'); mixBg.width = MIX_S; mixBg.height = 600;
+    const b = mixBg.getContext('2d'), g = b.createLinearGradient(0, 0, 0, 600); g.addColorStop(0, '#0a0118'); g.addColorStop(1, '#1b0536'); b.fillStyle = g; b.fillRect(0, 0, MIX_S, 600);
+    b.strokeStyle = 'rgba(255,42,138,.35)'; b.lineWidth = 2; for (let i = 1; i < 8; i++) { b.beginPath(); b.moveTo(0, 600 * i / 8); b.lineTo(MIX_S, 600 * i / 8); b.stroke(); }
+    b.strokeStyle = 'rgba(45,226,230,.6)'; b.lineWidth = 4; b.beginPath(); b.moveTo(0, 2); b.lineTo(MIX_S, 2); b.stroke();   // the goal line
+  }
+  x.setTransform(1, 0, 0, 1, 0, 0); x.globalAlpha = 1; x.drawImage(mixBg, 0, 0);
+  x.setTransform(MIX_S, 0, 0, MIX_S, 0, 0);
+  const key = mixDraft.base, r = .11, u = .5, v = .66;
+  if (key !== 'classic' && key !== 'founder') PA().body(x, u, v, r, key, MIX_STILL ? .7 : t, { u: 0, v: 0 }, 0, 0);
+  else {
+    const st = key === 'founder' ? CreaseProduct.styles.founder : { ring: studio.d.ring || '#2de2e6', core: studio.d.core || '#ffffff' };
+    x.fillStyle = 'rgba(0,0,0,.5)'; x.beginPath(); x.ellipse(u + r * .15, v + r * .22, r, r * .72, 0, 0, 7); x.fill();
+    x.fillStyle = '#070916'; x.beginPath(); x.arc(u, v, r, 0, 7); x.fill();
+    x.lineWidth = r * .2; x.strokeStyle = st.ring; x.beginPath(); x.arc(u, v, r * .84, 0, 7); x.stroke();
+    x.fillStyle = st.core; x.beginPath(); x.arc(u, v, r * .47, 0, 7); x.fill();
+  }
+  x.fillStyle = '#ffffff'; x.beginPath(); x.arc(u, .43, .035, 0, 7); x.fill();
+  const P = mixSim.parts;
+  for (let i = 0; i < P.length; i++) {
+    const p = P[i], a = Math.max(0, p.life / p.max);
+    if (p.shape) { PA().shard(p, a, x); continue; }
+    const depth = clamp(1 + (p.z || 0) * 1.7, .45, 1.9);
+    x.save(); x.globalCompositeOperation = 'lighter'; x.globalAlpha = Math.min(1, a * (p.ia || 1));
+    if (p.streak) { x.strokeStyle = p.col; x.lineCap = 'round'; x.lineWidth = p.sz * (1 + p.streak) * depth; x.beginPath(); x.moveTo(p.u, p.v); x.lineTo(p.u - p.vu * .035 * p.streak, p.v - p.vv * .035 * p.streak); x.stroke(); }
+    else { x.fillStyle = p.col; x.beginPath(); x.arc(p.u, p.v, p.sz * depth, 0, 7); x.fill(); }
+    x.restore();
+  }
+  PA().drawFx(x, mixSim.fx, MIX_PX);
+  x.setTransform(1, 0, 0, 1, 0, 0);
+}
+function mixFrame(now) {
+  mixRaf = 0; if (!$('designStudio').open || !mixDraft) return;
+  const dt = Math.min(.05, (now - mixLast) / 1000 || 0); mixLast = now;
+  for (let i = mixQueue.length - 1; i >= 0; i--) { const q = mixQueue[i]; q.at -= dt; if (q.at <= 0) { mixQueue.splice(i, 1); mixPlay(q.kind); } }
+  if (!MIX_STILL) { mixAuto -= dt; if (mixAuto <= 0) { mixAuto = 3.6; mixQueue.push({ at: 0, kind: 'hit' }, { at: 1.5, kind: 'goal' }); } }
+  const P = mixSim.parts; let w = 0;
+  for (let i = 0; i < P.length; i++) { const p = P[i]; p.u += p.vu * dt; p.v += p.vv * dt; p.z = (p.z || 0) + (p.vz || 0) * dt; p.vz = (p.vz || 0) - dt * 2.2; const dr = p.streak ? .9 : .94; p.vu *= dr; p.vv *= dr; p.life -= dt; if (p.life > 0) P[w++] = p; }
+  P.length = w;
+  PA().tick(dt, mixSim.fx);
+  mixDraw($('mixPreview').getContext('2d'), now / 1000);
+  mixRaf = requestAnimationFrame(mixFrame);
+}
+function mixStart() { mixLast = performance.now(); mixAuto = .3; mixSim.fx.length = 0; mixSim.parts.length = 0; mixQueue.length = 0; if (!mixRaf) mixRaf = requestAnimationFrame(mixFrame); }
+for (const id of ['mixBase', 'mixHit', 'mixGoal']) $(id).addEventListener('change', () => { mixRead(); mixReplay(id); });
+for (const id of ['mixHue', 'mixSize', 'mixPower']) $(id).addEventListener('input', () => { mixOut(); mixRead(); mixReplay(id); });
+$('mixPlayHit').onclick = () => { mixRead(); mixQueue.push({ at: 0, kind: 'hit' }); };
+$('mixPlayGoal').onclick = () => { mixRead(); mixQueue.push({ at: 0, kind: 'goal' }); };
+$('mixSave').onclick = () => {
+  const st = $('mixStatus');
+  if (!CreaseProduct.isPremium()) { st.textContent = 'The Design Studio is part of the Premium Pass.'; return; }
+  mixRead();
+  studio.d.mix = CreaseProduct.sanitizeMix(mixDraft); studio.d.padOn = true; $('sdPadOn').checked = true;
+  let ok = true; try { localStorage.setItem(STUDIO_KEY, JSON.stringify(studio.d)); } catch (_) { ok = false; }
+  studioSave();
+  st.textContent = ok ? 'Saved. Your paddle plays this mix in your matches.' : 'Couldn’t save on this device (storage is full or blocked).';
+};
+$('mixClear').onclick = () => { delete studio.d.mix; studioSave(); mixFill(); $('mixStatus').textContent = 'Mix cleared. Your equipped paddle plays as usual.'; };
+$('designStudio').addEventListener('close', () => { cancelAnimationFrame(mixRaf); mixRaf = 0; });
 $('designStudio').addEventListener('keydown', e => e.stopPropagation());$('bPremiumClose').onclick=()=>$('premium').close();
 $('leaderboard').addEventListener('keydown',e=>e.stopPropagation());$('premium').addEventListener('keydown',e=>e.stopPropagation());
 let arenaRaf = 0, arenaLastFrame = -Infinity;
