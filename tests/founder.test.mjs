@@ -190,7 +190,7 @@ test('client: a valid code unlocks Founder’s Gold WITHOUT the Premium Pass, an
   const sent = [];
   const fetchImpl = async (url, init) => { sent.push({ url, init, body: JSON.parse(init.body) }); return new Response(JSON.stringify({ ok: true, product: 'founder', token: founderToken() })); };
   const { api, store } = loadClient({ config: cfg, fetchImpl });
-  assert.equal(api.isFounder(), false); assert.equal(api.canUse('founder'), false); assert.equal(api.canUseLook('founder'), false);
+  assert.equal(api.isFounder(), false); assert.equal(api.canUse('founder'), false); assert.equal(api.canUseLook('founderA'), false);
   assert.deepEqual(plain(await api.redeemFounder(' gold-abcd efgh ')), { ok: true });
   assert.equal(sent[0].url, 'https://crease-license.prodbykctw.workers.dev/founder/redeem');
   assert.deepEqual(Object.keys(sent[0].body).sort(), ['code', 'device']);
@@ -198,13 +198,13 @@ test('client: a valid code unlocks Founder’s Gold WITHOUT the Premium Pass, an
   assert.equal(sent[0].init.credentials, 'omit');
   assert.equal(store['crease.device.v1'], sent[0].body.device);
   assert.equal(api.isFounder(), true); assert.equal(api.isPremium(), false, 'a Founder code is not a Premium Pass');
-  assert.equal(api.canUse('founder'), true); assert.equal(api.canUseLook('founder'), true);
+  assert.equal(api.canUse('founder'), true); assert.equal(api.canUseLook('founderA'), true);
   for (const id of ['prism', 'solar', 'obsidian']) assert.equal(api.canUse(id), false, id + ' stays premium-only');
-  for (const k of api.lookSets) { assert.equal(api.canUseLook(k), false, k); assert.equal(api.canUseFx(k), false, k); }
+  for (const k of api.lookSets) { const f = k.startsWith('founder'); assert.equal(api.canUseLook(k), f, k); assert.equal(api.canUseFx(k), f, k); }   // only the two Founder looks and effects
   assert.equal(api.extendRounds(), false);
   assert.equal(api.setPaddleStyle('founder'), true); assert.equal(api.setPaddleStyle('prism'), false);
   assert.equal(api.paddleStyle(), api.styles.founder);
-  assert.equal(api.resolveMix({ base: 'founder', hit: 'prismA' }).base, 'founder');
+  assert.equal(api.resolveMix({ base: 'founderB', hit: 'prismA' }).base, 'founderB');
   assert.equal(api.resolveMix({ base: 'founder', hit: 'prismA' }).hit, 'classic');
   // its own storage key, separate from the Pass entitlement
   assert.ok(store['crease.founder.v1']); assert.equal(store['crease.entitlement.v1'], undefined);
@@ -220,7 +220,7 @@ test('client: a Pass buyer without a code does not get Founder’s Gold, and an 
   const store = { 'crease.entitlement.v1': JSON.stringify({ product: PASS_ID, verifiedAt: 5, token: 't', founder: true, instanceId: 'abcdef12-0000' }) };
   const { api } = loadClient({ store, config: cfg });
   assert.equal(api.isPremium(), true); assert.equal(api.isFounder(), false);
-  assert.equal(api.canUse('prism'), true); assert.equal(api.canUse('founder'), false); assert.equal(api.canUseLook('founder'), false);
+  assert.equal(api.canUse('prism'), true); assert.equal(api.canUse('founder'), false); assert.equal(api.canUseLook('founderA'), false);
   assert.equal(api.setPaddleStyle('founder'), false);
   assert.equal(api.resolveMix({ base: 'founder' }).base, 'classic');
 });

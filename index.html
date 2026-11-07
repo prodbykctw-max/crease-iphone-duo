@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="referrer" content="strict-origin-when-cross-origin">
 <!-- Content-Security-Policy: installed by the next script, except on a local test server (localhost / 127.0.0.1) where the capture harness rewrites the game script. Update hashes with: node tools/csp-hash.mjs -->
-<meta name="crease-csp" content="default-src 'self'; script-src 'self' 'sha256-9kyMFOQq/HLwXlyiVTgCTQzmo6H4oBBvtdWEJb0rIFI=' 'sha256-foKIsfmyLCvqzfVOF4osWE8lrdb1lMcfD/G3GMm4LQE='; connect-src 'self' https://crease-metrics.prodbykctw.workers.dev https://crease-license.prodbykctw.workers.dev; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta name="crease-csp" content="default-src 'self'; script-src 'self' 'sha256-9kyMFOQq/HLwXlyiVTgCTQzmo6H4oBBvtdWEJb0rIFI=' 'sha256-z1R00VDyDKlvZwll2jfnhbLtUyAaXcP1+pZ2ABhOCwE='; connect-src 'self' https://crease-metrics.prodbykctw.workers.dev https://crease-license.prodbykctw.workers.dev; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <script>(function(){var h=location.hostname;if(h==='localhost'||h==='127.0.0.1')return;var p=document.querySelector('meta[name="crease-csp"]'),m=document.createElement('meta');m.httpEquiv='Content-Security-Policy';m.content=p.content;document.head.appendChild(m);})();</script>
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -429,7 +429,7 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--p1);outline-offset:
 </div>
 <section class="studio-mix" aria-labelledby="mixTitle">
   <h3 id="mixTitle">Mix and tune your paddle</h3>
-  <p class="hint">Pick a look, a hit effect and a goal effect, tune them, then save. Anything marked locked comes with a paddle you don’t own yet. Pictures only show on the Custom paddle and Founder’s Gold looks.</p>
+  <p class="hint">Pick a look, a hit effect and a goal effect, tune them, then save. Anything marked locked comes with a paddle you don’t own yet. Pictures only show on the Custom paddle.</p>
   <canvas id="mixPreview" width="786" height="600" role="img" aria-label="Live preview of your paddle with your hit and goal effects"></canvas>
   <div class="mix-play"><button type="button" id="mixPlayHit" class="btn plain">PLAY HIT</button><button type="button" id="mixPlayGoal" class="btn plain">PLAY GOAL</button></div>
   <div class="mix-fields">
@@ -556,7 +556,7 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--p1);outline-offset:
 <script src="assets/arena-engine.js?v=839de2dcf7"></script>
 <script src="assets/progression.js?v=cba130d647"></script>
 <script src="assets/commerce-config.js?v=2852d1a5c2"></script>
-<script src="assets/monetization.js?v=91ac379839"></script>
+<script src="assets/monetization.js?v=c30ded47c1"></script>
 <script>
 (() => {
 'use strict';
@@ -2548,8 +2548,8 @@ function p1Sig() {
   sig.body = sig.hit = sig.goal = ''; sig.tune = null; sig.skin = null; sig.mixed = false; sig.design = null;
   if (raw && P.resolveMix) {
     const m = P.resolveMix(raw);
-    sig.mixed = true; sig.design = P.paddleDesign ? P.paddleDesign(raw, cus) : null; sig.skin = m.base === 'founder' ? P.styles.founder : P.styles.classic; sig.tune = m.tune;
-    sig.body = m.base === 'classic' || m.base === 'founder' ? '' : m.base;
+    sig.mixed = true; sig.design = P.paddleDesign ? P.paddleDesign(raw, cus) : null; sig.skin = m.base.slice(0, -1) === 'founder' ? P.styles.founder : P.styles.classic; sig.tune = m.tune;
+    sig.body = m.base === 'classic' ? '' : m.base;
     sig.hit = m.hit === 'classic' ? '' : m.hit; sig.goal = m.goal === 'classic' ? '' : m.goal;
   } else if (id && P.effectsFor && P.effectsFor(id, look)) {
     sig.body = id + look; sig.hit = sig.goal = P.effectsFor(id, look);   // both looks play the paddle's B effects
@@ -2558,7 +2558,7 @@ function p1Sig() {
 }
 let PAi = null;
 const PA = () => PAi || (PAi = buildPaddleArt());
-setTimeout(() => { try { if (CreaseProduct.isPremium()) PA(); } catch (_) {} }, 1500);   // bake while the menu is showing, not on the first hit
+setTimeout(() => { try { if (CreaseProduct.isPremium() || CreaseProduct.isFounder()) PA().warm(); } catch (_) {} }, 1500);   // bake while the menu is showing, not on the first hit
 function buildPaddleArt() {
   const TAU = Math.PI * 2, S = 256, C = 128, SPEC = ['#ff4d6d', '#ffb02e', '#ffe94d', '#4dff88', '#2de2e6', '#4d8bff', '#b36bff'];
   const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -2734,6 +2734,124 @@ function buildPaddleArt() {
   let hx = 0, hy = 0;
   const hexAt = s => { const f = (((s % 1) + 1) % 1) * 6, i = Math.floor(f), t = f - i, a0 = HEX + i / 6 * TAU, a1 = HEX + (i + 1) / 6 * TAU; hx = (Math.cos(a0) * (1 - t) + Math.cos(a1) * t) * 64; hy = (Math.sin(a0) * (1 - t) + Math.sin(a1) * t) * 64; };
 
+  // ================= FOUNDER GOLD (two looks: A Coin and B Crest) =================
+  // Baked the first time a Founder look is drawn, so nothing else pays for it.
+  let FND = null;
+  const fnd = () => FND || (FND = (() => {
+    const goldLg = (x, a) => lg(x, -70 * a, -80 * a, 70 * a, 80 * a, [0, '#fff3b8', .2, '#ffd23f', .42, '#b87414', .58, '#ffe27a', .78, '#c8861a', 1, '#7a4506']);
+    const starP = (x, n, ro, ri, rot) => { x.beginPath(); for (let i = 0; i < n * 2; i++) { const a = rot + i / (n * 2) * TAU, rr = i & 1 ? ri : ro, px = Math.cos(a) * rr, py = Math.sin(a) * rr; i ? x.lineTo(px, py) : x.moveTo(px, py); } x.closePath(); };
+    const FONT = '900 19px "Avenir Next", "Helvetica Neue", "Arial Black", Arial, sans-serif';
+    // Letters set along a circle. mid = angle of the middle letter, step = angle between letters; the bottom line reads left to right.
+    const arcText = (x, str, R, mid, step, bottom, draw) => {
+      x.font = FONT; x.textAlign = 'center'; x.textBaseline = 'middle';
+      for (let i = 0, n = str.length; i < n; i++) {
+        const o = (i - (n - 1) / 2) * step, a = bottom ? mid - o : mid + o;
+        x.save(); x.translate(Math.cos(a) * R, Math.sin(a) * R); x.rotate(a + (bottom ? -Math.PI / 2 : Math.PI / 2)); draw(str[i]); x.restore();
+      }
+    };
+    const sideStars = (x, R, fill, edge) => { for (const sx of [-1, 1]) { x.save(); x.translate(sx * R, 0); starP(x, 5, 8, 3.4, -Math.PI / 2); x.fillStyle = fill; x.fill(); x.lineWidth = 1.2; x.strokeStyle = edge; x.stroke(); x.restore(); } };
+    // the crown, drawn at unit size around (0,0), scaled by s
+    const crownDraw = (x, s) => {
+      x.save(); x.scale(s, s); x.lineJoin = 'round';
+      x.beginPath(); x.moveTo(-22, 14); x.lineTo(-27, -13); x.lineTo(-13, -1); x.lineTo(0, -21); x.lineTo(13, -1); x.lineTo(27, -13); x.lineTo(22, 14); x.closePath();
+      x.fillStyle = lg(x, 0, -24, 0, 18, [0, '#fffbe0', .4, '#ffe066', 1, '#e0a020']); x.fill(); x.lineWidth = 2.2; x.strokeStyle = '#5a3004'; x.stroke();
+      x.beginPath(); x.rect(-23, 14, 46, 9); x.fillStyle = lg(x, 0, 14, 0, 23, [0, '#ffe27a', 1, '#a8680c']); x.fill(); x.stroke();
+      for (const px of [-27, 0, 27]) { const py = px ? -15 : -24; x.beginPath(); x.arc(px, py, 3.8, 0, TAU); x.fillStyle = rg(x, px - 1, py - 1, .5, px, py, 4, [0, '#fffbe0', .6, '#ffd23f', 1, '#b87414']); x.fill(); x.lineWidth = 1.4; x.stroke(); }
+      for (const px of [-13, 0, 13]) { x.beginPath(); x.arc(px, 18.5, 2.9, 0, TAU); x.fillStyle = rg(x, px - 1, 17.5, .3, px, 18.5, 3, [0, '#ffd0d6', .5, '#ff3d54', 1, '#9b1024']); x.fill(); x.lineWidth = 1; x.stroke(); }
+      x.restore();
+    };
+    // a wreath of two laurel branches, open at the top, at radius R
+    const laurel = (x, R, cols, edge, vein) => {
+      for (let side = 0; side < 2; side++) {
+        x.save(); if (side) x.scale(-1, 1);
+        x.strokeStyle = edge; x.lineWidth = 2.6; x.lineCap = 'round'; x.beginPath(); x.arc(0, 0, R, -1.12, 1.62); x.stroke();
+        for (let i = 0; i < 9; i++) {
+          const th = 1.5 - i * (2.55 / 8), px = Math.cos(th) * R, py = Math.sin(th) * R, ang = Math.atan2(-Math.cos(th), Math.sin(th));
+          for (let q = 0; q < 2; q++) {
+            const L = (18 - i * .5) * (q ? .8 : 1), w = L * .34;
+            x.save(); x.translate(px, py); x.rotate(ang + (q ? -.62 : .62));
+            x.beginPath(); x.moveTo(0, 0); x.quadraticCurveTo(L * .45, -w, L, 0); x.quadraticCurveTo(L * .45, w, 0, 0); x.closePath();
+            x.fillStyle = cols[(i + q) % cols.length]; x.fill(); x.lineWidth = 1.2; x.strokeStyle = edge; x.stroke();
+            x.strokeStyle = vein; x.lineWidth = 1; x.beginPath(); x.moveTo(1, 0); x.lineTo(L * .8, 0); x.stroke();
+            x.restore();
+          }
+        }
+        x.restore();
+      }
+      x.fillStyle = cols[0]; x.beginPath(); x.arc(0, R + 1, 4, 0, TAU); x.fill(); x.lineWidth = 1.2; x.strokeStyle = edge; x.stroke();
+    };
+    const circ = r => { const p = new Path2D(); p.arc(0, 0, r, 0, TAU); return p; };
+    const annulus = (x, r0, r1) => { x.beginPath(); x.arc(0, 0, r1, 0, TAU); x.arc(0, 0, r0, 0, TAU, true); };
+    const GLINT = [0, 'rgba(255,248,200,0)', .2, 'rgba(255,248,200,0)', .26, 'rgba(255,238,160,.45)', .3, 'rgba(255,248,200,0)', .55, 'rgba(255,248,200,0)', .8, 'rgba(255,238,160,.5)', .93, 'rgba(255,255,255,1)', .96, 'rgba(255,238,160,.6)', 1, 'rgba(255,248,200,0)'];
+    const glintRim = (r0, r1) => mk(x => { x.fillStyle = conic(x, 0, GLINT); x.fillRect(-C, -C, S, S); x.globalCompositeOperation = 'destination-in'; x.fillStyle = '#000'; annulus(x, r0, r1); x.fill(); });
+    const sheenS = mkS(64, 300, (x, w, h) => { x.fillStyle = lg(x, 0, 0, w, 0, [0, 'rgba(255,250,210,0)', .5, 'rgba(255,255,240,.9)', 1, 'rgba(255,250,210,0)']); x.fillRect(0, 0, w, h); });
+
+    // ---- A: the Founder coin. Reeded edge, engraved legend, embossed CTW ----
+    const A = {
+      base: mk(x => {
+        x.beginPath(); x.arc(0, 0, 100, 0, TAU); x.fillStyle = goldLg(x, 1); x.fill();
+        x.lineWidth = 2.4; for (let i = 0; i < 80; i++) { const a = i / 80 * TAU; x.strokeStyle = i & 1 ? 'rgba(70,36,2,.55)' : 'rgba(255,244,190,.5)'; x.beginPath(); x.moveTo(Math.cos(a) * 92.5, Math.sin(a) * 92.5); x.lineTo(Math.cos(a) * 100, Math.sin(a) * 100); x.stroke(); }
+        x.lineWidth = 3.2; x.strokeStyle = '#fff3b8'; x.beginPath(); x.arc(0, 0, 91, 0, TAU); x.stroke();
+        x.lineWidth = 2; x.strokeStyle = 'rgba(60,30,0,.7)'; x.beginPath(); x.arc(0, 0, 88.2, 0, TAU); x.stroke();
+        annulus(x, 62, 87); x.fillStyle = lg(x, -60, -70, 60, 70, [0, '#e9ac2c', .5, '#b87414', 1, '#d99c24']); x.fill();
+        const eng = ch => { x.fillStyle = 'rgba(255,236,160,.9)'; x.fillText(ch, .7, 1.5); x.fillStyle = '#3d1f02'; x.fillText(ch, 0, 0); };
+        arcText(x, 'FOUNDER', 74.5, -Math.PI / 2, .29, false, eng); arcText(x, 'EST. 2026', 74.5, Math.PI / 2, .29, true, eng);
+        sideStars(x, 74.5, '#3d1f02', 'rgba(255,236,160,.8)');
+        x.beginPath(); x.arc(0, 0, 60, 0, TAU); x.fillStyle = rg(x, -20, -24, 4, 0, 0, 66, [0, '#d99a2a', .5, '#a86a14', 1, '#6e3e08']); x.fill();   // a darker satin field, so the polished monogram stands out
+        x.lineWidth = 1.4; x.strokeStyle = 'rgba(255,233,160,.2)'; for (let i = 0; i < 60; i++) { const a = i / 60 * TAU; x.beginPath(); x.moveTo(Math.cos(a) * 8, Math.sin(a) * 8); x.lineTo(Math.cos(a) * 58, Math.sin(a) * 58); x.stroke(); }
+        x.lineWidth = 2.4; x.strokeStyle = '#fff3b8'; x.beginPath(); x.arc(0, 0, 62, 0, TAU); x.stroke();
+        x.lineWidth = 2; x.strokeStyle = 'rgba(60,30,0,.65)'; x.beginPath(); x.arc(0, 0, 59, 0, TAU); x.stroke();
+        // the CTW monogram: heavy letters, tight spacing, polished gold raised off the satin field
+        const mono = fn => { x.save(); x.font = '900 50px "Avenir Next", "Helvetica Neue", "Arial Black", Arial, sans-serif'; x.textAlign = 'left'; x.textBaseline = 'alphabetic'; x.lineJoin = 'round';
+          const ws = ['C', 'T', 'W'].map(ch => x.measureText(ch).width), gap = -2, tot = ws[0] + ws[1] + ws[2] + gap * 2, k = Math.min(1.12, 100 / tot);
+          x.scale(k, 1); let px = -tot / 2; const base = 18; for (let i = 0; i < 3; i++) { fn('CTW'[i], px, base); px += ws[i] + gap; } x.restore(); };
+        x.lineWidth = 7; x.strokeStyle = 'rgba(70,36,2,.85)'; mono((ch, px, py) => { x.save(); x.translate(2.4, 3.2); x.strokeText(ch, px, py); x.fillStyle = 'rgba(70,36,2,.85)'; x.fillText(ch, px, py); x.restore(); });
+        x.lineWidth = 3.4; x.strokeStyle = '#7a4506'; mono((ch, px, py) => x.strokeText(ch, px, py));
+        x.fillStyle = lg(x, -36, -30, 36, 26, [0, '#ffffff', .3, '#fff0a0', .62, '#ffd23f', 1, '#e8a824']); mono((ch, px, py) => x.fillText(ch, px, py));
+        x.lineWidth = 1.3; x.strokeStyle = 'rgba(255,255,255,.85)'; mono((ch, px, py) => { x.save(); x.translate(-.5, -.6); x.strokeText(ch, px, py); x.restore(); });
+      }),
+      glint: glintRim(88, 100), field: circ(58),
+    };
+
+    // ---- B: gold leaf on black enamel. Beaded bezel, laurel wreath, crown ----
+    const LAUREL = ['#ffd84a', '#e0a020', '#fff0a0'];
+    const B = {
+      base: mk(x => {
+        x.beginPath(); x.arc(0, 0, 100, 0, TAU); x.fillStyle = goldLg(x, 1); x.fill();
+        for (let i = 0; i < 36; i++) {
+          const a = i / 36 * TAU, px = Math.cos(a) * 94.5, py = Math.sin(a) * 94.5;
+          x.fillStyle = 'rgba(60,30,0,.55)'; x.beginPath(); x.arc(px + 1, py + 1.2, 3.5, 0, TAU); x.fill();
+          x.fillStyle = rg(x, px - 1.2, py - 1.2, .5, px, py, 3.8, [0, '#fffbe0', .6, '#ffd23f', 1, '#b87414']); x.beginPath(); x.arc(px, py, 3.5, 0, TAU); x.fill();
+        }
+        x.lineWidth = 2.4; x.strokeStyle = '#6a3a06'; x.beginPath(); x.arc(0, 0, 88.8, 0, TAU); x.stroke();
+        x.lineWidth = 1.6; x.strokeStyle = '#ffe9a0'; x.beginPath(); x.arc(0, 0, 87, 0, TAU); x.stroke();
+        x.beginPath(); x.arc(0, 0, 86, 0, TAU); x.fillStyle = rg(x, -30, -36, 4, 0, 0, 92, [0, '#3c3c48', .25, '#17171d', .7, '#07070a', 1, '#000']); x.fill();
+        const r = srnd(11);   // flecks of gold leaf pressed into the enamel
+        for (let i = 0; i < 26; i++) {
+          const a = r() * TAU, d = 14 + r() * 70, cx = Math.cos(a) * d, cy = Math.sin(a) * d, sz = 2 + r() * 5, nv = 5 + Math.floor(r() * 2);
+          x.beginPath(); for (let k = 0; k < nv; k++) { const q = k / nv * TAU + r() * .5, rr = sz * (.45 + r() * .75); k ? x.lineTo(cx + Math.cos(q) * rr, cy + Math.sin(q) * rr) : x.moveTo(cx + Math.cos(q) * rr, cy + Math.sin(q) * rr); } x.closePath();
+          x.fillStyle = `rgba(${240 + Math.floor(r() * 15)},${190 + Math.floor(r() * 40)},${60 + Math.floor(r() * 40)},${(.55 + r() * .35).toFixed(2)})`; x.fill();
+        }
+        const gl = ch => { x.lineJoin = 'round'; x.lineWidth = 4.2; x.strokeStyle = '#000'; x.strokeText(ch, 0, 0); x.fillStyle = lg(x, 0, -9, 0, 9, [0, '#fff3b8', .5, '#ffd23f', 1, '#c8861a']); x.fillText(ch, 0, 0); };
+        arcText(x, 'FOUNDER', 73.5, -Math.PI / 2, .29, false, gl); arcText(x, 'EST. 2026', 73.5, Math.PI / 2, .29, true, gl);
+        sideStars(x, 73.5, '#ffd23f', '#000');
+        x.lineWidth = 1.6; x.strokeStyle = 'rgba(255,210,63,.6)'; x.beginPath(); x.arc(0, 0, 61, 0, TAU); x.stroke();
+        laurel(x, 46, LAUREL, '#5a3004', 'rgba(90,48,4,.7)');
+        x.save(); x.translate(0, -2); crownDraw(x, 1.12); x.restore();
+      }),
+      glint: glintRim(87, 100), enamel: circ(86),
+      jewel: mk(x => {
+        const spots = [[-13, 18.5, '#ff6a7a'], [0, 18.5, '#ff6a7a'], [13, 18.5, '#ff6a7a'], [-27, -15, '#ffe27a'], [0, -24, '#ffe27a'], [27, -15, '#ffe27a']];
+        for (const [px, py, col] of spots) { const X = px * 1.12, Y = py * 1.12 - 2; x.fillStyle = rg(x, X, Y, 0, X, Y, 9, [0, '#ffffff', .3, col, 1, hexA(col, 0)]); x.fillRect(X - 9, Y - 9, 18, 18); }
+      }),
+      wreath: mk(x => { x.shadowColor = '#ffe27a'; x.shadowBlur = 8; laurel(x, 46, ['#fff6c8'], 'rgba(255,246,200,.9)', 'rgba(255,255,255,.9)'); }),
+    };
+    // sprites the effects use
+    const crown = mkS(176, 144, x => { x.translate(88, 76); x.shadowColor = '#ffd23f'; x.shadowBlur = 20; crownDraw(x, 2); });
+    const wreathFx = mk(x => { x.shadowColor = '#ffd23f'; x.shadowBlur = 10; laurel(x, 90, ['#ffd84a', '#fff0a0', '#e0a020'], '#7a4506', 'rgba(255,255,255,.55)'); });
+    return { A, B, crown, wreathFx, sheenS };
+  })());
+
   // ---- live drawing: everything below only blits the baked sprites ----
   const lite = (c, fn) => { c.save(); c.globalCompositeOperation = 'lighter'; fn(); c.restore(); };
   const bodies = {
@@ -2803,8 +2921,30 @@ function buildPaddleArt() {
       });
     },
   };
-  const SKEY = { prism: 'prism', solar: 'solar', obsidian: 'obs' };
-  const PAL = { prism: { m: '#c6a6ff', g: '#d18cff' }, solar: { m: '#ff9a2e', g: '#ff713b' }, obsidian: { m: '#62f6c6', g: '#47cfa4' } };
+  // Founder's Gold looks: A Coin and B Crest (picked in the Garage, or as a Studio base). Both play the Crest effects on the court.
+  bodies.founderA = (c, t) => {
+    const F = fnd().A;
+    c.drawImage(F.base, -C, -C);
+    lite(c, () => { c.rotate(t * 1.5); c.drawImage(F.glint, -C, -C); });   // light running round the reeded rim
+    c.save(); c.clip(F.field); c.globalCompositeOperation = 'lighter'; c.translate(-120 + ((t * .45) % 1.5) * 240, 0); c.rotate(-.5); c.globalAlpha = .7; c.drawImage(fnd().sheenS, -32, -150); c.restore();   // a polish sweep across the monogram
+    lite(c, () => {
+      c.strokeStyle = '#fffbe0'; c.lineWidth = 2.2; c.lineCap = 'round';
+      for (let i = 0; i < 3; i++) {
+        const tw = Math.max(0, Math.sin(t * 3.1 + i * 2.1)), px = [-36, 38, 40][i], py = [-35, 30, -34][i], L = 3 + 10 * tw;
+        c.globalAlpha = tw; c.beginPath(); c.moveTo(px - L, py); c.lineTo(px + L, py); c.moveTo(px, py - L); c.lineTo(px, py + L); c.stroke();
+      }
+    });
+  };
+  bodies.founderB = (c, t) => {
+    const F = fnd().B;
+    c.drawImage(F.base, -C, -C);
+    lite(c, () => { c.rotate(-t * 1.3); c.drawImage(F.glint, -C, -C); });   // light running round the beaded bezel
+    c.save(); c.clip(F.enamel); c.globalCompositeOperation = 'lighter'; c.translate(-130 + ((t * .38) % 1.4) * 260, 0); c.rotate(-.6); c.globalAlpha = .38; c.drawImage(fnd().sheenS, -32, -150); c.restore();   // a slow shine over the enamel
+    lite(c, () => { c.globalAlpha = .35 + .4 * Math.sin(t * 4); c.drawImage(F.jewel, -C, -C); });   // the crown's stones breathe
+    lite(c, () => { c.globalAlpha = .12 + .22 * (.5 + .5 * Math.sin(t * 2.4 + 1)); c.drawImage(F.wreath, -C, -C); });
+  };
+  const SKEY = { prism: 'prism', solar: 'solar', obsidian: 'obs', founder: 'founder' };
+  const PAL = { prism: { m: '#c6a6ff', g: '#d18cff' }, solar: { m: '#ff9a2e', g: '#ff713b' }, obsidian: { m: '#62f6c6', g: '#47cfa4' }, founder: { m: '#ffd23f', g: '#ffb020' } };
   const bodyKey = (id, look) => SKEY[id] + look;
 
   // ---- the paddle body: c = any 2D context, (u,v) centre, r radius (same units as the hitbox); key is a look such as 'prismB' ----
@@ -2864,7 +3004,14 @@ function buildPaddleArt() {
     for (let i = 0; i < n; i++) { pts[i * 2] = x; pts[i * 2 + 1] = y; d += rand(-.55, .55); x += Math.cos(d) * len / n; y += Math.sin(d) * len / n; }
     return pfx({ t: 'bolt', pts, n, life, col: K(col), c2: K('#ffffff') });
   };
-  const SETRE = /^(prism|solar|obsidian)([AB])$/;
+  // Founder gold effects: a spinning coin and confetti (particle shapes 2 and 3, drawn by shardDraw), a glint star, the crown flash and the laurel ring.
+  const GOLD = ['#ffd23f', '#fff6c8', '#ffb020'];
+  const coin = (u, v, a, sp, life, sz) => part(u, v, a, sp, life, sz, '#ffc83a', { shape: 2, rot: rand(0, TAU), vr: rand(9, 16) * (calm ? .5 : 1) });
+  const confetti = (u, v, a, sp, life, sz, col) => part(u, v, a, sp, life, sz, col, { shape: 3, rot: rand(0, TAU), vr: rand(10, 22) * (calm ? .5 : 1) });
+  const glint = (u, v, max, life) => pfx({ t: 'glint', u, v, max: max * T.size, life });
+  const crownFx = (u, v, max, life, a) => pfx({ t: 'crown', u, v, max: max * T.size, life, a: a || 1 });
+  const laurelFx = (u, v, max, life, delay) => pfx({ t: 'laurel', u, v, max: max * T.size, life, delay, rot: rand(-.4, .4) });
+  const SETRE = /^(prism|solar|obsidian|founder)([AB])$/;
   function begin(tune, env) { T = tune || DEFT; outFx = env ? env.fx : (game.pfx || (game.pfx = [])); outParts = env ? env.parts : game.parts; }
 
   // Hit effect for one effect set. tune = { hue, size, power }; env = { fx, parts } to play somewhere other than the match.
@@ -2894,6 +3041,18 @@ function buildPaddleArt() {
         rays(u, v, { cols: ['#ffd24d', '#fff5c2', '#ff9a2e'], n: 12, max: .24 + .1 * s, w: 7, life: .34 });
         ring(u, v, '#ffc44d', .15, .3, 9, 0, 0, '#fff');
         streaks(u, v, base, 1.5, N(12), HOT, 1.1 + s * .4, .008);
+      }
+    } else if (id === 'founder') {
+      flash(u, v, '#ffd23f', .15, .24, .6);
+      if (A) {   // coin sparks: gold coins tumble off the contact
+        ring(u, v, '#ffd23f', .15, .32, 8, 0, 0, '#ffe9a0'); glint(u, v, .08, .26);
+        for (let i = 0, n = N(5 + Math.round(s * 4)); i < n; i++) coin(u, v, base + rand(-1.1, 1.1), rand(.5, 1.3) * (.8 + s), rand(.55, .95), rand(.011, .016));
+        streaks(u, v, base, .9, N(9), GOLD, 1.1 + s * .4, .007);
+      } else {   // gilded shards: slivers of gold leaf and a fan of glints
+        rays(u, v, { cols: ['#fff6c8', '#ffd23f', '#ffb020'], n: 8, base, arc: 2.6, max: .25 + .1 * s, w: 6, life: .3 });
+        glint(u, v, .09, .3);
+        for (let i = 0, n = N(10 + Math.round(s * 5)); i < n; i++) shard(u, v, base + rand(-1.2, 1.2), rand(.5, 1.5) * (.8 + s), rand(.5, .9), rand(.01, .017), GOLD[i % 3]);
+        streaks(u, v, base, 1, N(8), GOLD, 1.1 + s * .4, .007);
       }
     } else {
       flash(u, v, '#62f6c6', .15, .24, .7);
@@ -2940,6 +3099,21 @@ function buildPaddleArt() {
         rays(U, gv, { cols: ['#ffd24d', '#fff5c2'], n: 28, base: into, arc: 3.1, max: 1.0, w: 8, life: .62 });
         for (let i = 0; i < 3; i++) ring(U, gv, '#ffd24d', .34 + i * .1, .64, 14, i * .07, 0, '#fff');
         for (let i = 0, n = N(36); i < n; i++) part(U, gv, into + rand(-1.55, 1.55), rand(.8, 2.6), rand(.6, 1.1), rand(.009, .017), i & 1 ? '#ffd24d' : '#fff5c2');
+      }
+    } else if (id === 'founder') {
+      const cy = gv + dir * .24;
+      if (A) {   // a sunburst, a crown flash and a shower of coins
+        rays(U, gv, { cols: GOLD, n: 21, base: into, arc: 3, max: .85, w: 9, life: .62 });
+        for (let i = 0; i < 2; i++) ring(U, gv, '#ffd23f', .3 + i * .1, .6, 14, i * .08, 0, '#fff6c8');
+        glint(U, gv, .2, .5); crownFx(U, cy, .34, .95);   // the crown goes last, so nothing is drawn over it
+        for (let i = 0, n = N(24); i < n; i++) coin(U + rand(-.12, .12), gv, into + rand(-1.45, 1.45), rand(.7, 2.4), rand(.8, 1.4), rand(.012, .02));
+        for (let i = 0, n = N(14); i < n; i++) part(U + rand(-.1, .1), gv, into + rand(-1.4, 1.4), rand(.6, 2.2), rand(.6, 1.1), rand(.008, .014), GOLD[i % 3]);
+      } else {   // laurel rings open out, the crown flashes, gold confetti falls
+        laurelFx(U, gv, .42, .9, 0); laurelFx(U, gv, .68, .8, .12);
+        rays(U, gv, { cols: GOLD, n: 9, base: into, arc: 2.4, max: .7, w: 7, life: .5, a: .8 });
+        glint(U, gv, .18, .5); crownFx(U, cy, .3, .95);
+        const CF = ['#ffd23f', '#fff6c8', '#ffb020', '#ffe9a0', '#e8a820'];
+        for (let i = 0, n = N(40); i < n; i++) confetti(U + rand(-.14, .14), gv, into + rand(-1.5, 1.5), rand(.7, 2.4), rand(.8, 1.4), rand(.009, .016), CF[i % 5]);
       }
     } else {
       if (A) {
@@ -2996,6 +3170,25 @@ function buildPaddleArt() {
           for (let j = 0; j < 7; j++) { const off = e * f.max - j * .05; if (off < 0) continue; c.globalAlpha = Math.min(1, al * .8 * ia); c.fillStyle = f.cols[j]; c.fillRect(0, f.v + f.dir * off - (f.dir < 0 ? .035 : 0), 1, .035); }
           break;
         }
+        case 'glint': {   // a four-point star that blooms and fades
+          const l = f.max * (.5 + .5 * e) * (1 - k * .35);
+          c.globalAlpha = Math.min(1, al * ia); c.strokeStyle = '#fff8d8'; c.lineWidth = (3.4 * al + 1.2) * px;
+          c.beginPath(); c.moveTo(f.u - l, f.v); c.lineTo(f.u + l, f.v); c.moveTo(f.u, f.v - l); c.lineTo(f.u, f.v + l); c.stroke();
+          c.lineWidth = (2 * al + 1) * px; c.globalAlpha *= .6; c.beginPath(); c.moveTo(f.u - l * .5, f.v - l * .5); c.lineTo(f.u + l * .5, f.v + l * .5); c.moveTo(f.u - l * .5, f.v + l * .5); c.lineTo(f.u + l * .5, f.v - l * .5); c.stroke();
+          break;
+        }
+        case 'crown': {   // the baked crown pops in, then drifts up and fades
+          const cr = fnd().crown, w = f.max * (.78 + .22 * e), h = w * cr.height / cr.width;
+          c.globalCompositeOperation = 'source-over';   // solid, so its outline and stones keep their shape in the light
+          c.globalAlpha = Math.min(1, k * 9) * Math.min(1, al * 1.5) * f.a * ia; c.drawImage(cr, f.u - w / 2, f.v - h / 2 - k * .03, w, h);
+          c.globalCompositeOperation = 'lighter';
+          break;
+        }
+        case 'laurel': {   // the baked wreath opens out and turns
+          const s = f.max * (.38 + .62 * e), wr = fnd().wreathFx;
+          c.globalAlpha = Math.min(1, al * 1.5) * ia; c.save(); c.translate(f.u, f.v); c.rotate(f.rot + e * .45); c.drawImage(wr, -s, -s, s * 2, s * 2); c.restore();
+          break;
+        }
         case 'bolt': {
           const n = Math.max(2, Math.ceil(Math.min(1, k * 5) * f.n)), fl = Math.min(1, al * (.65 + .35 * Math.sin(f.age * 70)) * ia);
           for (let p = 0; p < 2; p++) {
@@ -3013,6 +3206,18 @@ function buildPaddleArt() {
   function shardDraw(p, al, c) {
     c = c || ctx; al = Math.min(1, al * (p.ia || 1));
     const rot = p.rot + (p.max - p.life) * p.vr, r = p.sz * clamp(1 + (p.z || 0) * 1.7, .5, 1.9), cs = Math.cos(rot), sn = Math.sin(rot);
+    if (p.shape > 1) {   // Founder gold: a tumbling coin (2) or a flipping strip of confetti (3), drawn solid so they read as metal
+      const fl = Math.abs(Math.cos(rot)), q = p.shape === 2 ? r * 1.5 : r * 1.3;
+      c.save(); c.globalAlpha = Math.min(1, al * 1.4 * (p.ia || 1));
+      if (p.shape === 2) {
+        c.translate(p.u, p.v); c.rotate(p.rot * .3);
+        c.fillStyle = fl < .3 ? '#a8680c' : p.col; c.beginPath(); c.ellipse(0, 0, Math.max(q * .14, q * fl), q, 0, 0, TAU); c.fill();
+        if (fl > .3) { c.fillStyle = '#fff2a8'; c.beginPath(); c.ellipse(0, 0, q * fl * .62, q * .62, 0, 0, TAU); c.fill(); c.fillStyle = '#d18a12'; c.beginPath(); c.ellipse(0, 0, q * fl * .3, q * .3, 0, 0, TAU); c.fill(); }
+      } else {
+        c.translate(p.u, p.v); c.rotate(p.rot); c.fillStyle = p.col; c.fillRect(-q, -q * .5 * Math.max(.18, fl), q * 2, q * Math.max(.18, fl));
+      }
+      c.restore(); return;
+    }
     c.save(); c.globalCompositeOperation = 'lighter';
     for (let k = 0; k < 2; k++) {
       const q = k ? r * .45 : r;
@@ -3042,7 +3247,7 @@ function buildPaddleArt() {
     return true;
   }
   return {
-    hit, goal, tick, drawFx, shard: shardDraw, body, bodyAlpha, still, bodyOf: bodyKey,
+    hit, goal, tick, drawFx, shard: shardDraw, body, bodyAlpha, warm() { if (CreaseProduct.isFounder()) fnd(); }, still, bodyOf: bodyKey,
     paddleAlpha(pd, tfp, key, alpha) { return bodyAlpha(ctx, pd.u, pd.v, pd.r, key, still ? .7 : game.t, tfp, pd.big, game.fire[pd.p - 1], 0, alpha, view.s * Math.min(view.dpr, 2)); },
     // draws the paddle body for the match; key is a look such as 'prismB'
     paddle(pd, tfp, key) { return body(ctx, pd.u, pd.v, pd.r, key, still ? .7 : game.t, tfp, pd.big, game.fire[pd.p - 1]); },
@@ -4172,8 +4377,8 @@ function studioFill() {
   if (mixDraft) mixLock();
 }
 let studioSpr = null;
-// The saved design for the plain preview (Custom and Founder’s Gold looks only; premium looks have their own preview below).
-function studioPaddleDesign() { const P = CreaseProduct; if (!studio.d.mix || !P.paddleDesign) return null; const D = P.paddleDesign(studio.d.mix, studio.d.custom); return D.base === 'classic' || D.base === 'founder' ? D : null; }
+// The saved design for the plain preview (Custom look only; premium and Founder looks have their own preview below).
+function studioPaddleDesign() { const P = CreaseProduct; if (!studio.d.mix || !P.paddleDesign) return null; const D = P.paddleDesign(studio.d.mix, studio.d.custom); return D.base === 'classic' ? D : null; }
 function studioPreview() {
   const c = $('studioPreview'), x = c.getContext('2d'), d = studio.d, W = c.width, H = c.height;
   const g = x.createLinearGradient(0, 0, 0, H); g.addColorStop(0, d.skyA || '#0a0118'); g.addColorStop(1, d.skyB || '#1b0536'); x.fillStyle = g; x.fillRect(0, 0, W, H);
@@ -4186,7 +4391,7 @@ function studioPreview() {
     if (img) { x.save(); x.beginPath(); x.arc(cx, cy, r * 0.62, 0, 7); x.clip(); x.drawImage(img, cx - r * 0.62, cy - r * 0.62, r * 1.24, r * 1.24); x.restore(); }
   };
   // Colors are what the match draws at every opacity: the player's own Ring, Core and Trail, falling back to the base look's colors (Founder’s Gold or Classic).
-  const PD = studioPaddleDesign(), sk = PD && PD.base === 'founder' ? CreaseProduct.styles.founder : CreaseProduct.styles.classic;
+  const PD = studioPaddleDesign(), sk = CreaseProduct.styles.classic;
   const pc = { ring: d.ring || sk.ring, core: d.core || sk.core, trail: d.trail || sk.trail };
   if (PD && (PD.shape !== 'circle' || PD.texture !== 'none' || PD.opacity < 1)) {
     studioSpr = bakePaddleSprite({ shape: PD.shape, texture: PD.texture, strength: PD.strength, ring: pc.ring, core: pc.core, trail: pc.trail, img: studioImg('pad') }, studioSpr);
@@ -4421,13 +4626,13 @@ function mixFill() {
     const sel = $(id); sel.replaceChildren();
     for (const key of keys) {
       const can = look ? P.canUseLook(key) : P.canUseFx(key);
-      if (key === 'founder' && !can) continue;
+      if (key.slice(0, -1) === 'founder' && !can) continue;   // Founder looks and effects are listed only for Founder owners
       const o = document.createElement('option'); o.value = key; o.disabled = !can;
       o.textContent = (look ? (key === 'classic' ? 'Custom paddle' : P.lookName(key)) : P.fxNames[key]) + (can ? '' : ' (locked)'); sel.append(o);
     }
     sel.value = cur;
   };
-  fill('mixBase', ['classic'].concat(P.lookSets, ['founder']), mixDraft.base, true);
+  fill('mixBase', ['classic'].concat(P.lookSets), mixDraft.base, true);
   fill('mixHit', ['classic'].concat(P.lookSets), mixDraft.hit, false);
   fill('mixGoal', ['classic'].concat(P.lookSets), mixDraft.goal, false);
   $('mixHue').value = mixDraft.tune.hue; $('mixSize').value = Math.round(mixDraft.tune.size * 100); $('mixPower').value = Math.round(mixDraft.tune.power * 100);
@@ -4472,11 +4677,11 @@ function mixDraw(x, t) {
   x.setTransform(1, 0, 0, 1, 0, 0); x.globalAlpha = 1; x.drawImage(mixBg, 0, 0);
   x.setTransform(MIX_S, 0, 0, MIX_S, 0, 0);
   const key = mixDraft.base, r = .11, u = .5, v = .62, op = mixCustom.opacity;
-  if (key !== 'classic' && key !== 'founder') PA().bodyAlpha(x, u, v, r, key, MIX_STILL ? .7 : t, { u: 0, v: 0 }, 0, 0, 0, op, MIX_S, mixScr);
+  if (key !== 'classic') PA().bodyAlpha(x, u, v, r, key, MIX_STILL ? .7 : t, { u: 0, v: 0 }, 0, 0, 0, op, MIX_S, mixScr);
   else {
-    // The Custom look (and Founder’s Gold): the sprite is baked again only when a setting, a color or the picture changes.
-    const st = key === 'founder' ? CreaseProduct.styles.founder : { ring: studio.d.ring || '#2de2e6', core: studio.d.core || '#ffffff', trail: studio.d.trail || '#2de2e6' };
-    const shape = key === 'classic' ? mixCustom.shape : 'circle', tex = key === 'classic' ? mixCustom.texture : 'none';
+    // The Custom look: the sprite is baked again only when a setting, a color or the picture changes.
+    const st = { ring: studio.d.ring || '#2de2e6', core: studio.d.core || '#ffffff', trail: studio.d.trail || '#2de2e6' };
+    const shape = mixCustom.shape, tex = mixCustom.texture;
     const sk = shape + '|' + tex + '|' + mixCustom.strength + '|' + st.ring + st.core + st.trail + '|' + (studioImg('pad') ? (studio.d.padImg || '').length : 0);
     if (sk !== mixSprKey) { mixSprKey = sk; mixSpr = bakePaddleSprite({ shape, texture: tex, strength: mixCustom.strength, ring: st.ring, core: st.core, trail: st.trail, img: studioImg('pad') }, mixSpr); }
     const w = PAD_S * r / PAD_R;

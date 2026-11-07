@@ -30,8 +30,11 @@ test('each premium paddle has two named looks and the names are the ones players
     prism: [{ id: 'A', name: 'Crystal' }, { id: 'B', name: 'Lens' }],
     solar: [{ id: 'A', name: 'Molten' }, { id: 'B', name: 'Eclipse' }],
     obsidian: [{ id: 'A', name: 'Circuit' }, { id: 'B', name: 'Hex' }],
+    founder: [{ id: 'A', name: 'Coin' }, { id: 'B', name: 'Crest' }],
   });
-  assert.equal(api.lookSets.length, 6);
+  assert.equal(api.lookSets.length, 8);
+  assert.equal(api.lookName('founderA'), "Founder's Gold · Coin");
+  assert.equal(api.lookName('founderB'), "Founder's Gold · Crest");
   assert.equal(api.lookName('solarB'), 'Solar Flare · Eclipse');
 });
 
@@ -45,7 +48,7 @@ test('look choice is remembered next to the equipped paddle and survives a reloa
   assert.equal(api.paddleLook('obsidian'), 'B');
   assert.equal(api.paddleLook('solar'), 'A');
   assert.equal(store['crease.paddle.v1'], 'obsidian');           // the equipped paddle key is untouched
-  assert.deepEqual(plain(JSON.parse(store['crease.paddleLook.v1'])), { prism: 'B', solar: 'A', obsidian: 'B' });
+  assert.deepEqual(plain(JSON.parse(store['crease.paddleLook.v1'])), { prism: 'B', solar: 'A', obsidian: 'B', founder: 'A' });
   const again = load(store).api;                                   // a new page load reading the same storage
   assert.equal(again.paddleLook('obsidian'), 'B');
   assert.equal(again.paddleLook('prism'), 'B');
@@ -57,7 +60,7 @@ test('look choice rejects bad input and bad saved data falls back to the first l
   assert.equal(api.setPaddleLook('prism', 'C'), false);
   assert.equal(api.setPaddleLook('prism', 'b'), false);
   assert.equal(api.setPaddleLook('classic', 'A'), false);
-  assert.equal(api.setPaddleLook('founder', 'A'), false);
+  assert.equal(api.setPaddleLook('founder', 'A'), false);                  // not owned: locked without a Founder code
   assert.equal(api.setPaddleLook('__proto__', 'A'), false);
   assert.equal(api.paddleLook('classic'), '');
   for (const bad of ['not json', '[]', 'null', '{"prism":"Z","solar":5,"obsidian":{"x":1}}', '{"prism":"B"', '"B"']) {
@@ -78,7 +81,7 @@ test('both looks of every premium paddle play that paddle’s B effects', () => 
   const { api } = load();
   for (const id of PADDLES) for (const look of ['A', 'B']) assert.equal(api.effectsFor(id, look), id + 'B', id + look);
   assert.equal(api.effectsFor('classic', 'A'), '');
-  assert.equal(api.effectsFor('founder', 'A'), '');
+  for (const look of ['A', 'B']) assert.equal(api.effectsFor('founder', look), 'founderB', 'both Founder looks play the Crest effects');
   assert.equal(api.effectsFor('prism', 'Z'), '');
 });
 
@@ -102,11 +105,18 @@ test('the match plays the B effects whichever look is picked, and draws the pick
   }
   api.setPaddleStyle('classic'); p1Sig();
   assert.deepEqual([sig.body, sig.hit, sig.goal], ['', '', '']);   // Classic Cyan keeps its current drawing and sparks
-  const gold = owner({}, true);
-  gold.api.setPaddleStyle('founder');
+  // Founder's Gold: no Premium needed, either look is drawn, both play the Crest (B) effects
+  const gold = load({ 'crease.founder.v1': JSON.stringify({ token: FOUNDER_TOKEN }) });
+  assert.equal(gold.api.isPremium(), false);
+  assert.equal(gold.api.setPaddleStyle('founder'), true);
   const g = vm.runInNewContext(src + '\n({ p1Sig, sig })', { CreaseProduct: gold.api, studio: { d: {} }, studioOn: () => false });
-  g.p1Sig();
-  assert.deepEqual([g.sig.body, g.sig.hit, g.sig.goal], ['', '', '']);
+  for (const look of ['A', 'B']) {
+    assert.equal(gold.api.setPaddleLook('founder', look), true);
+    g.p1Sig();
+    assert.deepEqual([g.sig.body, g.sig.hit, g.sig.goal], ['founder' + look, 'founderB', 'founderB'], look);
+  }
+  assert.equal(JSON.parse(gold.store['crease.paddleLook.v1']).founder, 'B');   // the choice is saved
+  assert.equal(load(gold.store).api.paddleLook('founder'), 'B');                // and survives a reload
 });
 
 test('a saved Design Studio mix is what the match plays', () => {
@@ -131,10 +141,10 @@ test('Studio mix cleaning: junk, old data and out-of-range numbers fall back or 
   for (const junk of [undefined, null, 0, 1, 'x', '', true, [], [1, 2], () => 1, Symbol.iterator, { tune: 'bad' }, { tune: null }, { tune: [] }, { base: 5, hit: {}, goal: [] }]) {
     assert.deepEqual(plain(api.sanitizeMix(junk)), DEF, String(typeof junk));
   }
-  const m = api.sanitizeMix({ base: 'nope', hit: 'prismA', goal: 'founder', tune: { hue: NaN, size: Infinity, power: -Infinity } });
+  const m = api.sanitizeMix({ base: 'nope', hit: 'prismA', goal: 'founderA', tune: { hue: NaN, size: Infinity, power: -Infinity } });
   assert.equal(m.base, 'classic');
   assert.equal(m.hit, 'prismA');
-  assert.equal(m.goal, 'classic');                                 // founder is a look, not an effect set
+  assert.equal(m.goal, 'founderA');                                // sanitizing only cleans names; ownership is checked in resolveMix
   assert.deepEqual(plain(m.tune), { hue: 0, size: 1, power: 1 });
   const hi = api.sanitizeMix({ tune: { hue: 9999, size: 99, power: 99 } }).tune;
   assert.deepEqual(plain(hi), { hue: 180, size: 1.6, power: 1.6 });
@@ -156,25 +166,33 @@ test('Studio ownership: locked looks and effects never play', () => {
   assert.equal(none.canUseLook('classic'), true);
   assert.equal(none.canUseFx('classic'), true);
   for (const k of none.lookSets) { assert.equal(none.canUseLook(k), false, k); assert.equal(none.canUseFx(k), false, k); }
-  assert.equal(none.canUseLook('founder'), false);
   const all = { base: 'solarB', hit: 'prismA', goal: 'obsidianB', tune: { hue: 20, size: 1.2, power: 1.2 } };
   const r = none.resolveMix(all);
   assert.deepEqual([r.base, r.hit, r.goal], ['classic', 'classic', 'classic']);
   assert.equal(r.tune.hue, 20);                                     // tuning is kept; only locked parts are swapped
   const pass = owner({}).api;
-  for (const k of pass.lookSets) { assert.equal(pass.canUseLook(k), true, k); assert.equal(pass.canUseFx(k), true, k); }
-  assert.equal(pass.canUseLook('founder'), false);                  // a Pass alone never includes Founder’s Gold
+  for (const k of pass.lookSets.filter(k => !k.startsWith('founder'))) { assert.equal(pass.canUseLook(k), true, k); assert.equal(pass.canUseFx(k), true, k); }
+  for (const k of ['founderA', 'founderB']) { assert.equal(pass.canUseLook(k), false, k); assert.equal(pass.canUseFx(k), false, k); }   // a Pass alone never includes Founder’s Gold
   const p = pass.resolveMix(all);
   assert.deepEqual([p.base, p.hit, p.goal], ['solarB', 'prismA', 'obsidianB']);
-  assert.equal(pass.resolveMix({ base: 'founder' }).base, 'classic');
-  const gold = owner({}, true).api;
-  assert.equal(gold.canUseLook('founder'), true);
-  assert.equal(gold.resolveMix({ base: 'founder' }).base, 'founder');
-  assert.equal(gold.canUseFx('founder'), false);
+  assert.equal(pass.resolveMix({ base: 'founderA', hit: 'founderB' }).base, 'classic');
+  assert.equal(pass.resolveMix({ base: 'founderA', hit: 'founderB' }).hit, 'classic');
+  // a Founder code alone (no Pass) unlocks the Founder looks and their effects, nothing else
+  const founderOnly = load({ 'crease.founder.v1': JSON.stringify({ token: FOUNDER_TOKEN }) }).api;
+  for (const k of ['founderA', 'founderB']) { assert.equal(founderOnly.canUseLook(k), true, k); assert.equal(founderOnly.canUseFx(k), true, k); }
+  assert.equal(founderOnly.canUseLook('prismA'), false);
+  const gm = founderOnly.resolveMix({ base: 'founderA', hit: 'founderA', goal: 'founderB', tune: { hue: 30, size: 1.2, power: 0.8 } });
+  assert.deepEqual([gm.base, gm.hit, gm.goal], ['founderA', 'founderA', 'founderB']);
+  assert.deepEqual(plain(gm.tune), { hue: 30, size: 1.2, power: 0.8 });
+  assert.equal(founderOnly.fxNames.founderA, 'Founder coins');
+  assert.equal(founderOnly.fxNames.founderB, 'Founder laurels');
+  assert.equal(founderOnly.resolveMix({ base: 'founder' }).base, 'founderA');   // an old saved plain-ring base becomes the Coin look
+  const both = owner({}, true).api;
+  assert.deepEqual(plain(both.resolveMix({ base: 'founderB', hit: 'prismA', goal: 'founderA' })).base, 'founderB');
 });
 
 test('the preview switch is gone and the new screens are in the page', () => {
-  assert.ok(!/paddlepreview|PADV/.test(html), 'no preview parameter left');
+  assert.ok(!/paddlepreview|PADV|founderpreview|FOUNDER_PREVIEW/.test(html), 'no preview parameter left');
   for (const id of ['mixPreview', 'mixBase', 'mixHit', 'mixGoal', 'mixHue', 'mixSize', 'mixPower', 'mixSave', 'mixPlayHit', 'mixPlayGoal']) assert.ok(html.includes(`id="${id}"`), id);
   // every control has a visible label
   const mix = html.slice(html.indexOf('<section class="studio-mix"'), html.indexOf('</section>', html.indexOf('<section class="studio-mix"')));
@@ -206,4 +224,40 @@ test('Design Studio: locked state hides and disables every control; inputs are 1
   assert.ok(html.includes('#designStudio .studio-grid fieldset{min-width:0'));
   assert.ok(html.includes('minmax(min(250px,100%),1fr)'));
   assert.ok(html.includes("if (CreaseProduct.isPremium()) mixStart();"), 'the live preview does not run while locked');
+});
+
+test('Founder looks: Coin and Crest are both selectable with a Founder code and no Premium, and are locked without one', () => {
+  const none = load();
+  assert.equal(none.api.canUse('founder'), false);
+  assert.equal(none.api.setPaddleLook('founder', 'A'), false);
+  assert.equal(none.api.setPaddleLook('founder', 'B'), false);
+  assert.equal(none.store['crease.paddleLook.v1'], undefined);
+  const pass = owner({});
+  assert.equal(pass.api.setPaddleLook('founder', 'B'), false, 'a Premium Pass does not unlock Founder looks');
+  const g = load({ 'crease.founder.v1': JSON.stringify({ token: FOUNDER_TOKEN }) });
+  assert.equal(g.api.isPremium(), false);
+  assert.equal(g.api.paddleLook('founder'), 'A');
+  assert.equal(g.api.setPaddleLook('founder', 'B'), true);
+  assert.equal(g.api.paddleLook('founder'), 'B');
+  assert.equal(g.api.setPaddleLook('founder', 'A'), true);
+  assert.equal(g.api.setPaddleLook('founder', 'C'), false);
+  assert.equal(g.api.setPaddleLook('prism', 'B'), false, 'other paddles stay locked');
+});
+
+test('an old saved crease.paddleLook.v1 without a founder key still loads', () => {
+  const old = JSON.stringify({ prism: 'B', solar: 'B', obsidian: 'A' });
+  const { api } = load({ 'crease.paddleLook.v1': old, 'crease.founder.v1': JSON.stringify({ token: FOUNDER_TOKEN }) });
+  assert.equal(api.paddleLook('prism'), 'B');
+  assert.equal(api.paddleLook('solar'), 'B');
+  assert.equal(api.paddleLook('founder'), 'A');       // missing key: first look
+  assert.equal(api.setPaddleLook('founder', 'B'), true);
+  assert.equal(api.paddleLook('prism'), 'B');          // other choices are kept
+});
+
+test('the Garage picker and the Studio need no special-casing: Founder lists in the same look tables', () => {
+  const { api } = load();
+  assert.ok(api.looks.founder.length === 2);
+  assert.ok(api.lookSets.includes('founderA') && api.lookSets.includes('founderB'));
+  assert.ok(api.fxNames.founderA && api.fxNames.founderB);
+  assert.ok(api.styles.founder.desc.includes('Only 100 will ever exist. Free to the first 100 players who DM @playcrease to claim one. Never sold.'));
 });
