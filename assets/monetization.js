@@ -69,9 +69,9 @@
   // looks play that paddle's B effects. The chosen look per paddle is remembered next to the equipped paddle.
   // The Design Studio mixes any look/effect set the player owns; saved mixes are cleaned here before they are used.
   const own=(o,k)=>Object.prototype.hasOwnProperty.call(o,k);
-  const LOOKS={prism:[{id:'A',name:'Crystal'},{id:'B',name:'Lens'}],solar:[{id:'A',name:'Molten'},{id:'B',name:'Eclipse'}],obsidian:[{id:'A',name:'Circuit'},{id:'B',name:'Hex'}]};
+  const LOOKS={prism:[{id:'A',name:'Crystal'},{id:'B',name:'Lens'}],solar:[{id:'A',name:'Molten'},{id:'B',name:'Eclipse'}],obsidian:[{id:'A',name:'Circuit'},{id:'B',name:'Hex'}],founder:[{id:'A',name:'Coin'},{id:'B',name:'Crest'}]};
   const LOOK_KEY='crease.paddleLook.v1';
-  const FX_NAMES={classic:'Classic sparks',prismA:'Prism shards',prismB:'Prism rays',solarA:'Solar embers',solarB:'Solar supernova',obsidianA:'Mint shockwaves',obsidianB:'Obsidian lightning'};
+  const FX_NAMES={classic:'Classic sparks',prismA:'Prism shards',prismB:'Prism rays',solarA:'Solar embers',solarB:'Solar supernova',obsidianA:'Mint shockwaves',obsidianB:'Obsidian lightning',founderA:'Founder coins',founderB:'Founder laurels'};
   const SET_KEYS=Object.keys(LOOKS).reduce((a,id)=>a.concat(LOOKS[id].map(l=>id+l.id)),[]);
   const MIX_LIMITS={hue:{min:-180,max:180,def:0},size:{min:.6,max:1.6,def:1},power:{min:.4,max:1.6,def:1}};
   const SHAPES=[{id:'circle',name:'Circle'},{id:'rounded',name:'Rounded square'},{id:'hexagon',name:'Hexagon'},{id:'octagon',name:'Octagon'},{id:'diamond',name:'Diamond'},{id:'star',name:'Star'},{id:'gear',name:'Gear'},{id:'shield',name:'Shield'}];
@@ -99,14 +99,14 @@
     setPaddleLook(id,look){if(!own(LOOKS,id)||!LOOKS[id].some(l=>l.id===look)||!api.canUse(id))return false;const o=looksNow();o[id]=look;safe.set(LOOK_KEY,JSON.stringify(o));return true},
     // Which effect set a paddle look plays. Both looks of a signature paddle use that paddle's B effects.
     effectsFor(id,look){return own(LOOKS,id)&&LOOKS[id].some(l=>l.id===look)?id+'B':''},
-    lookName(key){const id=String(key).slice(0,-1),l=own(LOOKS,id)&&LOOKS[id].find(x=>x.id===String(key).slice(-1));return l?api.styles[id].name+' · '+l.name:key==='founder'?api.styles.founder.name:'Classic Cyan'},
-    canUseLook(key){if(key==='classic')return true;if(key==='founder')return api.canUse('founder');return SET_KEYS.indexOf(key)>=0&&api.canUse(key.slice(0,-1))},
+    lookName(key){const id=String(key).slice(0,-1),l=own(LOOKS,id)&&LOOKS[id].find(x=>x.id===String(key).slice(-1));return l?api.styles[id].name+' · '+l.name:'Classic Cyan'},
+    canUseLook(key){if(key==='classic')return true;return SET_KEYS.indexOf(key)>=0&&api.canUse(key.slice(0,-1))},
     canUseFx(key){return key==='classic'||(SET_KEYS.indexOf(key)>=0&&api.canUse(key.slice(0,-1)))},
     // Cleans a saved or typed Design Studio mix: unknown names fall back to defaults, numbers are clamped. Never throws.
     sanitizeMix(raw){
       const r=raw&&typeof raw==='object'&&!Array.isArray(raw)?raw:{},t=r.tune&&typeof r.tune==='object'?r.tune:{};
-      const L=['classic','founder'].concat(SET_KEYS),F=['classic'].concat(SET_KEYS);
-      return{base:pick(r.base,L,'classic'),hit:pick(r.hit,F,'classic'),goal:pick(r.goal,F,'classic'),
+      const L=['classic'].concat(SET_KEYS),F=['classic'].concat(SET_KEYS);
+      return{base:pick(r.base==='founder'?'founderA':r.base,L,'classic'),hit:pick(r.hit,F,'classic'),goal:pick(r.goal,F,'classic'),
         tune:{hue:Math.round(num(t.hue,MIX_LIMITS.hue)),size:Math.round(num(t.size,MIX_LIMITS.size)*100)/100,power:Math.round(num(t.power,MIX_LIMITS.power)*100)/100}};
     },
     // ---- Design Studio: colors, paddle shape, texture and transparency ----

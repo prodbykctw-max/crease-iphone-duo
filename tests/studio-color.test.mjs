@@ -160,15 +160,17 @@ test('a premium base look turns shape and texture off; transparency still applie
   const none = A.paddleDesign({ base: 'classic' }, design);
   assert.deepEqual(plain(none), { base: 'classic', custom: true, shape: 'star', texture: 'marble', strength: .9, opacity: .55 });
   const pass = owner();
-  for (const base of A.lookSets) {
+  for (const base of A.lookSets.filter(k => !k.startsWith('founder'))) {
     const d = pass.paddleDesign({ base }, design);
     assert.equal(d.custom, false, base);
     assert.equal(d.shape, 'circle', base);
     assert.equal(d.texture, 'none', base);
     assert.equal(d.opacity, .55, base + ' keeps the transparency');
   }
-  const gold = owner(true).paddleDesign({ base: 'founder' }, design);
-  assert.deepEqual(plain(gold), { base: 'founder', custom: false, shape: 'circle', texture: 'none', strength: .9, opacity: .55 });
+  for (const base of ['founderA', 'founderB']) {
+    const gold = owner(true).paddleDesign({ base }, design);
+    assert.deepEqual(plain(gold), { base, custom: false, shape: 'circle', texture: 'none', strength: .9, opacity: .55 });
+  }
   // a premium look the player does not own plays as the Custom look, so the shape still draws
   const unowned = A.paddleDesign({ base: 'prismA' }, design);
   assert.equal(unowned.base, 'classic'); assert.equal(unowned.shape, 'star');
