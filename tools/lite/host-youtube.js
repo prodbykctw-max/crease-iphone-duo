@@ -7,6 +7,7 @@
   var H = root.CreaseLite;
   var yt = root.ytgame;
   var inEnv = typeof yt !== 'undefined' && !!yt && !!yt.IN_PLAYABLES_ENV;
+  var framed = false;
 
   function timeout(p, ms) {
     return new Promise(function (resolve, reject) {
@@ -43,9 +44,20 @@
     },
 
     // 2.1 firstFrameReady is called while the loading screen is showing.
-    onSplash: function () { if (inEnv) safe(function () { yt.game.firstFrameReady(); }); },
-    // 2.2 / 2.3 gameReady only once the main menu is up (never over the splash or loading screens).
-    onMenuReady: function () { if (inEnv) safe(function () { yt.game.gameReady(); }); },
+    onSplash: function () { host.firstFrame(); },
+    firstFrame: function () {
+      if (!inEnv || framed) return;
+      framed = true;
+      safe(function () { yt.game.firstFrameReady(); });
+    },
+    // 2.2 / 2.3 gameReady only once the main menu is up (never over the splash or loading screens), and
+    // never before firstFrameReady (the bridge now reports the menu as soon as the game script ends,
+    // which can be ahead of the splash's two-frame wait with ?nointro).
+    onMenuReady: function () {
+      if (!inEnv) return;
+      host.firstFrame();
+      safe(function () { yt.game.gameReady(); });
+    },
 
     // 4.1 / 4.6 progress goes to the cloud save (the whole save is far below the 64 KiB flush limit).
     save: function (blob) { return yt.game.saveData(blob); },
