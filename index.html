@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="referrer" content="strict-origin-when-cross-origin">
 <!-- Content-Security-Policy: installed by the next script, except on a local test server (localhost / 127.0.0.1) where the capture harness rewrites the game script. Update hashes with: node tools/csp-hash.mjs -->
-<meta name="crease-csp" content="default-src 'self'; script-src 'self' 'sha256-9kyMFOQq/HLwXlyiVTgCTQzmo6H4oBBvtdWEJb0rIFI=' 'sha256-7bGpEwN6ejXT3312GelR+I+ts0Y+2y7IUiVL54WORgg='; connect-src 'self' https://crease-metrics.prodbykctw.workers.dev https://crease-license.prodbykctw.workers.dev; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta name="crease-csp" content="default-src 'self'; script-src 'self' 'sha256-9kyMFOQq/HLwXlyiVTgCTQzmo6H4oBBvtdWEJb0rIFI=' 'sha256-wnpR31jNlZJCmLrJqw8ZNHt7IJYHOe/sNEj1LqYVttA='; connect-src 'self' https://crease-metrics.prodbykctw.workers.dev https://crease-license.prodbykctw.workers.dev; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <script>(function(){var h=location.hostname;if(h==='localhost'||h==='127.0.0.1')return;var p=document.querySelector('meta[name="crease-csp"]'),m=document.createElement('meta');m.httpEquiv='Content-Security-Policy';m.content=p.content;document.head.appendChild(m);})();</script>
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1018,7 +1018,17 @@ document.addEventListener('gesturestart', e => e.preventDefault());
 document.addEventListener('dblclick', e => e.preventDefault());
 
 // ---------- audio (synthesized, no files) ----------
-let ac = null, lastWallSnd = 0, touched = false;
+let ac = null, touched = false;
+// SFX debounce: a paddle faster than the puck's speed cap carries the puck and re-collides on every physics
+// substep (and a puck can buzz along a rail); that must not machine-gun the same click. A sound plays only if its
+// source (a paddle, a wall, a bumper) has been quiet for SND_GAP of game time. Every attempt, played or not,
+// restarts that quiet period, so one sustained contact is one sound; separate hits are further apart than SND_GAP.
+// Only the sound is gated: physics, sparks and screen shake are unchanged.
+const SND_GAP = 0.08, sndLast = Object.create(null);
+function sndGate(key, now, gap = SND_GAP) {
+  const last = sndLast[key]; sndLast[key] = now;
+  return last === undefined || now < last || now - last >= gap;
+}
 function unlockAudio() {
   touched = true;
   if (!ac) { try { ac = new (window.AudioContext || window.webkitAudioContext)(); } catch (_) { ac = null; } }
@@ -1371,6 +1381,14 @@ function hitPaddle(pk, pd) {
     pk.last = pd.p; pk.bumped = false;
     pk.lastTouch = pd.p; pk.rallyHits = (pk.rallyHits || 0) + 1;
     progress.event('hit',{player:pd.p,rally:pk.rallyHits});
+    // One clean strike per approach: the CPU used to keep its target "through" the puck, and a CTW paddle (2.75/s) is faster
+    // than the puck's speed cap (1.65/s), so it re-collided on every physics step while carrying it (dozens of taps).
+    // After a real strike it now backs off for a moment, then re-reads the puck as usual.
+    // The CPU hand also has momentum (it brakes over ~0.25 table widths), so the follow-through is cut short too.
+    if (pd.ctrl === 'cpu' && j > 0.5 && !(pd.aiRecover > 0)) {
+      pd.aiRecover = 0.12; pd.tu = pd.u - nu * 0.08; pd.tv = pd.v - nv * 0.08;
+      pd.cvu = (pd.cvu || 0) * 0.15; pd.cvv = (pd.cvv || 0) * 0.15;
+    }
     if (pd.ctrl === 'human') {
       game.playerReturns++;
       game.bestRally = Math.max(game.bestRally, pk.rallyHits);
@@ -1394,14 +1412,15 @@ function hitPaddle(pk, pd) {
       sparks(pk.u, pk.v, nu, nv, COL.gold, 16, 2.2); sparks(pk.u, pk.v, -nu, -nv, '#ffffff', 8, 1.4);
       game.rings.push({ u: pk.u, v: pk.v, age: 0, life: 0.45, col, max: 0.2 });
       addPop('SMASH!', pk.u, pk.v, col, pd.p, 0.1, true);
-      sfx.smash(); buzz(22);
+      if (sndGate('smash' + pd.p, game.t)) sfx.smash();
+      buzz(22);
     } else {
       const k = Math.min(1, j / 3);
       if (k > 0.08) {
         burst(pk.u, pk.v, col, 4 + Math.round(k * 10), 0.4 + k);
         surge(pk.u, pk.v, col, 0.35 + k);
         sparks(pk.u, pk.v, nu, nv, col, 4 + Math.round(k * 8), 0.5 + k);
-        sfx.hit(pd.p, k);
+        if (sndGate('pad' + pd.p, game.t)) sfx.hit(pd.p, k);
         if (k > 0.45) { juice({ stop: 0.03, shake: 0.1 }); buzz(8); }
       }
     }
@@ -1494,7 +1513,7 @@ function hitBumper(pk, b) {
   addPop('BUMP', b.u, b.v - nv * 0.02, col, pk.v >= view.L / 2 ? 1 : 2, 0.06);
   juice({ stop: 0.035, shake: 0.17, flash: 0.08 });
   surge(b.u, b.v, col, 1.45);
-  sfx.bump();
+  if (sndGate('bump' + (b.u < .5 ? 0 : 1), game.t)) sfx.bump();
 }
 // Light racing out through the grid from wherever the puck struck.
 function surge(u, v, col, power = 1) {
@@ -1530,7 +1549,8 @@ function railFx(pk, nu = 0, nv = 0) {
   if (game.railHits.length > 6) game.railHits.shift();
   sparks(pk.u, pk.v, nu, nv, ST().horizon, 3 + Math.round(k * 7), 0.6 + k);
   surge(pk.u, pk.v, ST().grid, 0.3 + k * 0.5);
-  if (now - lastWallSnd > 0.04) { lastWallSnd = now; sfx.rail(k); }
+  // one rail ping per wall per SND_GAP (the source is the wall the puck is touching)
+  if (sndGate('rail' + (Math.abs(nu) > Math.abs(nv) ? 'u' : 'v') + Math.sign(Math.abs(nu) > Math.abs(nv) ? nu : nv), now)) sfx.rail(k);
 }
 
 function grant(pu, who) {
@@ -1686,6 +1706,7 @@ function winText(w) {
 
 // ---------- CPU ----------
 function ai(pd, dt, D) {
+  if (pd.aiRecover > 0) { pd.aiRecover -= dt; return; }   // backing off after a strike (see hitPaddle)
   pd.aiT -= dt;
   if (pd.aiT > 0) return;
   pd.aiT = D.react;
