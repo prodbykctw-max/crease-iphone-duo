@@ -7,6 +7,7 @@
   var H = root.CreaseLite;
   var sdk = root.CrazyGames && root.CrazyGames.SDK;
   var on = false;          // true on CrazyGames (and on localhost); the SDK throws on any other domain
+  var started = false;
   var stopped = false;
 
   function safe(fn) { try { return fn(); } catch (e) { return undefined; } }
@@ -29,12 +30,18 @@
       }).catch(function () { on = false; return null; });
     },
 
-    // loadingStart when the loading screen is up (after init), loadingStop when the boot screen is ready.
-    onSplash: function () {
-      host._ready.then(function () { if (on) safe(function () { sdk.game.loadingStart(); }); });
-    },
+    // loadingStart fires once, the moment sdk.init() resolves (init() below chains it). loadingStop fires once
+    // the boot screen is up (or the menu, if the intro is skipped): the game is ready for input, so it never
+    // waits for the "tap to boot". Both go through _ready, so loadingStart always precedes loadingStop, even
+    // when the boot screen is shown before init resolves. Nothing here depends on requestAnimationFrame: a
+    // frame that is not being painted (background tab, preview iframe) never runs one.
     onBootShown: function () { host.stopLoading(); },
     onMenuReady: function () { host.stopLoading(); },
+    startLoading: function () {
+      if (started) return;
+      started = true;
+      if (on) safe(function () { sdk.game.loadingStart(); });
+    },
     stopLoading: function () {
       if (stopped) return;
       stopped = true;
@@ -64,10 +71,13 @@
     error: function () {},
   };
 
-  // init() runs once; onSplash/stopLoading wait for it.
+  // init() runs once; loadingStart follows it directly and stopLoading waits for both.
   var initOnce = host.init;
   host._ready = Promise.resolve();
-  host.init = function () { host._ready = initOnce(); return host._ready; };
+  host.init = function () {
+    host._ready = initOnce().then(function (res) { host.startLoading(); return res; });
+    return host._ready;
+  };
 
   H.host = host;
 })(window);

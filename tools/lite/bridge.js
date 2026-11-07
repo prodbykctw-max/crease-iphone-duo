@@ -53,10 +53,18 @@
     };
   }
 
-  const tick = () => {
-    const st = game.state, md = game.mode;
+  // The boot screen (or menu) is already up when the game script finishes, so it is reported right here,
+  // not on the first animation frame: a frame that is not being painted (a background tab, a preview
+  // iframe) never runs requestAnimationFrame, and the host would wait for the first tap.
+  const screens = () => {
     if (!sawBoot && !$('boot').classList.contains('hidden')) { sawBoot = true; H.hideSplash(); host.onBootShown && host.onBootShown(); }
     if (!sawMenu && !$('menu').classList.contains('hidden')) { sawMenu = true; H.hideSplash(); host.onMenuReady && host.onMenuReady(); }
+  };
+  screens();
+
+  const tick = () => {
+    const st = game.state, md = game.mode;
+    screens();
     const now = (md === 'solo' || md === 'duo') && (st === 'countdown' || st === 'play' || st === 'goal' || st === 'fold');
     if (now !== playing) { playing = now; if (now && trial >= 0) trialUsed = true; host.onGameplay && host.onGameplay(now); }
     const over = st === 'over';
