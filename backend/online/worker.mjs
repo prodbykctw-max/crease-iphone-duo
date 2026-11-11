@@ -2,8 +2,11 @@ import {initial,step,target,steer} from './physics.mjs';
 
 const ALPHABET='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const CODE=/^[A-Z2-9]{10}$/;
-// A waiting opponent is only offered to the next arrival for this long. If the
-// host closed their tab, the joiner gets a 404 from the room and asks again.
+// An unconfirmed code (its host's socket not yet reported open) stays listed
+// this long. A confirmed host stays listed for as long as their room stays
+// open (EMPTY_MS after the Room reported ready), so anyone shown as searching
+// can be matched. If the host closed their tab, the joiner gets a 404 from the
+// room and asks again.
 const HOLD_MS=30000;
 // An unconfirmed code is still offered this soon after it was issued.
 const FRESH_MS=8000;
@@ -62,8 +65,8 @@ export default {async fetch(request,env){
 }};
 
 // Quick-match lobby. A code is only offered to a second player once its host's
-// socket is actually open in the Room (the Room calls /ready), within HOLD_MS,
-// and never to a request from the host's own IP. /ready, /paired and /gone are
+// socket is actually open in the Room (the Room calls /ready), until that room
+// closes EMPTY_MS later, and never to a request from the host's own IP. /ready, /paired and /gone are
 // only reachable from the Room: the public Worker forwards nothing but /match.
 //
 // Offering a code does not remove it. It stays listed until the Room reports
@@ -76,10 +79,10 @@ export class Lobby {
   constructor(ctx){this.ctx=ctx;this.waiting=[];}
   async fetch(request){
     const url=new URL(request.url),now=Date.now(),code=url.searchParams.get('code');
-    this.waiting=this.waiting.filter(w=>now-w.ts<=HOLD_MS);
+    this.waiting=this.waiting.filter(w=>w.ready?now-(w.readyAt||w.ts)<EMPTY_MS:now-w.ts<=HOLD_MS);
     if(url.pathname==='/ready'){
       const w=this.waiting.find(w=>w.code===code);
-      if(w)w.ready=true;
+      if(w&&!w.ready){w.ready=true;w.readyAt=now;}
       return new Response(null,{status:204});
     }
     // Both players are in (/paired), or the room closed because the host left or
@@ -110,7 +113,7 @@ export class Lobby {
       const mine=ip&&this.waiting.find(w=>w.ip===ip&&!w.ready);
       if(mine)body={code:mine.code,create:true};
       else{
-        const fresh={code:newCode(),ts:now,ip,ready:false,offer:null,declined:new Set()};
+        const fresh={code:newCode(),ts:now,readyAt:0,ip,ready:false,offer:null,declined:new Set()};
         this.waiting.push(fresh);
         // Over the limit: drop the oldest unconfirmed code (never a confirmed
         // waiting host, never the code just issued).

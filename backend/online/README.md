@@ -13,7 +13,7 @@ Two ways in, both served by the same Worker:
   characters from `ABCDEFGHJKLMNPQRSTUVWXYZ23456789`. `?create=1` opens the
   room; without it the player joins an existing one.
 
-`Lobby` is a single Durable Object holding waiting room codes for 30 seconds.
+`Lobby` is a single Durable Object holding waiting room codes: an unconfirmed code for 30 seconds, a confirmed host for as long as their room stays open (60 seconds).
 A code is only offered to a second player after its host's socket is open in
 the Room (the Room calls the lobby's internal `/ready`), and never to a request
 from the host's own IP. Offering a code does not remove it: it stays listed
