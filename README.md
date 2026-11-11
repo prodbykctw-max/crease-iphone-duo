@@ -20,7 +20,7 @@ Other pages on the same site:
 - **SMASH:** flick your paddle hard into the puck. **BUMP:** gold bumpers on the crease kick the puck; score off one for a **BANK SHOT**.
 - **Power-ups** spawn on the crease — knock the puck through one: **BIG** paddle, **MULTI** puck, **WALL** over your goal.
 - **FIRE MODE:** score 3 goals in a row and your paddle, the puck and your side of the rails catch fire for 7 seconds.
-- Juiced hits and scoring: freeze-frames, shake, pop-up text, race-to-7 bars on the rails, and a procedural synthwave loop (96 BPM, synthesized in Web Audio — no audio files) whose kick the table pulses to.
+- Juiced hits and scoring: freeze-frames, shake, pop-up text, race-to-7 bars on the rails, and a procedural disco loop (120 BPM, synthesized in Web Audio — no audio files) whose kick the table pulses to.
 - **Ten arenas** (Midnight, Toxic, Ice, Inferno, Ultraviolet, Miami, Gold Rush, Void, Sakura, prodby KCTW) with photographic plates in `assets/arenas/` and a shared WebGL centerpiece on the crease. Midnight is always available; the rest unlock through play (`assets/progression.js`).
 - **Progress:** achievements and a local Records/leaderboard list, saved per device in `localStorage`.
 - **Founder's Gold:** free to the first 100 players who DM @playcrease for a one-time code (typed in the Garage, or opened as `?founder=CODE`). It is not part of the Premium Pass and is never sold.
@@ -87,7 +87,7 @@ assets/
   arena-engine.js       Arena plates + shared WebGL centerpiece
   progression.js        Achievements, records, arena unlocks
   monetization.js       Local leaderboard, paddle styles, premium pass + license-key redeem
-  commerce-config.js    Checkout settings (Lemon Squeezy links/ids, price label, sales start)
+  commerce-config.js    Checkout settings (Stripe checkout link, price label, sales start; Lemon Squeezy ids unused)
   quest-vr.mjs          VR game; quest-controls.mjs = hand/controller smoothing
   arenas/               Arena plates and thumbnails (.webp)
   vendor/               three.js r170

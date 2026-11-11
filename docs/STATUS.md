@@ -34,20 +34,15 @@ root of `main`, so anything merged there is live within minutes.
   player's drag appeared on the other's screen, room codes and invite links
   worked, and only allow-listed origins are served.
 - **SEO** — llms.txt, sitemap, robots, manifest, icons, OG tags, JSON-LD.
-- **Analytics** are opt-in and off by default. `analytics-config.js` ships with
-  an empty endpoint; nothing is sent until one is set.
+- **Analytics** send anonymous match events to the `crease-metrics` Worker set in
+  `analytics-config.js`. Nothing is sent when that endpoint is blank or not
+  HTTPS, or when the browser sends Do Not Track or Global Privacy Control.
+- **Checkout is configured.** The Premium Pass is sold through a Stripe Payment
+  Link set as `CHECKOUT_URL` in `assets/commerce-config.js`, with the
+  `backend/license/` Worker verifying the purchase. Details: `docs/CHECKOUT.md`.
 
 ## Not done
 
-- **Checkout is built but not live.** The Premium Pass flow (Lemon Squeezy
-  checkout link, license-key restore, `backend/license/` Worker that signs the
-  pass) is in the repo, but no Lemon Squeezy store exists yet, so every setting in
-  `assets/commerce-config.js` is empty and the button reads COMING SOON. Go-live
-  steps: `docs/CHECKOUT.md`.
-- **The metrics Worker is not deployed.** `backend/` holds a Worker and a D1
-  migration for metrics; the D1 database id in `wrangler.jsonc` is still a
-  placeholder. See `backend/README.md`. (The separate online relay in
-  `backend/online/` IS deployed - see Shipped.)
 - **No physical device testing.** Every check so far is emulated — Playwright
   Chromium and WebKit at iPhone Duo dimensions. No real iPhone Duo and no real
   Quest headset has run this build.
