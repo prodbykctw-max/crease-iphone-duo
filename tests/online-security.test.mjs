@@ -61,8 +61,20 @@ test('lobby never pairs an IP with itself and expires stale codes',async()=>{
   try{
     const a=await match(lobby,'1.1.1.1');await lobby.fetch(req('/ready?code='+a.code));
     const same=await match(lobby,'1.1.1.1');assert.equal(same.create,true);assert.notEqual(same.code,a.code);
-    const t0=real();Date.now=()=>t0+31000;
+    const t0=real();Date.now=()=>t0+61000;
     const late=await match(lobby,'9.9.9.9');assert.equal(late.create,true,'expired code offered');
+  }finally{Date.now=real;}
+});
+
+test('a confirmed host stays matchable for the whole time their room is open',async()=>{
+  const lobby=new Lobby({});const real=Date.now;
+  try{
+    const t0=real();Date.now=()=>t0;
+    const host=await match(lobby,'1.1.1.1');await lobby.fetch(req('/ready?code='+host.code));
+    Date.now=()=>t0+45000;
+    assert.deepEqual(await match(lobby,'2.2.2.2'),{code:host.code,create:false},'joiner at 45 s pairs with the waiting host');
+    Date.now=()=>t0+60000;
+    const after=await match(lobby,'3.3.3.3');assert.equal(after.create,true,'not offered once the room has closed');assert.notEqual(after.code,host.code);
   }finally{Date.now=real;}
 });
 

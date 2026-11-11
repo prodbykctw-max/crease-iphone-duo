@@ -12,7 +12,7 @@ No other third-party scripts, stylesheets or web fonts are loaded. Apart from th
 
 ## Sound
 
-All music and sound effects are synthesized in code with the Web Audio API (the 96 BPM synthwave loop, hits, goals, power-ups). There are no audio files in the repository.
+All music and sound effects are synthesized in code with the Web Audio API (the 120 BPM disco loop, hits, goals, power-ups). There are no audio files in the repository.
 
 ## Fonts
 
