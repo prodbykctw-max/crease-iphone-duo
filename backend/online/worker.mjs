@@ -16,6 +16,11 @@ const OFFER_MS=5000;
 // Most waiting rooms the lobby remembers at once. Past this, the oldest
 // unconfirmed code is dropped first; a confirmed waiting host never is.
 const MAX_WAITING=32;
+// ⚠️ Waiting hosts per IP (ready or not). Without it one script could open room
+// after room (each /match + socket marks a host ready, and ready hosts are never
+// evicted), so real players were paired into idle sockets. Two leaves room for
+// two people on one home network. (Security audit 2026-11-15, lobby poisoning.)
+const MAX_PER_IP=2;
 // A room nobody else has joined is closed this long after its first player.
 const EMPTY_MS=60000;
 // A finished match stays open this many 60 Hz ticks (~5 s) so both players
@@ -112,6 +117,8 @@ export class Lobby {
       // returns the same code instead of listing another.
       const mine=ip&&this.waiting.find(w=>w.ip===ip&&!w.ready);
       if(mine)body={code:mine.code,create:true};
+      else if(ip&&this.waiting.filter(w=>w.ip===ip).length>=MAX_PER_IP)
+        return new Response(JSON.stringify({error:'busy'}),{status:429,headers:{'content-type':'application/json'}});
       else{
         const fresh={code:newCode(),ts:now,readyAt:0,ip,ready:false,offer:null,declined:new Set()};
         this.waiting.push(fresh);
