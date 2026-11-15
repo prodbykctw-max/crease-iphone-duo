@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="referrer" content="strict-origin-when-cross-origin">
 <!-- Content-Security-Policy: installed by the next script, except on a local test server (localhost / 127.0.0.1) where the capture harness rewrites the game script. Update hashes with: node tools/csp-hash.mjs -->
-<meta name="crease-csp" content="default-src 'self'; script-src 'self' 'sha256-9kyMFOQq/HLwXlyiVTgCTQzmo6H4oBBvtdWEJb0rIFI=' 'sha256-DW92qAkO57PK3oChBvWwycD1IwbQyH1b/zWEvzzyYkI='; connect-src 'self' https://crease-metrics.prodbykctw.workers.dev https://crease-license.prodbykctw.workers.dev; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta name="crease-csp" content="default-src 'self'; script-src 'self' 'sha256-9kyMFOQq/HLwXlyiVTgCTQzmo6H4oBBvtdWEJb0rIFI=' 'sha256-Nzj+8RSCmQ2Q7wVmI2OjrWR4RmbbqxhB6toHjOmsa7w='; connect-src 'self' https://crease-metrics.prodbykctw.workers.dev https://crease-license.prodbykctw.workers.dev; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <script>(function(){var h=location.hostname;if(h==='localhost'||h==='127.0.0.1')return;var p=document.querySelector('meta[name="crease-csp"]'),m=document.createElement('meta');m.httpEquiv='Content-Security-Policy';m.content=p.content;document.head.appendChild(m);})();</script>
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -568,6 +568,108 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--p1);outline-offset:
 const cv = document.getElementById('cv');
 const ctx = cv.getContext('2d', { alpha: false });
 const $ = id => document.getElementById(id);
+
+// ---------- Glide: nothing just appears ----------
+// Dialogs and overlays grow out of the button that opened them and shrink back into it. Motion only:
+// what is on screen at the end of every transition is exactly what was there before, and game state
+// (pause, resume, timers, input) changes at the same moment it always did. Reduced motion: instant.
+const Glide = (() => {
+  const OUT = 'cubic-bezier(.2,.8,.2,1)', BACK = 'cubic-bezier(.4,0,.2,1)';
+  const reduced = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const HUB = { garageHub: 'bGarageHub', progressHub: 'bProgressHub', settingsHub: 'bSettingsHub' };
+  const usable = r => !!r && r.width > 0 && r.height > 0;
+  let click = null;   // the last button pressed: the element, where it was, and (inside a hub) the hub's own opener
+  document.addEventListener('click', e => {
+    const b = e.target.closest && e.target.closest('button'); if (!b) return;
+    const hub = b.closest('#garageHub,#progressHub,#settingsHub');
+    click = { el: b, rect: b.getBoundingClientRect(), fb: hub ? $(HUB[hub.id]) : null, t: performance.now() };
+  }, true);
+  const fresh = () => (click && performance.now() - click.t < 600 ? click : null);
+  function aim(o) {   // where the opening button is right now
+    if (!o) return null;
+    for (const el of [o.el, o.fb]) if (el && el.isConnected) { const r = el.getBoundingClientRect(); if (usable(r)) return r; }
+    return usable(o.rect) ? o.rect : null;
+  }
+  // [from, to] keyframes for a panel that grows out of (or shrinks into) a button.
+  function frames(panel, o) {
+    const p = panel.getBoundingClientRect(), a = aim(o);
+    if (!a || !usable(p)) return { kf: [{ transform: 'scale(.94)', opacity: 0 }, { transform: 'none', opacity: 1 }], ms: 160 };
+    const org = `${a.left + a.width / 2 - p.left}px ${a.top + a.height / 2 - p.top}px`;
+    const s = Math.min(.5, Math.max(.18, a.width / p.width));
+    return { kf: [{ transformOrigin: org, transform: `scale(${s})`, opacity: 0 }, { transformOrigin: org, transform: 'none', opacity: 1 }], ms: 240 };
+  }
+  function play(panel, o, closing, extra) {
+    const f = frames(panel, o), opt = { duration: closing ? Math.round(f.ms * .85) : f.ms, easing: closing ? BACK : OUT, fill: 'forwards', direction: closing ? 'reverse' : 'normal' };
+    const list = [panel.animate(f.kf, opt)];
+    if (extra) list.push(extra.el.animate([{ opacity: 0 }, { opacity: 1 }], { ...opt, ...(extra.pseudo ? { pseudoElement: extra.pseudo } : {}) }));
+    return list;
+  }
+  // Runs fn once the animation ends, or shortly after its time is up if frames stopped (a hidden tab), so a closing panel can never get stuck.
+  const after = (anim, fn) => { let ran = false; const go = () => { if (!ran) { ran = true; fn(); } }; anim.finished.then(go, () => {}); setTimeout(go, anim.effect.getTiming().duration + 150); };
+  const stop = s => { if (s) { for (const a of s.anims) a.cancel(); s.anims = []; } };
+
+  // Native <dialog>s: showModal grows from the opener, close shrinks back into it.
+  const dlg = new WeakMap();
+  function wire(list) {
+    for (const d of list) {
+      const nOpen = d.showModal.bind(d), nClose = d.close.bind(d), s = { o: null, anims: [], closing: false, tok: 0, nClose };
+      dlg.set(d, s);
+      const done = () => { s.closing = false; d.inert = false; stop(s); };
+      d.showModal = () => {
+        if (s.closing) { done(); nClose(); }
+        const was = d.open; nOpen();
+        if (was || reduced()) return;
+        s.o = fresh(); stop(s);
+        try { s.anims = play(d, s.o, false, { el: d, pseudo: '::backdrop' }); } catch (e) { s.anims = []; }
+      };
+      d.close = rv => {
+        if (!d.open) { nClose(rv); return; }
+        if (s.closing) return;
+        if (reduced()) { nClose(rv); return; }
+        stop(s); s.closing = true; d.inert = true; const tok = ++s.tok;
+        try { s.anims = play(d, s.o, true, { el: d, pseudo: '::backdrop' }); } catch (e) { done(); nClose(rv); return; }
+        after(s.anims[0], () => { if (!s.closing || s.tok !== tok) return; nClose(rv); done(); });
+      };
+      d.addEventListener('close', () => { if (s.closing) done(); });
+      // Escape runs through the same animated close. Registered last so a listener that handles Escape itself (the Studio's colour picker) still goes first.
+      d.addEventListener('cancel', e => { if (e.defaultPrevented) return; e.preventDefault(); d.close(); });
+    }
+  }
+  function closeNow(d) { const s = dlg.get(d); if (s) { s.closing = false; d.inert = false; stop(s); s.nClose(); } else d.close(); }
+
+  // Full-screen overlays (arena gallery, pause, how to play, the menu after a match).
+  const OV = { arenas: '.arena-shell', pauseM: '.card', how: '.card', menu: '.card' };
+  const ov = {};
+  const opener = id => {
+    if (id === 'pauseM') return { el: $('bPause') };
+    const c = fresh();
+    if (id === 'menu') return c && (c.el.id === 'bMenu' || c.el.id === 'bQuit') ? c : null;
+    return c || (id === 'arenas' ? { el: $('bArenas'), fb: $('bGarageHub') } : null);
+  };
+  function overlayIn(id) {
+    if (!OV[id] || reduced()) return;
+    const el = $(id), panel = el.querySelector(OV[id]), o = opener(id);
+    if (!panel || (id === 'menu' && !o)) return;
+    const s = ov[id] = { o, anims: [], closing: false };
+    try { s.anims = play(panel, o, false, { el }); } catch (e) { s.anims = []; }
+  }
+  function settle(id) {
+    const s = ov[id]; if (!s) return;
+    const el = $(id); stop(s);
+    if (s.closing) { s.closing = false; el.inert = false; el.style.pointerEvents = ''; }
+  }
+  // Same as show(id, false), but the panel shrinks into its button first. The caller has already changed whatever state it changes.
+  function hide(id, show) {
+    const s = ov[id], el = $(id), panel = el.querySelector(OV[id] || '.card');
+    if (reduced() || !panel || el.classList.contains('hidden') || (s && s.closing)) { if (!(s && s.closing)) show(id, false); return; }
+    const o = (s && s.o) || (id === 'arenas' ? { el: $('bArenas'), fb: $('bGarageHub') } : id === 'pauseM' ? { el: $('bPause') } : null);
+    const t = ov[id] = { o, anims: [], closing: true };
+    el.inert = true; el.style.pointerEvents = 'none';
+    try { t.anims = play(panel, o, true, { el }); } catch (e) { t.closing = false; el.inert = false; el.style.pointerEvents = ''; show(id, false); return; }
+    after(t.anims[0], () => { if (!t.closing || ov[id] !== t) return; t.closing = false; el.inert = false; el.style.pointerEvents = ''; show(id, false); stop(t); });
+  }
+  return { wire, closeNow, overlayIn, settle, hide };
+})();
 const clamp = (x, a, b) => x < a ? a : x > b ? b : x;
 const rand = (a, b) => a + Math.random() * (b - a);
 
@@ -4276,7 +4378,7 @@ function drawDepthRails(){
 for(const [button,dialog] of [['bGarageHub','garageHub'],['bProgressHub','progressHub'],['bSettingsHub','settingsHub']]){
   $(button).onclick=()=>$(dialog).showModal();
   $(dialog).addEventListener('keydown',e=>e.stopPropagation());
-  $(dialog).addEventListener('click',e=>{if(e.target.closest('button')?.id && e.target.id!=='bSound')$(dialog).close();},true);
+  $(dialog).addEventListener('click',e=>{if(e.target.closest('button')?.id && e.target.id!=='bSound')Glide.closeNow($(dialog));},true);
 }
 document.querySelectorAll('[data-close-hub]').forEach(b=>b.onclick=()=>$(b.dataset.closeHub).close());
 function refreshStageLock(){
@@ -4870,7 +4972,7 @@ function renderArenaPreview(now) {
 }
 function closeArenaGallery() {
   if(!progress.canPlay(stageIx))setStage(progress.state.unlocked[0]||0);
-  show('arenas',false); $('menu').inert=false;
+  Glide.hide('arenas',show); $('menu').inert=false;
   cancelAnimationFrame(arenaRaf); arenaRaf=0; $('bArenas').focus();
 }
 $('bArenas').onclick = () => {
@@ -4894,7 +4996,7 @@ $('arenas').addEventListener('keydown',e=>{
     else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus();}
   }
 });
-function show(id, on) { $(id).classList.toggle('hidden', !on); }
+function show(id, on) { Glide.settle(id); const was = $(id).classList.contains('hidden'); $(id).classList.toggle('hidden', !on); if (on && was) Glide.overlayIn(id); }
 function start(mode, reason = 'new', daily = false) { if(!progress.canPlay(stageIx)){$('bArenas').click();return;} if (!daily) restoreDailyDiff(); matchTracked = false; track('match_start', { mode, difficulty: game.diff, reason }); if (reason === 'rematch') track('rematch', { mode }); unlockAudio(); booted = true; music.start(); show('menu', false); show('over', false); show('pauseM', false); newMatch(mode); game.daily = daily; game.goalLog = []; game.dailyDone = false; coachBegin(); }
 function toMenu() { show('pauseM', false); show('over', false); show('menu', true); restoreDailyDiff(); refreshDaily(); newMatch('demo'); game.daily = false; }
 function pause() {
@@ -5286,10 +5388,11 @@ $('bIntro').onclick = () => { unlockAudio(); booted = true; playStudio(); };
   $('stagePrev').onclick = () => nextUnlocked(-1);
   $('stageNext').onclick = () => nextUnlocked(1);
 }
-$('bHowClose').onclick = () => show('how', false);
+$('bHowClose').onclick = () => Glide.hide('how', show);
 $('bSound').onclick = () => { muted = !muted; $('bSound').textContent = 'Sound: ' + (muted ? 'Off' : 'On'); unlockAudio(); booted = true; music.start(); };
+Glide.wire(['garageHub', 'progressHub', 'settingsHub', 'achievements', 'leaderboard', 'premium', 'designStudio', 'clearData'].map($));
 $('bPause').onclick = pause;
-$('bResume').onclick = () => { show('pauseM', false); unlockAudio(); game.state = game.resume; };
+$('bResume').onclick = () => { Glide.hide('pauseM', show); unlockAudio(); game.state = game.resume; };
 $('bRestart').onclick = () => start(game.mode, 'restart');
 $('bQuit').onclick = toMenu;
 $('bAgain').onclick = () => start(game.mode, 'rematch');
