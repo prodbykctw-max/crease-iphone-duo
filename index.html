@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="referrer" content="strict-origin-when-cross-origin">
 <!-- Content-Security-Policy: installed by the next script, except on a local test server (localhost / 127.0.0.1) where the capture harness rewrites the game script. Update hashes with: node tools/csp-hash.mjs -->
-<meta name="crease-csp" content="default-src 'self'; script-src 'self' 'sha256-9kyMFOQq/HLwXlyiVTgCTQzmo6H4oBBvtdWEJb0rIFI=' 'sha256-wnpR31jNlZJCmLrJqw8ZNHt7IJYHOe/sNEj1LqYVttA='; connect-src 'self' https://crease-metrics.prodbykctw.workers.dev https://crease-license.prodbykctw.workers.dev; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta name="crease-csp" content="default-src 'self'; script-src 'self' 'sha256-9kyMFOQq/HLwXlyiVTgCTQzmo6H4oBBvtdWEJb0rIFI=' 'sha256-DW92qAkO57PK3oChBvWwycD1IwbQyH1b/zWEvzzyYkI='; connect-src 'self' https://crease-metrics.prodbykctw.workers.dev https://crease-license.prodbykctw.workers.dev; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <script>(function(){var h=location.hostname;if(h==='localhost'||h==='127.0.0.1')return;var p=document.querySelector('meta[name="crease-csp"]'),m=document.createElement('meta');m.httpEquiv='Content-Security-Policy';m.content=p.content;document.head.appendChild(m);})();</script>
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -561,7 +561,7 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--p1);outline-offset:
 <script src="assets/arena-engine.js?v=839de2dcf7"></script>
 <script src="assets/progression.js?v=cba130d647"></script>
 <script src="assets/commerce-config.js?v=2852d1a5c2"></script>
-<script src="assets/monetization.js?v=c30ded47c1"></script>
+<script src="assets/monetization.js?v=92370ed885"></script>
 <script>
 (() => {
 'use strict';
@@ -4408,7 +4408,7 @@ $('premiumKey').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefa
 // Coming back from Lemon Squeezy checkout with the key in the link (#pass=KEY): unlock it once, then drop it from the address bar.
 {const linked=CreaseProduct.takeKeyFromUrl();if(linked&&!CreaseProduct.isPremium()&&CreaseProduct.restoreReady())redeemKey(linked,true);}
 // Stripe: the license server asks Stripe about the purchase; the pass unlocks only when it says verified.
-const STRIPE_MESSAGES={format:'Enter the email you used at checkout and your card’s last 4 digits (or your receipt number).',invalid:'We couldn’t confirm that purchase. Restore it below with your checkout email and your card’s last 4 digits.',not_found:'We couldn’t find a purchase with that email and card digits (or receipt number). Check the email on your receipt.',unpaid:'That payment hasn’t gone through yet. If you were charged, contact us (see the Terms page).',wrong_product:'That purchase is for a different product.',limit:'This purchase is already on its maximum of 5 devices. Contact us (see the Terms page) and we’ll help.',revoked:'That purchase was refunded or disputed, so the pass isn’t active. If you think that’s a mistake, contact us (see the Terms page).',expired:'That purchase isn’t active any more. Contact us (see the Terms page).',unavailable:'Pass activation is temporarily unavailable. Please try again soon.',offline:'Couldn’t reach the pass server. Check your connection and try again.'};
+const STRIPE_MESSAGES={format:'Enter the email you used at checkout and your card’s last 4 digits (or your receipt number).',invalid:'We couldn’t confirm that purchase. Restore it below with your checkout email and your card’s last 4 digits.',not_found:'We couldn’t find a purchase with that email and card digits (or receipt number). Check the email on your receipt.',unpaid:'That payment hasn’t gone through yet. If you were charged, contact us (see the Terms page).',wrong_product:'That purchase is for a different product.',limit:'This purchase is already on its maximum of 5 devices. Contact us (see the Terms page) and we’ll help.',revoked:'That purchase was refunded or disputed, so the pass isn’t active. If you think that’s a mistake, contact us (see the Terms page).',expired:'That purchase isn’t active any more. Contact us (see the Terms page).',locked:'Too many tries for that email, so restore is paused for 24 hours to protect the purchase. Contact us (see the Terms page) if you need help sooner.',unavailable:'Pass activation is temporarily unavailable. Please try again soon.',offline:'Couldn’t reach the pass server. Check your connection and try again.'};
 let restoring=false;
 async function stripeUnlock(run,fromLink){
   if(restoring)return;

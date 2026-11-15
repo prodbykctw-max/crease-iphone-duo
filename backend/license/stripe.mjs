@@ -93,12 +93,36 @@ export function proofMatches(charge, proof) {
   return p.length >= 6 && p.length <= 32 && norm(charge.receipt_number) === p;
 }
 
+// ⚠️ GUESS LIMIT PER EMAIL. The proof can be just the card's last 4 digits: 10,000 possibilities. With only
+// the per-IP (10/min) and global (25/min) limits, someone who knew a buyer's email could walk all 10,000 in a few
+// hours and take one of that buyer's 5 device slots. Five wrong proofs for one email lock restore for that email
+// for 24 hours (a 0.05% chance per day of guessing last 4). The email itself is never stored, only a hash.
+// (Security audit 2026-11-15: one-time-code brute force.)
+export const RESTORE_FAIL_LIMIT = 5;
+export const RESTORE_FAIL_WINDOW_MS = 24 * 60 * 60 * 1000;
+async function restoreKey(email) {
+  const d = await crypto.subtle.digest('SHA-256', new TextEncoder().encode('crease-restore:' + email.toLowerCase()));
+  return [...new Uint8Array(d)].map(b => b.toString(16).padStart(2, '0')).join('');
+}
+async function restoreLocked(db, k, now) {
+  const row = await db.prepare('SELECT n, since FROM restore_fails WHERE k = ?1').bind(k).first();
+  return !!row && now - row.since < RESTORE_FAIL_WINDOW_MS && row.n >= RESTORE_FAIL_LIMIT;
+}
+async function restoreFailed(db, k, now) {
+  await db.prepare(`INSERT INTO restore_fails (k, n, since) VALUES (?1, 1, ?2)
+    ON CONFLICT(k) DO UPDATE SET n = CASE WHEN ?2 - since >= ?3 THEN 1 ELSE n + 1 END,
+                                 since = CASE WHEN ?2 - since >= ?3 THEN ?2 ELSE since END`)
+    .bind(k, now, RESTORE_FAIL_WINDOW_MS).run();
+}
+
 export async function restorePurchase(body, env, json, passId) {
   const email = typeof body?.email === 'string' ? body.email.trim() : '';
   const proof = typeof body?.proof === 'string' ? body.proof.trim() : '';
   const device = deviceOf(body);
   if (!EMAIL.test(email) || email.length > 254 || !/^[A-Za-z0-9 -]{4,40}$/.test(proof) || !device) return json({ verified: false, reason: 'invalid' });
   if (!stripeReady(env)) return json({ verified: false, reason: 'unavailable' }, 503);
+  const now = Date.now(), lockKey = await restoreKey(email);
+  if (await restoreLocked(env.DB, lockKey, now)) return json({ verified: false, reason: 'locked' });
   // Stripe matches the email as it was typed at checkout, so the typed form is tried first, then lower case.
   const tries = [...new Set([email, email.toLowerCase()])];
   for (const e of tries) {
@@ -114,5 +138,6 @@ export async function restorePurchase(body, env, json, passId) {
     return grant(full.data, device, env, json, passId);
   }
   // Same answer whether the email is unknown or the proof is wrong: the reply never confirms an email bought.
+  await restoreFailed(env.DB, lockKey, now);
   return json({ verified: false, reason: 'not_found' });
 }

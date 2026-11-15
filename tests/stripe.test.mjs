@@ -20,15 +20,22 @@ const BOUGHT = Date.parse('2026-12-05T10:00:00Z') / 1000;
 
 // A stand-in for D1 that keeps the two statements stripe.mjs runs (the real SQL is checked against SQLite below).
 function fakeDB() {
-  const rows = [];
-  return { rows, prepare: sql => ({ bind: (...a) => ({
+  const rows = [], fails = new Map();
+  return { rows, fails, prepare: sql => ({ bind: (...a) => ({
     async run() {
+      if (/^INSERT INTO restore_fails/.test(sql)) {
+        const [k, now, win] = a, f = fails.get(k);
+        fails.set(k, !f || now - f.since >= win ? { n: 1, since: now } : { n: f.n + 1, since: f.since });
+        return {};
+      }
       assert.match(sql, /^INSERT OR IGNORE INTO devices/);
       const [sale, device, at, limit] = a;
       if (!rows.some(r => r.sale === sale && r.device === device) && rows.filter(r => r.sale === sale).length < limit) rows.push({ sale, device, at });
       return {};
     },
-    async first() { assert.match(sql, /^SELECT 1/); return rows.some(r => r.sale === a[0] && r.device === a[1]) ? { ok: 1 } : null; },
+    async first() {
+      if (/^SELECT n, since FROM restore_fails/.test(sql)) return fails.get(a[0]) ?? null;
+      assert.match(sql, /^SELECT 1/); return rows.some(r => r.sale === a[0] && r.device === a[1]) ? { ok: 1 } : null; },
   }) }) };
 }
 const env = (extra = {}) => ({ ALLOWED_ORIGINS: ORIGIN, SALES_START, SIGNING_SECRET: SECRET, STRIPE_KEY: 'sk_test_unit_only', STRIPE_PRICE_ID: PRICE, DB: fakeDB(), ...extra });
@@ -279,4 +286,47 @@ test('page: the Premium Garage has a Stripe restore form and handles the ?cs= re
   for (const id of ['premiumRestoreStripe', 'premiumEmail', 'premiumProof', 'premiumRestoreBtn', 'premiumRestoreStatus']) assert.ok(html.includes('id="' + id + '"'), id);
   assert.match(html, /CreaseProduct\.takeSessionFromUrl\(\)/);
   assert.match(html, /CreaseProduct\.redeemSession\(session\)/);
+});
+
+// Security audit 2026-11-15: the card's last 4 digits are only 10,000 guesses, so wrong proofs are counted per email.
+test('stripe restore: 5 wrong proofs lock that email for 24 hours, even for the right proof; other emails are unaffected', async () => {
+  const list = u => ({ json: { object: 'list', data: u.searchParams.get('customer_details[email]') === 'Buyer@Example.com' ? [session({ line_items: undefined })] : [] } });
+  const e = env();
+  await withStripe({ list }, async () => {
+    for (const wrong of ['0000', '0001', '0002', '0003', '0004'])
+      assert.deepEqual(await (await restore({ email: 'Buyer@Example.com', proof: wrong }, e)).json(), { verified: false, reason: 'not_found' }, wrong);
+    // the right last 4 now gets "locked", in any letter case, and Stripe is not even asked
+    for (const em of ['Buyer@Example.com', 'BUYER@example.com'])
+      assert.deepEqual(await (await restore({ email: em, proof: '4242' }, e)).json(), { verified: false, reason: 'locked' }, em);
+    // an unrelated email still restores normally against the same database
+    assert.equal((await (await restore({ email: 'other@example.com', proof: '9999' }, e)).json()).reason, 'not_found');
+    // the email itself is never stored: only a 64-hex hash
+    for (const k of e.DB.fails.keys()) assert.match(k, /^[0-9a-f]{64}$/);
+  });
+  // after the 24-hour window the count starts again and the real proof works
+  const realNow = Date.now;
+  try {
+    Date.now = () => realNow() + 24 * 60 * 60 * 1000 + 1000;
+    await withStripe({ list }, async () => assert.equal((await (await restore({ email: 'Buyer@Example.com', proof: '4242' }, e)).json()).verified, true));
+  } finally { Date.now = realNow; }
+});
+
+test('stripe restore: the lock SQL runs against the real schema', async t => {
+  let sqlite;
+  try { sqlite = await import('node:sqlite'); } catch (_) { t.skip('node:sqlite not available on this Node'); return; }
+  const raw = new sqlite.DatabaseSync(':memory:');
+  raw.exec(read('backend/license/schema.sql'));
+  const db = { prepare: sql => { const st = raw.prepare(sql); return { bind: (...a) => ({ run: async () => st.run(...a), first: async () => st.get(...a) ?? null }) }; } };
+  const list = { json: { object: 'list', data: [] } };
+  const e = env({ DB: db });
+  await withStripe({ list }, async () => {
+    for (let i = 0; i < 5; i++) assert.equal((await (await restore({ email: 'x@example.com', proof: '1234' }, e)).json()).reason, 'not_found');
+    assert.equal((await (await restore({ email: 'x@example.com', proof: '1234' }, e)).json()).reason, 'locked');
+  });
+  assert.equal(raw.prepare('SELECT n FROM restore_fails').get().n, 5);
+});
+
+test('page and client know the "locked" reason', () => {
+  assert.match(read('index.html'), /STRIPE_MESSAGES=\{[^}]*locked:'/);
+  assert.match(read('assets/monetization.js'), /REASONS=\[[^\]]*'locked'/);
 });

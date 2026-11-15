@@ -20,3 +20,12 @@ CREATE TABLE IF NOT EXISTS founder_codes (
   claimed_at INTEGER,
   device     TEXT
 );
+
+-- Wrong restore proofs per email (stripe.mjs restorePurchase): 5 in 24 h locks restore for that email until the
+-- window ends, so the card's last 4 digits can't be guessed. k = SHA-256 hex of 'crease-restore:' + lower-case email
+-- (the email itself is never stored); n = wrong proofs in the window; since = window start, ms since epoch.
+CREATE TABLE IF NOT EXISTS restore_fails (
+  k     TEXT PRIMARY KEY,
+  n     INTEGER NOT NULL,
+  since INTEGER NOT NULL
+);

@@ -51,7 +51,7 @@
     return value;
   }catch{return ''}};
   // One call to the license Worker. A pass is unlocked only when the Worker answers verified:true for this product.
-  const REASONS=['invalid','wrong_product','limit','expired','revoked','unpaid','not_found','unavailable'];
+  const REASONS=['invalid','wrong_product','limit','expired','revoked','unpaid','not_found','locked','unavailable'];
   const ask=async(route,body)=>{
     const base=workerBase();if(!base||typeof root.fetch!=='function')return{ok:false,reason:'offline'};
     let timer=0;const ctl=typeof AbortController==='function'?new AbortController():null;

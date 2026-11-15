@@ -277,3 +277,15 @@ test('production config serves only the game\'s own origins',async()=>{
   assert.match(cfg.env.dev.vars.ALLOWED_ORIGINS,/localhost/);
   assert.equal(cfg.ratelimits[0].name,'MATCH_LIMIT');
 });
+
+// Security audit 2026-11-15: one address can't fill the lobby with idle ready rooms.
+test('one IP can hold at most two waiting rooms; other players are unaffected',async()=>{
+  const lobby=new Lobby({});
+  const r1=await match(lobby,'6.6.6.6');await lobby.fetch(req('/ready?code='+r1.code));
+  const r2=await match(lobby,'6.6.6.6');assert.equal(r2.create,true);assert.notEqual(r2.code,r1.code);
+  await lobby.fetch(req('/ready?code='+r2.code));
+  const r3=await lobby.fetch(req('/match','6.6.6.6'));assert.equal(r3.status,429,'third room from one IP refused');
+  assert.equal(lobby.waiting.filter(w=>w.ip==='6.6.6.6').length,2);
+  // a real player still gets paired normally
+  const p=await match(lobby,'8.8.8.8');assert.equal(p.create,false);assert.ok([r1.code,r2.code].includes(p.code));
+});
