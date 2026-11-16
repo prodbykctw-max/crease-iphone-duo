@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="referrer" content="strict-origin-when-cross-origin">
 <!-- Content-Security-Policy: installed by the next script, except on a local test server (localhost / 127.0.0.1) where the capture harness rewrites the game script. Update hashes with: node tools/csp-hash.mjs -->
-<meta name="crease-csp" content="default-src 'self'; script-src 'self' 'sha256-9kyMFOQq/HLwXlyiVTgCTQzmo6H4oBBvtdWEJb0rIFI=' 'sha256-R/hGPOdXU668bChfv5g5rsRCcL0C8ZckuJFLHLQQAq4='; connect-src 'self' https://crease-metrics.prodbykctw.workers.dev https://crease-license.prodbykctw.workers.dev; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta name="crease-csp" content="default-src 'self'; script-src 'self' 'sha256-9kyMFOQq/HLwXlyiVTgCTQzmo6H4oBBvtdWEJb0rIFI=' 'sha256-EEcyCQa+8NRpp7UOyKG/ZkPm+xmqI0ZUlDA4TAxTg0s='; connect-src 'self' https://crease-metrics.prodbykctw.workers.dev https://crease-license.prodbykctw.workers.dev; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <script>(function(){var h=location.hostname;if(h==='localhost'||h==='127.0.0.1')return;var p=document.querySelector('meta[name="crease-csp"]'),m=document.createElement('meta');m.httpEquiv='Content-Security-Policy';m.content=p.content;document.head.appendChild(m);})();</script>
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -730,7 +730,10 @@ function tiltField() { return view.land ? { u: tilt.y, v: -tilt.x } : { u: tilt.
 let matchTracked = false;
 const challenged = new URLSearchParams(location.search).get('challenge') === '1';
 $('challengeHint').classList.toggle('hidden', !challenged);
-const requestedSource = new URLSearchParams(location.search).get('src');
+// Short tags used in bio links (?src=ig) map to the full source names the metrics worker accepts.
+const SRC_ALIASES = { ig: 'instagram', insta: 'instagram', tt: 'tiktok', yt: 'youtube', fb: 'facebook', twitter: 'x' };
+const rawSource = (new URLSearchParams(location.search).get('src') || '').toLowerCase();
+const requestedSource = SRC_ALIASES[rawSource] || rawSource;
 // Social apps open links in their own in-app browser and rarely pass a referrer, so a visit with no
 // ?src= is attributed from the in-app browser's user agent, then the referrer host, before 'direct'.
 function inferredSource() {
