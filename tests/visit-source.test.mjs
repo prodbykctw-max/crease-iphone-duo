@@ -43,3 +43,14 @@ test('only sources the metrics worker accepts can be produced', () => {
     assert.ok(worker.includes(`'${s}'`), `${s} must be allowed by backend/worker.mjs`);
   }
 });
+
+test('short bio-link tags map to sources the worker accepts', () => {
+  const a = html.indexOf('const SRC_ALIASES');
+  const aliasSrc = html.slice(a, html.indexOf('\n', a));
+  const ctx = vm.createContext({});
+  vm.runInContext(aliasSrc.replace('const SRC_ALIASES', 'this.SRC_ALIASES'), ctx);
+  assert.equal(ctx.SRC_ALIASES.ig, 'instagram');
+  assert.equal(ctx.SRC_ALIASES.tt, 'tiktok');
+  const worker = fs.readFileSync(new URL('../backend/worker.mjs', import.meta.url), 'utf8');
+  for (const v of Object.values(ctx.SRC_ALIASES)) assert.ok(worker.includes(`'${v}'`), v);
+});
