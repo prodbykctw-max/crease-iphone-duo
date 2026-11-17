@@ -449,7 +449,7 @@ test('copy: terms and privacy name Stripe as merchant of record and processor, w
   assert.match(terms, /up to 5 devices/);
   assert.match(privacy, /Stripe<\/a> is the merchant of record and payment processor/);
   assert.match(privacy, /checks them against Stripe and does not store or log them/);
-  assert.match(privacy, /Effective November 6, 2026/); assert.match(terms, /Effective November 6, 2026/);
+  assert.match(privacy, /Effective November 17, 2026/); assert.match(terms, /Effective November 6, 2026/);
   for (const page of [terms, privacy]) assert.ok(!/lemon squeezy/i.test(page), 'no page names Lemon Squeezy as a seller');
   for (const page of [terms, privacy]) assert.ok(!/instagram direct messages/i.test(page), 'the old Instagram-DM sales wording is gone');
 });
