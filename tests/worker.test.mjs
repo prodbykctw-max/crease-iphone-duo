@@ -154,3 +154,17 @@ test('migration 0002 creates the daily_counts table the worker writes to', async
   const sql = readFileSync(new URL('../backend/migrations/0002_daily_cap.sql', import.meta.url), 'utf8');
   assert.match(sql, /CREATE TABLE IF NOT EXISTS daily_counts \(\s*day TEXT PRIMARY KEY,\s*n INTEGER NOT NULL\s*\)/);
 });
+test('visit events keep only the Cloudflare country code; other events and bad codes keep none', async () => {
+  const withCf = (body, cf) => { const r = req(body); Object.defineProperty(r, 'cf', { value: cf }); return r; };
+  const visit = { id: '12345678-1234-1234-1234-123456789abd', name: 'visit', props: { source: 'instagram', country: 'ZZ' } };
+  let s = setup(); assert.equal((await worker.fetch(withCf(visit, { country: 'IN', city: 'Udaipur', region: 'Rajasthan' }), s.env)).status, 204);
+  assert.deepEqual(JSON.parse(s.writes[0][2]), { source: 'instagram', country: 'IN' }, 'country comes from cf, never from the client; no city or region');
+  s = setup(); await worker.fetch(withCf(event, { country: 'TR' }), s.env);
+  assert.deepEqual(JSON.parse(s.writes[0][2]), { mode: 'duo' }, 'only visit events carry a country');
+  for (const bad of ['XX', 'T1', 'usa', '', undefined]) {
+    s = setup(); await worker.fetch(withCf(visit, { country: bad }), s.env);
+    assert.deepEqual(JSON.parse(s.writes[0][2]), { source: 'instagram' }, `country ${bad} is dropped`);
+  }
+  s = setup(); await worker.fetch(req(visit), s.env);
+  assert.deepEqual(JSON.parse(s.writes[0][2]), { source: 'instagram' }, 'no cf object (local/test) stores no country');
+});

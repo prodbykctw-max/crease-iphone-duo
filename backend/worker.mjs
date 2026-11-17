@@ -46,6 +46,11 @@ export default {
     if (!body || !EVENTS.has(body.name) || typeof body.id !== 'string' || !/^[a-f0-9-]{36}$/i.test(body.id)) return reply('Invalid event', 400);
     const props = {};
     for (const [key, values] of Object.entries(VALUES)) if (values.includes(body.props?.[key])) props[key] = body.props[key];
+    // Page-open events also keep the visitor's country: the two-letter code Cloudflare derives from the
+    // connection (request.cf.country), never sent by the client, never the IP, city or region. XX
+    // (unknown) and T1 (Tor) are dropped.
+    const country = request.cf?.country;
+    if (body.name === 'visit' && typeof country === 'string' && /^[A-Z]{2}$/.test(country) && country !== 'XX') props.country = country;
     // Global daily cap. Workers rate limits are counted per Cloudflare location, not worldwide, so a
     // distributed flood could still pass them. One counter row per UTC day is raised only while it is
     // below the cap, in a single statement, so concurrent requests can't overshoot it. Once the cap is
