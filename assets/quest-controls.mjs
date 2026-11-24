@@ -9,7 +9,10 @@ export function followHand(current,target,dt){
   return current;
 }
 
-export function createOpponent(){return {time:0,think:0,target:{x:.5,y:.22},mode:'guard'};}
+// Levels match the web game's buttons: easy = NORMAL, normal = HARD, hard = CTW.
+// NORMAL keeps the original VR CPU exactly (reaction 0.09 s, speed x1).
+export const LEVELS={easy:{think:.09,speed:1},normal:{think:.07,speed:1.2},hard:{think:.05,speed:1.4}};
+export function createOpponent(level='easy'){return {time:0,think:0,target:{x:.5,y:.22},mode:'guard',level:LEVELS[level]?level:'easy'};}
 function reflectedX(x){const width=.95;let n=((x-.025)%(2*width)+2*width)%(2*width);return .025+(n>width?2*width-n:n);}
 
 // Finite reaction time and a bounded movement speed keep the CPU beatable.
@@ -17,7 +20,7 @@ export function opponentMove(s,brain,dt){
   brain.time+=dt;brain.think-=dt;
   const p=s.paddles[1],b=s.puck,human=s.paddles[0];
   if(brain.think<=0){
-    brain.think=.09;
+    brain.think=(LEVELS[brain.level]||LEVELS.easy).think;
     let x=.5,y=.22;brain.mode='guard';
     if(s.countdown<=0&&b.y<.88){
       const incoming=b.vy<-.08;
@@ -43,7 +46,7 @@ export function opponentMove(s,brain,dt){
     brain.target={x:clamp(x,.07,.93),y:clamp(y,.07,.81)};
   }
   const dx=brain.target.x-p.x,dy=brain.target.y-p.y,d=Math.hypot(dx,dy);
-  const speed=brain.mode==='strike'?1.25:brain.mode==='intercept'?.95:.75;
+  const speed=(brain.mode==='strike'?1.25:brain.mode==='intercept'?.95:.75)*(LEVELS[brain.level]||LEVELS.easy).speed;
   const k=Math.min(1,speed*dt/(d||1));
   return {x:p.x+dx*k,y:p.y+dy*k};
 }
