@@ -60,7 +60,9 @@ export const MENU_W=1024, MENU_H=830;
 export function menuButtons(view){
   const b=[],row=(y,items,x0=56,gap=16,h=84)=>{let x=x0;for(const it of items){b.push({...it,x,y,w:it.w,h});x+=it.w+gap;}};
   const primary=view.over?'REMATCH':view.started?'RESUME':'PLAY';
-  row(120,[{id:'primary',label:primary,w:440,accent:true},...(view.started&&!view.over?[{id:'restart',label:'RESTART',w:300}]:[]),]);
+  const d=view.daily; // the right end of this row (x > 800) is left free for a future ONLINE button.
+  // {no,done} from the engine; absent in the simple fallback game
+  row(120,[{id:'primary',label:primary,w:view.started&&!view.over?300:440,accent:true},...(view.started&&!view.over?[{id:'restart',label:'RESTART',w:170}]:[]),...(d?[{id:'daily',label:d.done?'DAILY DONE':'DAILY #'+d.no,w:220,locked:!!d.done,active:false}]:[])]);
   row(236,DIFFICULTIES.map(d=>({id:'diff:'+d.key,label:d.label,w:200,active:view.difficulty===d.key})),330,16,76);
   const arenas=view.arenas||[];
   arenas.slice(0,ARENA_COUNT).forEach((a,i)=>{

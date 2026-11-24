@@ -167,15 +167,15 @@ test('the keypad: 32 big keys, one per code character, and JOIN only lights with
   assert.deepEqual(onlinePage(m).slots.join(''),'ABCDEFGHJK');
   m.entry='AB';assert.equal(onlinePage(m).slots.length,10);
 });
-test('the ONLINE entry sits in the menu header without moving or covering any existing button',()=>{
+test('the ONLINE entry sits at the end of the PLAY row without moving or covering any existing button',()=>{
   const arenas=Array.from({length:10},(_,i)=>({index:i,name:'ARENA '+i,unlocked:i<3}));
-  for(const view of [{},{started:true,inVR:true},{started:true,over:true,inVR:true},{started:true,inVR:true,daily:{no:3,done:false}}]){
+  for(const view of [{},{started:true,inVR:true},{started:true,over:true,inVR:true},{started:true,inVR:true,daily:{no:3,done:false}},{daily:{no:3,done:true}},{started:true,over:true,inVR:true,daily:{no:4,done:false}}]){
     const b=menuButtons({difficulty:'easy',hand:'right',sound:true,haptics:true,height:'auto',arenas,arena:0,...view});
     for(const x of b){const o=ONLINE_BUTTON;assert.ok(o.x+o.w<=x.x||x.x+x.w<=o.x||o.y+o.h<=x.y||x.y+x.h<=o.y,'ONLINE overlaps '+x.id);}
     const all=[...b,ONLINE_BUTTON];assert.equal(hitButton(all,ONLINE_BUTTON.x+10,ONLINE_BUTTON.y+10).id,'online');
     for(const x of b)assert.equal(hitButton(all,x.x+x.w/2,x.y+x.h/2).id,x.id);
   }
-  assert.ok(ONLINE_BUTTON.y>=10&&ONLINE_BUTTON.y+ONLINE_BUTTON.h<=110&&ONLINE_BUTTON.x>=380&&ONLINE_BUTTON.x+ONLINE_BUTTON.w<=700,'clear of the title and the status text');
+  assert.ok(ONLINE_BUTTON.y===120&&ONLINE_BUTTON.x>=800&&ONLINE_BUTTON.x+ONLINE_BUTTON.w<=1010,'on the PLAY row, in the space menuButtons leaves free');
 });
 test('scoreboard lines for every state, and the Quest-menu notice',()=>{
   for(const [m] of phases()){const b=onlineBoard(m);assert.ok(b.label&&b.sub,JSON.stringify(m.phase));}

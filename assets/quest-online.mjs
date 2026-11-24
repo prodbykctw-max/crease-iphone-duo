@@ -260,9 +260,9 @@ export function drawOnlineBoard(c,v,logo){
   c.restore();c.fillStyle='#fff';c.font=v.label.length>34?'bold 24px sans-serif':'bold 30px sans-serif';c.fillText(v.label,512,174);
   c.fillStyle='#ff3195';c.font='18px sans-serif';c.fillText(v.sub,512,220);
 }
-// The ONLINE entry on the options menu: in the header, beside the title, so no
-// existing row moves.
-export const ONLINE_BUTTON=Object.freeze({id:'online',label:'ONLINE',x:420,y:24,w:240,h:72,active:true});
+// The ONLINE entry on the options menu: the right end of the PLAY row (x > 800),
+// which menuButtons leaves free, so no existing button moves.
+export const ONLINE_BUTTON=Object.freeze({id:'online',label:'ONLINE',x:800,y:120,w:168,h:84,active:true});
 
 // ---- The hidden client frame (browser only) -------------------------------------
 export function mountOnlineFrame(doc,src='online.html?vrhost=1'){
