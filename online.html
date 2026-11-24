@@ -1,4 +1,4 @@
-<!doctype html><html lang="en"><meta charset="utf-8"><link rel="icon" href="favicon.ico?v=logo-a" sizes="32x32"><link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=logo-a"><link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png?v=logo-a"><meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-rTFMDvNI0+/ZTGCzSuhpAodcFDo/yKJABAUKmJzfYPg='; connect-src 'self' https://crease-online.prodbykctw.workers.dev wss://crease-online.prodbykctw.workers.dev; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'none'; form-action 'none'"><meta name="referrer" content="strict-origin-when-cross-origin"><meta name="viewport" content="width=device-width,initial-scale=1"><title>CREASE · Play Air Hockey Online, Free</title>
+<!doctype html><html lang="en"><meta charset="utf-8"><link rel="icon" href="favicon.ico?v=logo-a" sizes="32x32"><link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=logo-a"><link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png?v=logo-a"><meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-WhFseu3mNnxvjIvpb0Ul6sLWYbQ3wSuQMfEbF6aMFYQ='; connect-src 'self' https://crease-online.prodbykctw.workers.dev wss://crease-online.prodbykctw.workers.dev; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'none'; form-action 'none'"><meta name="referrer" content="strict-origin-when-cross-origin"><meta name="viewport" content="width=device-width,initial-scale=1"><title>CREASE · Play Air Hockey Online, Free</title>
 <meta name="description" content="Play CREASE online free — neon air hockey against another person in your browser. Tap QUICK MATCH to be paired with whoever is looking for a game, or share a room code to play a friend. No download, no account.">
 <link rel="canonical" href="https://playcrease.app/online.html">
 <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large">
@@ -32,7 +32,7 @@ button:focus-visible,a:focus-visible{outline:2px solid #2de2e6;outline-offset:4p
   <button id="quick">QUICK MATCH</button>
   <small>Pairs you with anyone else looking for a game.</small>
   <p class="or">OR PLAY A FRIEND</p>
-  <div class="row"><input id="code" aria-label="Room code" placeholder="ROOM CODE" maxlength="10"><button id="join">JOIN</button></div>
+  <div class="row"><input id="code" aria-label="Room code" placeholder="ROOM CODE" maxlength="10" autocomplete="off" autocapitalize="characters" spellcheck="false" enterkeyhint="go"><button id="join">JOIN</button></div>
   <button id="create">CREATE A ROOM</button>
 </section>
 <p id="status" role="status">Connecting…</p>
@@ -72,7 +72,7 @@ function connect(code,create){
   url.protocol=url.protocol==='https:'?'wss:':'ws:';
   if(create)url.searchParams.set('create','1');
   state=null;ws=new WebSocket(url);
-  setLobby(false);$('cancel').hidden=false;
+  setLobby(false);$('cancel').hidden=false;$('cancel').focus();
   ws.onmessage=e=>{
     let m;try{m=JSON.parse(e.data);}catch{return;}
     if(m.type==='joined'){
@@ -130,7 +130,8 @@ $('join').onclick=()=>{
   connect(code,false);
 };
 $('cancel').onclick=()=>{searching=false;tries=99;if(ws){try{ws.close();}catch{}}
-  $('cancel').hidden=true;setLobby(true);$('status').textContent='Stopped looking.';};
+  $('cancel').hidden=true;setLobby(true);$('quick').focus();$('status').textContent='Stopped looking.';};
+$('code').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();$('join').click();}});
 $('leave').onclick=()=>{searching=false;if(ws){try{ws.close();}catch{}}};
 $('copy').onclick=async()=>{
   const url=new URL(location.href);url.searchParams.set('room',room);

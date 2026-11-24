@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="referrer" content="strict-origin-when-cross-origin">
 <!-- Content-Security-Policy: installed by the next script, except on a local test server (localhost / 127.0.0.1) where the capture harness rewrites the game script. Update hashes with: node tools/csp-hash.mjs -->
-<meta name="crease-csp" content="default-src 'self'; script-src 'self' 'sha256-9kyMFOQq/HLwXlyiVTgCTQzmo6H4oBBvtdWEJb0rIFI=' 'sha256-EEcyCQa+8NRpp7UOyKG/ZkPm+xmqI0ZUlDA4TAxTg0s='; connect-src 'self' https://crease-metrics.prodbykctw.workers.dev https://crease-license.prodbykctw.workers.dev; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta name="crease-csp" content="default-src 'self'; script-src 'self' 'sha256-9kyMFOQq/HLwXlyiVTgCTQzmo6H4oBBvtdWEJb0rIFI=' 'sha256-/xQ6FC6jJz/carcHIPpflyNCQgPxa69DDVz3oKPLnRE='; connect-src 'self' https://crease-metrics.prodbykctw.workers.dev https://crease-license.prodbykctw.workers.dev; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <script>(function(){var h=location.hostname;if(h==='localhost'||h==='127.0.0.1')return;var p=document.querySelector('meta[name="crease-csp"]'),m=document.createElement('meta');m.httpEquiv='Content-Security-Policy';m.content=p.content;document.head.appendChild(m);})();</script>
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -113,7 +113,7 @@ h2{margin:0 0 6px;font-size:clamp(30px,8vmin,48px);font-weight:900;font-style:it
 #boot.out{animation:bootout .35s steps(6) forwards}
 @keyframes bootout{0%{opacity:1;transform:none}30%{transform:translateX(-6px) skewX(4deg);filter:hue-rotate(90deg)}
   60%{transform:translateX(5px) scaleY(.6);opacity:.8}100%{transform:scaleY(.01);opacity:0}}
-@media (prefers-reduced-motion:reduce){.mark,.mark::before,.mark::after,#boot::after{animation:none}}
+@media (prefers-reduced-motion:reduce){.mark,.mark::before,.mark::after,#boot::after{animation:none}.bootbtn{animation:none}#boot.out{animation:none;opacity:0}.fadein{animation:none}}
 
 /* ---- studio splash: prodbyKCTW logo video on a plain black screen ---- */
 #studio{background:#000;cursor:pointer;overflow:hidden}
@@ -330,7 +330,7 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--p1);outline-offset:
 <canvas id="cv" aria-label="CREASE game table"></canvas>
 <div id="safe"></div>
 
-<div id="boot" class="overlay hidden" role="button" aria-label="Tap to boot">
+<div id="boot" class="overlay hidden" role="dialog" aria-modal="true" aria-label="Start CREASE">
   <div class="bootbox">
     <canvas id="bootMark" class="markc" role="img" aria-label="CREASE"></canvas>
     <div class="bar"><i></i></div>
@@ -350,7 +350,7 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--p1);outline-offset:
     <h1 class="logo"><img src="assets/crease-wordmark.svg?v=logo-a" alt="CREASE" width="824" height="164"></h1>
     <p class="tag">One screen. Two players. First to 7.</p>
     <p id="challengeHint" class="share-status hidden">Challenge accepted? Choose your match below.</p>
-    <p id="screenHint" class="hint"></p>
+    <p id="screenHint" class="hint" role="status"></p>
     <div class="btns">
       <button id="bSolo" class="btn p1"><span>SOLO vs CPU</span><small id="soloSub">one thumb</small></button>
       <button id="bDuo" class="btn p2"><span>2 PLAYERS</span><small id="duoSub">one per half</small></button>
@@ -362,7 +362,7 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--p1);outline-offset:
       <button id="stageNext" class="arrow" aria-label="Next stage">›</button>
     </div>
     <div class="seg" id="diff" role="group" aria-label="CPU difficulty">
-      <button data-d="easy" class="on">Normal</button><button data-d="normal">Hard</button><button data-d="hard" title="Change The World">CTW</button>
+      <button data-d="easy" class="on" aria-pressed="true">Normal</button><button data-d="normal" aria-pressed="false">Hard</button><button data-d="hard" title="Change The World" aria-pressed="false">CTW</button>
     </div>
     <nav class="row" aria-label="Game menu">
       <button id="bGarageHub" class="link">Garage</button>
@@ -386,7 +386,7 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--p1);outline-offset:
       <button id="bIntro" class="link">Intro</button>
       <button id="bSound" class="link">Sound: On</button>
       <button id="bClearData" class="link">Clear my data</button>
-    </div><details class="about-crease"><summary>About</summary><p>CREASE · Fold Engine v1</p><p id="buildTag"></p></details>
+    </div><details class="about-crease"><summary>About</summary><p>CREASE · Fold Engine v1</p><p id="buildTag" hidden></p></details>
     <div class="legal"><p><a href="privacy/">Privacy</a> · <a href="terms/">Terms</a> · <a href="mailto:prodbykctw@gmail.com">Contact</a></p><p>Not affiliated with Apple Inc. iPhone is a trademark of Apple Inc.</p></div>
     <button class="link" data-close-hub="settingsHub">Back</button></dialog>
   <p id="menuShareStatus" class="share-status" role="status"></p>
@@ -479,7 +479,7 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--p1);outline-offset:
 <div id="premiumRestore" class="premium-restore hidden"><h3>Already bought it? Restore your pass</h3><p class="hint">Enter the license key from your Lemon Squeezy receipt email. It works on up to 5 of your devices.</p><label class="field">License key<input id="premiumKey" maxlength="100" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Paste your license key"></label><button id="premiumRedeem" class="btn plain" type="button">ENTER LICENSE KEY</button><p id="premiumKeyStatus" class="hint" role="status" aria-live="polite"></p></div><div id="premiumRestoreStripe" class="premium-restore hidden"><h3>Already bought it? Restore your pass</h3><p class="hint">Enter the email you used at checkout, plus the last 4 digits of the card you paid with (or the receipt number from your receipt email). It works on up to 5 of your devices.</p><label class="field">Email<input id="premiumEmail" type="email" maxlength="254" autocomplete="email" autocapitalize="off" spellcheck="false" placeholder="you@example.com"></label><label class="field">Card’s last 4 digits (or receipt number)<input id="premiumProof" maxlength="40" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="e.g. 4242"></label><button id="premiumRestoreBtn" class="btn plain" type="button">RESTORE PASS</button><p id="premiumRestoreStatus" class="hint" role="status" aria-live="polite"></p></div></dialog>
 <dialog id="clearData" class="product-dialog" aria-labelledby="clearDataTitle"><div class="arena-heading"><h2 id="clearDataTitle">CLEAR MY DATA</h2><button id="bClearDataClose" class="link">Cancel</button></div><p class="hint">This deletes everything CREASE has saved in this browser: progress, achievements, arena unlocks, records, your display name, daily results, Design Studio designs and pictures, your stage and paddle choice, play counts, and a Premium Pass activated on this device. It can’t be undone.</p><button id="bClearDataConfirm" class="btn p2">DELETE MY DATA</button></dialog>
 
-<div id="how" class="overlay hidden">
+<div id="how" class="overlay hidden" role="dialog" aria-modal="true" aria-label="How to play">
   <div class="card">
     <h2>HOW TO PLAY</h2>
     <ul class="how">
@@ -504,7 +504,7 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--p1);outline-offset:
   </div>
 </div>
 
-<div id="pauseM" class="overlay hidden">
+<div id="pauseM" class="overlay hidden" role="dialog" aria-modal="true" aria-label="Paused">
   <div class="card">
     <h2>PAUSED</h2>
     <p id="pauseScore" class="hint"></p>
@@ -516,7 +516,7 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--p1);outline-offset:
   </div>
 </div>
 
-<div id="over" class="overlay hidden">
+<div id="over" class="overlay hidden" role="dialog" aria-modal="true" aria-labelledby="overTitle">
   <div class="card marquee" id="overCard">
     <h2 id="overTitle" class="sr-only">YOU WIN</h2>
     <div class="mq-head" aria-hidden="true">
@@ -3737,7 +3737,8 @@ window.addEventListener('pointerdown', e => { skipIntro(e); }, true);
 // cyan/pink glitch slices, white glow). iPhone Safari won't run the CSS version (text-clip + clip-path
 // on pseudo-elements), so the same math is drawn here and looks identical on every browser.
 const BUILD = '2026.09.21-a';
-$('buildTag').textContent = 'build ' + BUILD;
+// Developer text: shown only on a local server or with ?qa=1, never to players.
+if (/^(localhost|127\.0\.0\.1)$/.test(location.hostname) || new URLSearchParams(location.search).get('qa') === '1') { $('buildTag').textContent = 'build ' + BUILD; $('buildTag').hidden = false; }
 const HOLO_STOPS = [[0, '#ffd23f'], [0.18, '#ffffff'], [0.34, '#2de2e6'], [0.50, '#b026ff'], [0.66, '#ff2a8a'], [0.80, '#ffffff'], [1, '#ffd23f']];
 // CSS: gl1 2.6s steps(1): 88% A, 91% B, 94% C → hidden at 100%;  gl2 3.1s steps(1): 80% A, 83% B → hidden at 100%
 const GL1 = [[0.88, 0.18, 0.58, -5], [0.91, 0.62, 0.12, 4], [0.94, 0.40, 0.44, -2]];
@@ -4998,7 +4999,7 @@ function closeArenaGallery() {
 $('bArenas').onclick = () => {
   if (!$('arenaGrid').children.length) window.CreaseArenas.worlds.forEach((world,i)=>{
     const tile=document.createElement('button');tile.className='arena-tile';tile.dataset.i=i;
-    tile.setAttribute('aria-label',STAGES[i].name);tile.setAttribute('aria-pressed','false');
+    tile.setAttribute('aria-pressed','false');
     const img=document.createElement('img');img.src=`assets/arenas/${world.id}-thumb.webp`;img.alt='';img.loading='lazy';
     const name=document.createElement('strong');name.textContent=STAGES[i].name;
     const lock=document.createElement('small');lock.dataset.lock=i;
@@ -5338,7 +5339,7 @@ const nyDay = (d = new Date()) => new Intl.DateTimeFormat('en-CA', { timeZone: '
 const dailyNo = (day = nyDay()) => Math.round((Date.parse(day + 'T12:00:00Z') - Date.parse(DAILY_EPOCH + 'T12:00:00Z')) / 864e5) + 1;
 function dailyState() { try { const v = JSON.parse(storage.get(DAILY_KEY) || '{}'); return v && typeof v === 'object' && !Array.isArray(v) ? v : {}; } catch (_) { return {}; } }
 let dailyPrevDiff = null;
-function setDiff(d) { game.diff = d; for (const o of $('diff').querySelectorAll('button')) o.classList.toggle('on', o.dataset.d === d); }
+function setDiff(d) { game.diff = d; for (const o of $('diff').querySelectorAll('button')) { o.classList.toggle('on', o.dataset.d === d); o.setAttribute('aria-pressed', String(o.dataset.d === d)); } }
 function restoreDailyDiff() { if (dailyPrevDiff) { setDiff(dailyPrevDiff); dailyPrevDiff = null; } }
 function refreshDaily() {
   const st = dailyState(), today = nyDay(), done = st.last && st.last.day === today;
@@ -5420,7 +5421,7 @@ $('bMenu').onclick = toMenu;
 for (const b of $('diff').querySelectorAll('button')) {
   b.onclick = () => {
     game.diff = b.dataset.d;
-    for (const o of $('diff').querySelectorAll('button')) o.classList.toggle('on', o === b);
+    for (const o of $('diff').querySelectorAll('button')) { o.classList.toggle('on', o === b); o.setAttribute('aria-pressed', String(o === b)); }
   };
 }
 // Multi-window: the game stays visible but loses focus when the player taps another app.
