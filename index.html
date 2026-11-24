@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="referrer" content="strict-origin-when-cross-origin">
 <!-- Content-Security-Policy: installed by the next script, except on a local test server (localhost / 127.0.0.1) where the capture harness rewrites the game script. Update hashes with: node tools/csp-hash.mjs -->
-<meta name="crease-csp" content="default-src 'self'; script-src 'self' 'sha256-9kyMFOQq/HLwXlyiVTgCTQzmo6H4oBBvtdWEJb0rIFI=' 'sha256-/xQ6FC6jJz/carcHIPpflyNCQgPxa69DDVz3oKPLnRE='; connect-src 'self' https://crease-metrics.prodbykctw.workers.dev https://crease-license.prodbykctw.workers.dev; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta name="crease-csp" content="default-src 'self'; script-src 'self' 'sha256-9kyMFOQq/HLwXlyiVTgCTQzmo6H4oBBvtdWEJb0rIFI=' 'sha256-ETrQj2IIsvwNwiDBVlTkwfnycUAYzLtQFEtaA41ms14='; connect-src 'self' https://crease-metrics.prodbykctw.workers.dev https://crease-license.prodbykctw.workers.dev; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <script>(function(){var h=location.hostname;if(h==='localhost'||h==='127.0.0.1')return;var p=document.querySelector('meta[name="crease-csp"]'),m=document.createElement('meta');m.httpEquiv='Content-Security-Policy';m.content=p.content;document.head.appendChild(m);})();</script>
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -568,6 +568,10 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--p1);outline-offset:
 const cv = document.getElementById('cv');
 const ctx = cv.getContext('2d', { alpha: false });
 const $ = id => document.getElementById(id);
+// VR host mode (?vrhost=1 inside a same-origin parent page, i.e. the VR page): this page runs only the game engine,
+// with no boot/intro/menu, no render loop and no 2D drawing; the parent steps it and draws it in 3D.
+// Everything marked HOST below is inert on the normal game.
+const HOST = (() => { try { return /[?&]vrhost=1(&|$)/.test(location.search) && window.parent !== window && !!window.parent.document; } catch (_) { return false; } })();
 
 // ---------- Glide: nothing just appears ----------
 // Dialogs and overlays grow out of the button that opened them and shrink back into it. Motion only:
@@ -922,11 +926,11 @@ const hexA = (hex, a) => { const n = parseInt(hex.slice(1), 16); return `rgba(${
 function setStage(i, rebuild = true) {
   stageIx = ((i % STAGES.length) + STAGES.length) % STAGES.length;
   COL.p1 = ST().p1; COL.p2 = ST().p2;
-  try { localStorage.setItem('crease.stage', String(stageIx)); } catch (_) {}
+  if (!HOST) try { localStorage.setItem('crease.stage', String(stageIx)); } catch (_) {}   // HOST: the VR arena choice is its own
   const lab = $('stageName'); if (lab) lab.textContent = (stageIx + 1) + '. ' + ST().name;
   const dots = $('stageDots'); if (dots) for (const d of dots.children) d.classList.toggle('on', +d.dataset.i === stageIx);
   if (dots) for (const d of dots.children) d.setAttribute('aria-pressed', String(+d.dataset.i === stageIx));
-  if (window.CreaseArenas) window.CreaseArenas.select(stageIx);
+  if (window.CreaseArenas && !HOST) window.CreaseArenas.select(stageIx);
   updateArenaSelection();
   refreshStageLock();
   document.documentElement.style.setProperty('--p1', ST().p1);
@@ -1153,7 +1157,7 @@ function sndGate(key, now, gap = SND_GAP) {
 }
 function unlockAudio() {
   touched = true;
-  if (!ac) { try { ac = new (window.AudioContext || window.webkitAudioContext)(); } catch (_) { ac = null; } }
+  if (!ac && !HOST) { try { ac = new (window.AudioContext || window.webkitAudioContext)(); } catch (_) { ac = null; } }
   if (ac && ac.state === 'suspended') ac.resume();
 }
 function tone(f, d = 0.08, type = 'sine', vol = 0.12, slide = 0) {
@@ -2524,6 +2528,7 @@ function paintTable(c, bright) {
 }
 
 function buildBg() {
+  if (HOST) return;   // no 2D scenery in VR host mode
   const { L, s } = view;
   const W = cv.width, Hh = cv.height;
   bg.width = W; bg.height = Hh; glow.width = W; glow.height = Hh; crt.width = W; crt.height = Hh;
@@ -2663,7 +2668,7 @@ const COACH_COPY = {
 function coachCopy(mode, fine) { return !fine ? COACH_COPY.touch : mode === 'duo' ? COACH_COPY.mouseHold : COACH_COPY.mouse; }
 const coach = { on: false, shown: false, t: 0, sides: [], lines: [], from: [], moved: [] };
 function coachBegin() {
-  if (coach.on || coach.shown || (game.mode !== 'solo' && game.mode !== 'duo')) return;
+  if (HOST || coach.on || coach.shown || (game.mode !== 'solo' && game.mode !== 'duo')) return;
   if (storage.get(COACH_KEY)) return;                // already shown on this device
   coach.shown = true; storage.set(COACH_KEY, '1');   // (if storage is blocked, the page-load flag still stops repeats)
   coach.on = true; coach.t = 0;
@@ -5282,6 +5287,7 @@ for(const b of document.querySelectorAll('#over [data-why]'))b.addEventListener(
 });
 function showOver() {
   if (!matchTracked) { track('match_complete', { mode: game.mode, difficulty: game.diff, winner: game.winner }); matchTracked = true; }
+  if (HOST) return;   // VR shows its own result; no share card or DOM
   resetFeedback();
   $('resultShareStatus').textContent = ''; $('resultShareUrl').classList.add('hidden');
   // Snapshot now — a rematch or a trip to the menu resets the score. Encoding the
@@ -5426,6 +5432,7 @@ for (const b of $('diff').querySelectorAll('button')) {
 }
 // Multi-window: the game stays visible but loses focus when the player taps another app.
 // Pause so nobody is scored on while they are away; audio sleeps until the window is back.
+if (!HOST) {   // in VR host mode the parent page has the focus and pauses the engine itself
 window.addEventListener('blur', () => {
   if (game.state === 'play' || game.state === 'countdown' || game.state === 'goal' || game.state === 'fold') { pause(); if (ac) ac.suspend(); }
 });
@@ -5435,6 +5442,7 @@ document.addEventListener('visibilitychange', () => {
   if (document.hidden) { pause(); if (ac) ac.suspend(); }
   else if (ac && booted) ac.resume();
 });
+} else document.addEventListener('visibilitychange', () => progress.save());
 cv.addEventListener('pointerdown', () => { if (game.state === 'intro') { unlockAudio(); skipIntro(); } });
 window.addEventListener('keydown', e => { if (e.repeat) return; if (game.state === 'boot' && !booting) { boot(e); return; } if (skipIntro(e)) return; if (e.key === 'Escape' || e.key === 'p') { game.state === 'paused' ? $('bResume').click() : pause(); } });
 
@@ -5457,8 +5465,38 @@ setStage(stageIx, false);
 layout();
 newMatch('demo');
 // The intro plays on every open. Only a test flag or an incoming challenge link skips it.
+if (HOST) { /* no intro, menu or own frame loop: the VR page steps and draws the engine */ }
+else {
 if (/[?&]nointro\b/.test(location.search) || challenged) show('menu', true); else showBoot();
 requestAnimationFrame(t => { last = t; requestAnimationFrame(frame); });
+}
+
+// ---------- VR host bridge ----------
+// What the VR page needs from the engine, nothing more. The parent creates the AudioContext inside its own click
+// (so sound is allowed) and hands it over; the engine keeps its own music and effects.
+if (HOST) window.__creaseHost = {
+  version: 1,
+  game, view, STAGES, CFG, COL, ENV_POWERS, DIFF, music,
+  bumperActive, stageColors: i => STAGES[i],
+  setAudio(ctx) {   // use the parent's AudioContext; rebuild the mix buses on it
+    if (ctx === ac) return;
+    ac = ctx; touched = true; master = sfxBus = musicBus = null; noiseBuf = null; music.on = false;
+  },
+  setMuted(m) { muted = !!m; },
+  get muted() { return muted; },
+  // The arenas this player may play, in engine order (progress.canPlay is the phone game's own rule).
+  arenas() { return STAGES.map((st, i) => ({ index: i, id: window.CreaseArenas ? window.CreaseArenas.worlds[i].id : String(i), name: st.name, unlocked: !!progress.canPlay(i), requirement: progress.requirement(i) || '', colors: st })); },
+  get stage() { return stageIx; },
+  setStage(i) { if (!(i >= 0 && i < STAGES.length) || !progress.canPlay(i)) return false; setStage(i, false); return true; },
+  setDifficulty(d) { if (DIFF[d]) setDiff(d); },
+  startSolo() { if (!progress.canPlay(stageIx)) return false; start('solo', 'vr'); return game.mode === 'solo'; },
+  step(dt) { update(Math.min(0.05, dt), dt); },
+  // Steer the human paddle (player 1, bottom half) toward a point in field coordinates.
+  setTarget(u, v) { if (!inputLive()) return; const pd = game.paddles[0]; if (pd && pd.ctrl === 'human') { pd.dragAnchor = null; pd.tu = u; pd.tv = v; } },
+  pause() { if (game.mode === 'demo' || game.state === 'paused' || game.state === 'over') return; const st = game.state; game.resume = st === 'play' ? 'countdown' : st; if (st === 'play') game.timer = 0.6; game.state = 'paused'; },
+  resume() { if (game.state === 'paused') game.state = game.resume; },
+  envPower: () => envPower(),
+};
 
 // Test hooks for automated checks: only on a local server (localhost / 127.0.0.1) or with ?qa=1.
 if (/^(localhost|127\.0\.0\.1)$/.test(location.hostname) || new URLSearchParams(location.search).get('qa') === '1') window.__crease = {
