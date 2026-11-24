@@ -63,3 +63,15 @@ test('NORMAL keeps the original VR CPU; HARD and CTW react faster and move faste
     const p=opponentMove(s,ai,1/60),old=s.paddles[1];assert.ok(p.x>=.07&&p.x<=.93&&p.y>=.07&&p.y<=.81);
     assert.ok(Math.hypot(p.x-old.x,p.y-old.y)<=1.25*1.4/60+1e-10);move(s,1,p.x,p.y);}
 });
+import {updatePinch,SLOP} from '../assets/quest-options.mjs';
+test('a press just outside a button still lands on the nearest one; far misses do not',()=>{
+  const b=menuButtons({difficulty:'easy',hand:'right'}),p=b.find(x=>x.id==='primary');
+  assert.equal(hitButton(b,p.x-SLOP+2,p.y+10).id,'primary');
+  assert.equal(hitButton(b,p.x+p.w/2,p.y-SLOP-5),null);
+});
+test('one pinch is one click: hysteresis stops flicker near the threshold',()=>{
+  const p={down:false},seq=[.05,.03,.019,.022,.018,.03,.035,.041,.03,.015];
+  const ev=seq.map(d=>updatePinch(p,d)).filter(Boolean);
+  assert.deepEqual(ev,['start','end','start']);
+  assert.equal(updatePinch(p,NaN),null);
+});

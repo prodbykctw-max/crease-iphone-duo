@@ -65,7 +65,24 @@ export function menuButtons(view){
   if(view.inVR)row(660,[{id:'exit',label:'EXIT VR',w:300}],668);
   return b;
 }
-export function hitButton(buttons,x,y){return buttons.find(b=>x>=b.x&&x<=b.x+b.w&&y>=b.y&&y<=b.y+b.h)||null;}
+// Hit slop: a press that lands just outside a button (within SLOP canvas px,
+// about 1.4 cm on the panel) still counts, picking the nearest button.
+export const SLOP=20;
+export function hitButton(buttons,x,y,slop=SLOP){
+  let best=null,bestD=Infinity;
+  for(const b of buttons){const dx=Math.max(b.x-x,0,x-(b.x+b.w)),dy=Math.max(b.y-y,0,y-(b.y+b.h)),d=Math.hypot(dx,dy);if(d===0)return b;if(d<=slop&&d<bestD){best=b;bestD=d;}}
+  return best;
+}
+
+// Our own pinch detector for tracked hands (thumb tip to index tip), with
+// hysteresis: closes under 2 cm, opens over 4 cm, so one pinch is one click.
+export const PINCH_CLOSE=.02, PINCH_OPEN=.04;
+export function updatePinch(pinch,distance){
+  if(!Number.isFinite(distance))return null;
+  if(!pinch.down&&distance<PINCH_CLOSE){pinch.down=true;return 'start';}
+  if(pinch.down&&distance>PINCH_OPEN){pinch.down=false;return 'end';}
+  return null;
+}
 
 // Applies a menu button to the options; returns the action the scene must run.
 export function applyButton(options,id){
