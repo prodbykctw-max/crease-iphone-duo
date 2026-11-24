@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="referrer" content="strict-origin-when-cross-origin">
 <!-- Content-Security-Policy: installed by the next script, except on a local test server (localhost / 127.0.0.1) where the capture harness rewrites the game script. Update hashes with: node tools/csp-hash.mjs -->
-<meta name="crease-csp" content="default-src 'self'; script-src 'self' 'sha256-9kyMFOQq/HLwXlyiVTgCTQzmo6H4oBBvtdWEJb0rIFI=' 'sha256-ETrQj2IIsvwNwiDBVlTkwfnycUAYzLtQFEtaA41ms14='; connect-src 'self' https://crease-metrics.prodbykctw.workers.dev https://crease-license.prodbykctw.workers.dev; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta name="crease-csp" content="default-src 'self'; script-src 'self' 'sha256-9kyMFOQq/HLwXlyiVTgCTQzmo6H4oBBvtdWEJb0rIFI=' 'sha256-MTbEPxfCM9WvMawQd918s/RFi7F1L+XO3KJGCQLITNQ='; connect-src 'self' https://crease-metrics.prodbykctw.workers.dev https://crease-license.prodbykctw.workers.dev; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <script>(function(){var h=location.hostname;if(h==='localhost'||h==='127.0.0.1')return;var p=document.querySelector('meta[name="crease-csp"]'),m=document.createElement('meta');m.httpEquiv='Content-Security-Policy';m.content=p.content;document.head.appendChild(m);})();</script>
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -5493,6 +5493,8 @@ if (HOST) window.__creaseHost = {
   step(dt) { update(Math.min(0.05, dt), dt); },
   // Steer the human paddle (player 1, bottom half) toward a point in field coordinates.
   setTarget(u, v) { if (!inputLive()) return; const pd = game.paddles[0]; if (pd && pd.ctrl === 'human') { pd.dragAnchor = null; pd.tu = u; pd.tv = v; } },
+  // Put the paddle right on a point with no speed (first frame back, or after a long hang): it must never count as a swing.
+  snapPaddle(u, v) { if (!inputLive()) return; const pd = game.paddles[0]; if (!pd || pd.ctrl !== 'human') return; const L = view.L; pd.dragAnchor = null; pd.u = pd.tu = clamp(u, pd.r, 1 - pd.r); pd.v = pd.tv = clamp(v, L / 2 + pd.r, L - pd.r); pd.vu = pd.vv = pd.cvu = pd.cvv = 0; },
   pause() { if (game.mode === 'demo' || game.state === 'paused' || game.state === 'over') return; const st = game.state; game.resume = st === 'play' ? 'countdown' : st; if (st === 'play') game.timer = 0.6; game.state = 'paused'; },
   resume() { if (game.state === 'paused') game.state = game.resume; },
   envPower: () => envPower(),

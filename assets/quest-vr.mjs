@@ -323,12 +323,22 @@ function palm(frame,hand,ref,out){const w=jointPos(frame,hand,'wrist',ref,tmp2),
 // is stepped in 8 ms pieces, so a headset that drops frames still feeds true speed).
 const hitLog=[];
 const prevT={x:.5,y:1.6};let needSync=true,freeze=false,lastEngineT=-1,stallT=0,lastAudioKick=0;
-function driveEngine(dt,feed){
+// Touch-press: a fingertip or controller tip that crosses the menu panel (or the MENU tab) from the front presses whatever is under it, once per push.
+function pokeAt(key,tip,source){
+  let poke=pokes.get(key);if(!poke){poke={armed:false};pokes.set(key,poke);}
+  const panel=calibrating?null:menuOpen?menu.mesh:tab.mesh.visible?tab.mesh:null; // no presses while the hand is held still for MATCH MY HAND
+  if(!tip||!panel){poke.armed=false;return;}
+  const lp=panel.worldToLocal(tip.clone()),w=panel===menu.mesh?PANEL_W:TAB_W,hh=panel===menu.mesh?PANEL_H:TAB_H,inside=Math.abs(lp.x)<w/2+.02&&Math.abs(lp.y)<hh/2+.02;
+  if(updatePoke(poke,inside?lp.z:NaN)){unlockSound();if(panel===tab.mesh)openMenu();else{const b=hitButton(buttons,(lp.x/w+.5)*MENU_W,(.5-lp.y/hh)*MENU_H,HIT_SLOP);if(b)press(b.id,source);}}
+}
+let hitches=0;
+function driveEngine(dt,feed,snap){
   const eng=engine.host;
   try{
     if(feed){
+      if(snap){hitches++;prevT.x=target.x;prevT.y=target.y;inputToField(target.x,target.y,eng.view.L,fu);eng.snapPaddle(fu.u,fu.v);eng.setTarget(fu.u,fu.v);needSync=false;eng.step(Math.min(dt,.02));engine.errors=0;return;}
       if(needSync){prevT.x=target.x;prevT.y=target.y;needSync=false;}
-      const n=Math.max(1,Math.min(12,Math.ceil(dt*120)));
+      const n=Math.max(1,Math.min(30,Math.ceil(dt*120)));
       for(let k=1;k<=n;k++){const a=k/n;inputToField(prevT.x+(target.x-prevT.x)*a,prevT.y+(target.y-prevT.y)*a,eng.view.L,fu);eng.setTarget(fu.u,fu.v);eng.step(dt/n);}
       prevT.x=target.x;prevT.y=target.y;
     }else{needSync=true;eng.step(dt);}
@@ -397,7 +407,7 @@ function syncSimple(){
 }
 
 renderer.setAnimationLoop((now,frame)=>{
-  const gap=(now-last)/1000,dt=last&&gap>0&&gap<.25?Math.min(gap,.1):1/72,t=now/1000;last=now;let tracked=desktop,paddleY=NaN;
+  const gap=(now-last)/1000,okGap=!!last&&gap>0&&gap<.25,dt=okGap?gap:1/72,t=now/1000;last=now;let tracked=desktop,paddleY=NaN;
   const session=renderer.xr.getSession();
   if(frame&&session){
     tracked=false;const ref=renderer.xr.getReferenceSpace(),inputs=[...session.inputSources];
@@ -413,17 +423,15 @@ renderer.setAnimationLoop((now,frame)=>{
     for(const s of inputs){
       if(s.hand){let hv=handVisuals.get(s.handedness);if(!hv){hv=makeHandVisual();handVisuals.set(s.handedness,hv);}hv.visible=true;for(let j=0;j<jointNames.length;j++)if(jointPos(frame,s.hand,jointNames[j],ref,tmp2))hv.children[j].position.copy(tmp2);
         // Touch the menu or the MENU tab with your index fingertip.
-        let poke=pokes.get(s.handedness);if(!poke){poke={armed:false};pokes.set(s.handedness,poke);}
-        const tip=jointPos(frame,s.hand,'index-finger-tip',ref,tmp2),panel=calibrating?null:menuOpen?menu.mesh:tab.mesh.visible?tab.mesh:null; // no presses while the hand is held still for MATCH MY HAND
-        if(tip&&panel){const lp=panel.worldToLocal(tip.clone()),w=panel===menu.mesh?PANEL_W:TAB_W,hh=panel===menu.mesh?PANEL_H:TAB_H,inside=Math.abs(lp.x)<w/2+.02&&Math.abs(lp.y)<hh/2+.02;
-          if(updatePoke(poke,inside?lp.z:NaN)){unlockSound();if(panel===tab.mesh)openMenu();else{const b=hitButton(buttons,(lp.x/w+.5)*MENU_W,(.5-lp.y/hh)*MENU_H,HIT_SLOP);if(b)press(b.id,s);}}}
-        else poke.armed=false;
+        pokeAt(s.handedness,jointPos(frame,s.hand,'index-finger-tip',ref,tmp2),s);
         // Our own pinch detector, so a pinch always registers (the browser's select event is a second, de-duplicated source).
         let pn=pinches.get(s.handedness);if(!pn){pn={down:false};pinches.set(s.handedness,pn);}
         const ta=jointPos(frame,s.hand,'thumb-tip',ref,pinchA),tb=jointPos(frame,s.hand,'index-finger-tip',ref,pinchB);
         if(ta&&tb&&updatePinch(pn,ta.distanceTo(tb))==='start'&&session.visibilityState==='visible'){
           const idx=[...sources.entries()].find(([,v])=>v===s||v.handedness===s.handedness);selectFrom(s,idx?idx[0]:s.handedness);}
       }
+      // Controllers can also press buttons by touching them with the tip (the front of the controller).
+      if(!s.hand&&s.targetRaySpace){const tp=frame.getPose(s.targetRaySpace,ref);pokeAt(s.handedness+'-controller',tp?tmp2.set(tp.transform.position.x,tp.transform.position.y,tp.transform.position.z):null,s);}
       // Controller A/B/X/Y opens or closes the menu.
       const pad=s.gamepad;if(pad){const pressed=!!(pad.buttons[4]?.pressed||pad.buttons[5]?.pressed),was=buttonsDown.get(s)||false;buttonsDown.set(s,pressed);
         if(pressed&&!was){if(intro)skipIntro();else if(menuOpen&&started&&!(usingEngine()?engine.host.game.state==='over':state.winner)){menuOpen=false;menuDirty=true;}else openMenu();}}
@@ -449,7 +457,7 @@ renderer.setAnimationLoop((now,frame)=>{
     if(started){
       const wantPause=menuOpen||(lostT>.4&&playing)||hiddenNow();
       if(wantPause)eng.pause();else eng.resume();
-      if(!freeze)driveEngine(dt,playing&&!wantPause&&tracked);
+      if(!freeze)driveEngine(dt,playing&&!wantPause&&tracked,!okGap&&gap>0);
       if(!wantPause&&!freeze&&(g.state==='play'||g.state==='countdown')){if(g.t===lastEngineT)stallT+=dt;else{stallT=0;lastEngineT=g.t;}if(stallT>1.5){stallT=0;recoverEngine('stalled');}}else stallT=0;
       const ev=detectEvents(evState,g);
       if(!ev.reset&&(ev.hit||ev.smash)){const pd=g.paddles[0],sp=pd?Math.hypot(pd.vu,pd.vv):0;hitLog.push({type:ev.smash?'smash':'hit',player:0,strength:ev.smash?1:Math.min(1,1.7*sp/3),at:performance.now()}); // the engine's own k = impulse/3, impulse ~ 1.7 x paddle speed
@@ -478,7 +486,9 @@ renderer.setAnimationLoop((now,frame)=>{
   // Scoreboard: score, the engine's own message, and the active arena power.
   const score=eng?g.score:state.score;
   let label,sub;
-  if(notice)label=notice+(calibrating?'  '+Math.ceil(calibrating.t):'');
+  const away=!!session&&session.visibilityState!=='visible';
+  if(away)label='QUEST MENU IS OPEN';
+  else if(notice)label=notice+(calibrating?'  '+Math.ceil(calibrating.t):'');
   else if(intro)label='BUILT FOR THE FOLD   ·   prodbyKCTW';
   else if(menuOpen&&!over)label=started?'PAUSED':'PICK PLAY TO START';
   else if(!playing)label='OPEN THE MENU TO PLAY';
@@ -486,7 +496,7 @@ renderer.setAnimationLoop((now,frame)=>{
   else if(eng){label=boardLabel(g)||'FIRST TO 7';if(g.state==='paused'&&!menuOpen)label='FIRST TO 7';}
   else label=over?(state.winner===1?'YOU WIN':'CPU WINS'):'FIRST TO 7';
   if(over&&!notice)label=(eng?g.winner:state.winner)===1?'YOU WIN':'CPU WINS';
-  sub=intro?'PINCH OR TRIGGER TO SKIP':menuOpen?'TOUCH A BUTTON · OR POINT AND PINCH':(eng&&powerLine(g))||(desktop&&!renderer.xr.isPresenting?'MOUSE TO PLAY · M FOR MENU':'FREE-HAND PINCH OR MENU TAB FOR OPTIONS');
+  sub=away?'CLOSE IT (QUEST BUTTON) TO KEEP PLAYING':intro?'PINCH OR TRIGGER TO SKIP':menuOpen?'TOUCH A BUTTON · OR POINT AND PINCH':(eng&&powerLine(g))||(desktop&&!renderer.xr.isPresenting?'MOUSE TO PLAY · M FOR MENU':'FREE-HAND PINCH OR MENU TAB FOR OPTIONS');
   const text=(intro?'INTRO':started?score.join(' : '):'MENU')+' / '+label+' / '+sub;
   if(text!==lastLabel){lastLabel=text;const c=board.ctx;c.fillStyle='#100821';c.fillRect(0,0,1024,256);c.textAlign='center';c.textBaseline='alphabetic';const pulse=intro?1+.05*Math.sin(introT*5):1;c.save();c.translate(512,95);c.scale(pulse,pulse);c.fillStyle=intro?'#ff3195':'#36eeee';c.font='bold 70px sans-serif';
     if(window.CreaseLogo){const LG=window.CreaseLogo,lh=58,lw=LG.width(lh);if(!started)LG.draw(c,-lw/2,-lh,lh);else{const sc=score.join(' : '),sw=c.measureText(sc).width,gap=40,tot=lw+gap+sw;LG.draw(c,-tot/2,-lh,lh);c.textAlign='left';c.fillText(sc,-tot/2+lw+gap,0);c.textAlign='center';}}
@@ -520,7 +530,7 @@ if(/^(localhost|127\.0\.0\.1)$/.test(location.hostname)||new URLSearchParams(loc
   feed(x,y,dt){target.x=x;target.y=y;driveEngine(dt,true);},
   resetFeed(x,y){target.x=x;target.y=y;prevT.x=x;prevT.y=y;needSync=false;},
   // Table-unit view of the match (x across [0,1], y along [0,1.8]) whichever game is running.
-  get hitLog(){return hitLog;},
+  get hitLog(){return hitLog;},get hitches(){return hitches;},
   get state(){return usingEngine()?engineCompat():state;},
   get engine(){return engine.host;},get engineState(){return engine.state;},get arenaList(){return arenaList;},get arenaIx(){return arenaIx;},
   get audio(){return audio;},get backdrop(){return {visible:backdrop.visible,map:!!backdrop.material.map,id:backdropFor};},
