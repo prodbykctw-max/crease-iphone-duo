@@ -15,7 +15,7 @@ The full reference, with controls, mechanics and FAQ, is at [llms-full.txt](http
 - [Play CREASE](https://playcrease.app/): the game (solo vs CPU, or two players on one device)
 - [Play online](https://playcrease.app/online.html): live match against another person; quick match or a room code
 - [Games for the iPhone Duo](https://playcrease.app/iphone-duo-games/): what CREASE does on Apple's foldable, with Apple's published specs
-- [CREASE in VR](https://playcrease.app/vr.html): Meta Quest browser, vs the CPU, bare-hand tracking (no controllers needed) or controllers, adjustable table height
+- [CREASE in VR](https://playcrease.app/vr.html): Meta Quest browser, vs the CPU or online against a phone or another headset, bare-hand tracking (no controllers needed) or controllers, adjustable table height
 - [llms-full.txt](https://playcrease.app/llms-full.txt): full description, controls, mechanics, FAQ
 - [Privacy policy](https://playcrease.app/privacy/): what the game collects and how to opt out or delete it
 - [Terms of use](https://playcrease.app/terms/): rules, the optional Premium Pass, purchases and refunds
