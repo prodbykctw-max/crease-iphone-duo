@@ -1,7 +1,7 @@
 import * as THREE from './vendor/three.module.min.js';
 import {initial,move,step} from '../backend/online/physics.mjs';
 import {followHand,createOpponent,opponentMove} from './quest-controls.mjs';
-import {loadOptions,saveOptions,autoTableHeight,heightFromHand,stepHeight,clampHeight,updatePoke,MENU_W,MENU_H,menuButtons,hitButton,applyButton,TABLE_DEFAULT} from './quest-options.mjs';
+import {loadOptions,saveOptions,autoTableHeight,heightFromHand,stepHeight,clampHeight,updatePoke,updatePinch,MENU_W,MENU_H,menuButtons,hitButton,applyButton,TABLE_DEFAULT} from './quest-options.mjs';
 
 const storage=(()=>{try{return localStorage;}catch{return null;}})();
 const options=loadOptions(storage);const save=()=>saveOptions(storage,options);
@@ -53,7 +53,8 @@ const tab=canvasPlane(256,104,TAB_W,TAB_H);tab.mesh.visible=false;scene.add(tab.
 
 let state=initial(),playing=false,started=false,desktop=false,intro=true,menuOpen=false,introT=0,last=0,acc=0,lastLabel='',audio,menuDirty=true,lastHoverKey='',calibrating=null,notice='',noticeT=0,eyeY=NaN;
 let target={x:.5,y:1.6},smoothTarget={x:.5,y:1.6},opponent=createOpponent(options.difficulty);const sources=new Map();
-let tableHeight=TABLE_DEFAULT,autoPending=options.height==='auto';
+let tableHeight=TABLE_DEFAULT,autoPending=options.height==='auto',pressed=null;
+const pinches=new Map(),lastSelectAt=new Map();
 const plane=new THREE.Plane(new THREE.Vector3(0,1,0),-tableHeight);
 
 function roundRect(c,x,y,w,h,r){c.beginPath();c.moveTo(x+r,y);c.arcTo(x+w,y,x+w,y+h,r);c.arcTo(x+w,y+h,x,y+h,r);c.arcTo(x,y+h,x,y,r);c.arcTo(x,y,x+w,y,r);c.closePath();}
@@ -73,6 +74,13 @@ const jointNames=['wrist','thumb-metacarpal','thumb-phalanx-proximal','thumb-pha
 const handVisuals=new Map(),pokes=new Map();
 function makeHandVisual(){const g=new THREE.Group();for(const name of jointNames){const dot=mesh(new THREE.SphereGeometry(name==='wrist'?.022:.014,10,8),0xefffff,0x36eeee);g.add(dot);}g.visible=false;scene.add(g);return g;}
 
+// Leaving the game (Quest menu, another tab, taking the headset off) pauses
+// the match into the menu; coming back starts clean: no stale presses, no
+// giant frame step, sound resumed.
+function clearInputState(){hover.clear();pokes.clear();pinches.clear();buttonsDown.clear();lastSelectAt.clear();lastHoverKey='';}
+function goAway(){if(playing&&started&&!state.winner){menuOpen=true;menuDirty=true;}calibrating=null;clearInputState();acc=0;}
+function comeBack(){clearInputState();last=0;acc=0;lastLabel='';menuDirty=true;if(options.sound&&audio&&audio.state!=='running')audio.resume().catch(()=>{});}
+document.addEventListener('visibilitychange',()=>{if(renderer.xr.isPresenting)return;if(document.hidden)goAway();else comeBack();});
 function startMatch(){state=initial();opponent=createOpponent(options.difficulty);smoothTarget={...state.paddles[0]};playing=true;started=true;intro=false;menuOpen=false;table.visible=true;acc=0;menuDirty=true;}
 function openMenu(){if(intro)return;menuOpen=true;menuDirty=true;}
 function skipIntro(){if(!intro)return;intro=false;menuOpen=true;table.visible=true;lastLabel='';menuDirty=true;}
@@ -101,14 +109,17 @@ function drawMenu(){
   c.fillText('CPU',56,342);c.fillText('TABLE HEIGHT',56,450);c.fillStyle='#ffffff';c.font='bold 34px sans-serif';c.fillText(Math.round(tableHeight*100)+' cm'+(options.height==='auto'?' · auto':''),56,490);
   c.fillStyle='#c9b8e8';c.font='bold 30px sans-serif';c.fillText('PADDLE HAND',56,582);c.fillText('VIBRATION',56,702);
   for(const b of buttons){
-    c.fillStyle=b.accent?'#36eeee':b.active?'#3a1f63':'#1b1032';roundRect(c,b.x,b.y,b.w,b.h,18);c.fill();
+    const down=pressed&&pressed.id===b.id;
+    c.fillStyle=down?'#ff3195':b.accent?'#36eeee':b.active?'#3a1f63':'#1b1032';roundRect(c,b.x,b.y,b.w,b.h,18);c.fill();
     c.lineWidth=hot.has(b.id)?8:3;c.strokeStyle=hot.has(b.id)?'#ff3195':b.active?'#36eeee':'#4a2d73';c.stroke();
     c.fillStyle=b.accent?'#120727':'#f5eaff';c.font='bold '+(b.label.length>10?30:38)+'px sans-serif';c.textAlign='center';c.fillText(b.label,b.x+b.w/2,b.y+b.h/2+2);c.textAlign='left';
   }
   menu.texture.needsUpdate=true;menuDirty=false;return buttons;
 }
 let buttons=drawMenu();
+function click(){if(!options.sound||!audio||audio.state!=='running')return;const o=audio.createOscillator(),g=audio.createGain();o.frequency.value=1400;g.gain.setValueAtTime(.04,audio.currentTime);g.gain.exponentialRampToValueAtTime(.001,audio.currentTime+.05);o.connect(g).connect(audio.destination);o.start();o.stop(audio.currentTime+.06);}
 function press(id,source){
+  pressed={id,until:performance.now()+180};click();
   const action=applyButton(options,id);
   if(action==='primary'){if(!started||state.winner)startMatch();else{menuOpen=false;}}
   else if(action==='restart')startMatch();
@@ -122,6 +133,9 @@ function press(id,source){
   save();menuDirty=true;haptic(source,.35,20);
 }
 function handleSelect(id,source){
+  // One press per pinch/trigger even if both our pinch detector and the
+  // browser's select event fire for it.
+  const key=source?.handedness||id,t=performance.now();if(t-(lastSelectAt.get(key)||0)<250)return;lastSelectAt.set(key,t);
   unlockSound();
   if(intro){skipIntro();return;}
   if(calibrating)return;
@@ -144,13 +158,15 @@ for(let i=0;i<2;i++){
   const grip=renderer.xr.getControllerGrip(i),gripMesh=mesh(new THREE.CapsuleGeometry(.025,.11,6,12),0x9eecff,0x1685a0);gripMesh.rotation.x=Math.PI/2;gripMesh.visible=false;grip.add(gripMesh);scene.add(grip);
   controller.addEventListener('connected',e=>{sources.set(i,e.data);gripMesh.visible=!e.data.hand&&!!e.data.gripSpace;lastLabel='';});
   controller.addEventListener('disconnected',()=>{sources.delete(i);gripMesh.visible=false;hover.delete(i);});
-  controller.addEventListener('selectstart',()=>{const s=sources.get(i);haptic(s,.4,25);handleSelect(i,s);});
+  controller.addEventListener('selectstart',()=>{const s=sources.get(i);if(s?.hand)return;haptic(s,.4,25);handleSelect(i,s);});
 }
 enter.onclick=async()=>{
   enter.disabled=true;unlockSound();let session;
   try{session=await navigator.xr.requestSession('immersive-vr',{requiredFeatures:['local-floor'],optionalFeatures:['hand-tracking']});
-    desktop=false;playing=false;started=false;state=initial();intro=true;menuOpen=false;introT=0;table.visible=false;autoPending=options.height==='auto';document.body.classList.add('in-vr');
-    session.addEventListener('end',()=>{playing=false;menuOpen=false;document.body.classList.remove('in-vr');enter.disabled=false;enter.textContent='Enter VR';status.textContent='VR ended. Enter again or return to the phone game.';});
+    desktop=false;playing=false;started=false;state=initial();intro=true;menuOpen=false;introT=0;table.visible=false;autoPending=options.height==='auto';document.body.classList.add('in-vr');clearInputState();last=0;
+    session.addEventListener('visibilitychange',()=>{if(session.visibilityState==='visible')comeBack();else goAway();});
+    session.addEventListener('inputsourceschange',()=>{clearInputState();lastLabel='';});
+    session.addEventListener('end',()=>{playing=false;menuOpen=false;calibrating=null;clearInputState();document.body.classList.remove('in-vr');enter.disabled=false;enter.textContent='Enter VR';status.textContent='VR ended. Enter again or return to the phone game.';});
     await renderer.xr.setSession(session);enter.textContent='In VR';
   }catch(e){await session?.end().catch(()=>{});status.textContent='VR could not start: '+e.message;enter.disabled=false;}
 };
@@ -178,7 +194,7 @@ function jointPos(frame,hand,name,ref,out){const s=hand.get(name),p=s&&frame.get
 function palm(frame,hand,ref,out){const w=jointPos(frame,hand,'wrist',ref,tmp2),k=w&&jointPos(frame,hand,'middle-finger-phalanx-proximal',ref,out);return k?out.add(w).multiplyScalar(.5):null;}
 
 renderer.setAnimationLoop((now,frame)=>{
-  const dt=Math.min((now-last)/1000||0,.05);last=now;let tracked=desktop,paddleY=NaN;
+  const gap=(now-last)/1000;const dt=last&&gap>0&&gap<.25?Math.min(gap,.05):0;last=now;let tracked=desktop,paddleY=NaN;
   const session=renderer.xr.getSession();
   if(frame&&session){
     tracked=false;const ref=renderer.xr.getReferenceSpace(),inputs=[...session.inputSources];
@@ -199,6 +215,10 @@ renderer.setAnimationLoop((now,frame)=>{
         if(tip&&panel){const lp=panel.worldToLocal(tip.clone()),w=panel===menu.mesh?PANEL_W:TAB_W,h=panel===menu.mesh?PANEL_H:TAB_H,inside=Math.abs(lp.x)<w/2+.01&&Math.abs(lp.y)<h/2+.01;
           if(updatePoke(poke,inside?lp.z:NaN)){unlockSound();if(panel===tab.mesh)openMenu();else{const b=hitButton(buttons,(lp.x/w+.5)*MENU_W,(.5-lp.y/h)*MENU_H);if(b)press(b.id,s);}}}
         else poke.armed=false;
+        // Pinch (thumb tip to index tip) = select, for pinch-ray presses and the free-hand menu pinch.
+        let pinch=pinches.get(s.handedness);if(!pinch){pinch={down:false};pinches.set(s.handedness,pinch);}
+        const th=jointPos(frame,s.hand,'thumb-tip',ref,tmp),ix=jointPos(frame,s.hand,'index-finger-tip',ref,tmp2);
+        if(th&&ix&&updatePinch(pinch,th.distanceTo(ix))==='start'){let id=null;for(const [k,v] of sources)if(v===s)id=k;handleSelect(id??s.handedness,s);}
       }
       // Controller A/B/X/Y opens or closes the menu.
       const pad=s.gamepad;if(pad){const pressed=!!(pad.buttons[4]?.pressed||pad.buttons[5]?.pressed),was=buttonsDown.get(s)||false;buttonsDown.set(s,pressed);
@@ -216,8 +236,10 @@ renderer.setAnimationLoop((now,frame)=>{
   if(intro){introT+=dt;if(introT>4.8)skipIntro();}
   tab.mesh.visible=!!session&&!intro&&!menuOpen&&playing;menu.mesh.visible=menuOpen&&!intro;
   const hoverKey=[...hover.values()].map(h=>h.kind+(h.button?.id||'')).join();if(hoverKey!==lastHoverKey){lastHoverKey=hoverKey;menuDirty=true;}
+  if(pressed&&performance.now()>pressed.until){pressed=null;menuDirty=true;}
   if(menuDirty&&menu.mesh.visible)buttons=drawMenu();
-  if(playing&&!menuOpen&&tracked&&!document.hidden){followHand(smoothTarget,target,dt);acc+=dt;while(acc>=1/60){
+  const live=renderer.xr.isPresenting?session?.visibilityState==='visible':!document.hidden;
+  if(playing&&!menuOpen&&tracked&&live){followHand(smoothTarget,target,dt);acc+=dt;while(acc>=1/60){
     move(state,0,smoothTarget.x,smoothTarget.y);const ai=opponentMove(state,opponent,1/60);move(state,1,ai.x,ai.y);
     const vx=state.puck.vx,vy=state.puck.vy,score=state.score.join();step(state);
     if(state.score.join()!==score||vx*state.puck.vx<0||vy*state.puck.vy<0)impact(state.puck.y>.9?0:1);if(state.winner){menuOpen=true;menuDirty=true;}acc-=1/60;
