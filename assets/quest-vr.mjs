@@ -306,7 +306,7 @@ function drawMenu(){
     c.lineWidth=hot.has(b.id)?8:3;c.strokeStyle=hot.has(b.id)?'#ff3195':b.active?'#36eeee':b.locked?'#2c1d45':'#4a2d73';c.stroke();
     c.fillStyle=pressed?'#ffffff':b.accent?'#120727':b.locked?'#6a5a8a':'#f5eaff';
     if(b.small){c.font='bold '+(b.label.length>9?(b.locked?16:19):(b.locked?19:22))+'px sans-serif';c.textAlign='center';c.fillText(b.label,b.x+b.w/2+(b.locked?13:0),b.y+b.h/2+2);if(b.locked)drawLock(c,b.x+16,b.y+b.h/2+1,'#8a74b5');c.textAlign='left';}
-    else{c.font='bold '+(b.label.length>10?30:38)+'px sans-serif';c.textAlign='center';c.fillText(b.label,b.x+b.w/2,b.y+b.h/2+2);c.textAlign='left';}
+    else{let px=b.label.length>10?30:38;c.font='bold '+px+'px sans-serif';const tw=c.measureText(b.label).width;if(tw>b.w-28){px=Math.max(18,Math.floor(px*(b.w-28)/tw));c.font='bold '+px+'px sans-serif';}c.textAlign='center';c.fillText(b.label,b.x+b.w/2,b.y+b.h/2+2);c.textAlign='left';}
   }
   menu.texture.needsUpdate=true;menuDirty=false;return buttons;
 }
