@@ -1,5 +1,5 @@
 import * as THREE from './vendor/three.module.min.js';
-import {initial,move,step} from '../backend/online/physics.mjs';
+import {initial,drive,step} from './quest-physics.mjs';
 import {followHand,createOpponent,opponentMove} from './quest-controls.mjs';
 import {loadOptions,saveOptions,autoTableHeight,heightFromHand,stepHeight,clampHeight,updatePoke,updatePinch,MENU_W,MENU_H,menuButtons,hitButton,applyButton,TABLE_DEFAULT} from './quest-options.mjs';
 
@@ -52,7 +52,7 @@ const tab=canvasPlane(256,104,TAB_W,TAB_H);tab.mesh.visible=false;scene.add(tab.
 (function drawTab(){const c=tab.ctx;c.clearRect(0,0,256,104);c.fillStyle='#100821e8';roundRect(c,4,4,248,96,22);c.fill();c.strokeStyle='#36eeee';c.lineWidth=4;c.stroke();c.fillStyle='#36eeee';c.font='bold 44px sans-serif';c.textAlign='center';c.textBaseline='middle';c.fillText('MENU',128,54);tab.texture.needsUpdate=true;})();
 
 let state=initial(),playing=false,started=false,desktop=false,intro=true,menuOpen=false,introT=0,last=0,acc=0,lastLabel='',audio,menuDirty=true,lastHoverKey='',calibrating=null,notice='',noticeT=0,eyeY=NaN;
-let target={x:.5,y:1.6},smoothTarget={x:.5,y:1.6},opponent=createOpponent(options.difficulty);const sources=new Map();
+let target={x:.5,y:1.6},smoothTarget={x:.5,y:1.6},driven={x:.5,y:1.6},opponent=createOpponent(options.difficulty);const sources=new Map();
 let tableHeight=TABLE_DEFAULT,autoPending=options.height==='auto',pressed=null;
 const pinches=new Map(),lastSelectAt=new Map();
 const plane=new THREE.Plane(new THREE.Vector3(0,1,0),-tableHeight);
@@ -81,19 +81,29 @@ function clearInputState(){hover.clear();pokes.clear();pinches.clear();buttonsDo
 function goAway(){if(playing&&started&&!state.winner){menuOpen=true;menuDirty=true;}calibrating=null;clearInputState();acc=0;}
 function comeBack(){clearInputState();last=0;acc=0;lastLabel='';menuDirty=true;if(options.sound&&audio&&audio.state!=='running')audio.resume().catch(()=>{});}
 document.addEventListener('visibilitychange',()=>{if(renderer.xr.isPresenting)return;if(document.hidden)goAway();else comeBack();});
-function startMatch(){state=initial();opponent=createOpponent(options.difficulty);smoothTarget={...state.paddles[0]};playing=true;started=true;intro=false;menuOpen=false;table.visible=true;acc=0;menuDirty=true;}
+function startMatch(){state=initial();opponent=createOpponent(options.difficulty);smoothTarget={...state.paddles[0]};driven={...state.paddles[0]};playing=true;started=true;intro=false;menuOpen=false;table.visible=true;acc=0;menuDirty=true;}
 function openMenu(){if(intro)return;menuOpen=true;menuDirty=true;}
 function skipIntro(){if(!intro)return;intro=false;menuOpen=true;table.visible=true;lastLabel='';menuDirty=true;}
 function unlockSound(){if(!options.sound)return;audio??=new AudioContext();audio.resume().catch(()=>{});}
 function isPaddleHand(source){return !source||source.handedness===options.hand||source.handedness==='none';}
 function haptic(source,intensity=.55,duration=35){if(!options.haptics)return;try{const a=source?.gamepad?.hapticActuators?.[0];if(a?.pulse)a.pulse(intensity,duration).catch(()=>{});else if(source?.gamepad?.vibrationActuator?.playEffect)source.gamepad.vibrationActuator.playEffect('dual-rumble',{duration,strongMagnitude:intensity,weakMagnitude:intensity*.6}).catch(()=>{});}catch{}}
 function say(text,seconds=2.5){notice=text;noticeT=seconds;lastLabel='';}
-function impact(player=0){
-  orb.scale.setScalar(1.3);
-  if(player===0)haptic([...sources.values()].find(s=>s.handedness===options.hand),.8,50);
+// Hit feedback scales with how hard the puck was struck (k 0..1); a SMASH is
+// the strongest buzz, a bright crack and a SMASH! call on the scoreboard.
+function impact(player=0,k=.5,smash=false){
+  orb.scale.setScalar(1+.25*k+(smash?.35:0));
+  if(player===0)haptic([...sources.values()].find(s=>s.handedness===options.hand),smash?1:.2+.7*k,smash?90:18+40*k);
   if(!options.sound||!audio||audio.state!=='running')return;
-  const o=audio.createOscillator(),g=audio.createGain(),p=audio.createPanner();p.panningModel='HRTF';p.positionX.value=state.puck.x-.5;p.positionY.value=tableHeight+.26;p.positionZ.value=state.puck.y-2.15;
-  o.frequency.setValueAtTime(360,audio.currentTime);o.frequency.exponentialRampToValueAtTime(110,audio.currentTime+.09);g.gain.setValueAtTime(.05,audio.currentTime);g.gain.exponentialRampToValueAtTime(.001,audio.currentTime+.1);o.connect(g).connect(p).connect(audio.destination);o.start();o.stop(audio.currentTime+.11);
+  const t=audio.currentTime,o=audio.createOscillator(),g=audio.createGain(),p=audio.createPanner();p.panningModel='HRTF';p.positionX.value=state.puck.x-.5;p.positionY.value=tableHeight+.26;p.positionZ.value=state.puck.y-2.15;
+  const f0=smash?950:260+260*k,f1=smash?160:110,vol=smash?.11:.02+.06*k;
+  o.type=smash?'sawtooth':'sine';o.frequency.setValueAtTime(f0,t);o.frequency.exponentialRampToValueAtTime(f1,t+(smash?.16:.09));g.gain.setValueAtTime(vol,t);g.gain.exponentialRampToValueAtTime(.001,t+(smash?.18:.1));o.connect(g).connect(p).connect(audio.destination);o.start();o.stop(t+.2);
+}
+let lastHit=null;const hitLog=[];
+function onEvent(e){
+  if(e.type==='hit'||e.type==='smash'){hitLog.push({...e,at:performance.now()});if(hitLog.length>40)hitLog.shift();}
+  if(e.type==='hit'){lastHit={...e,at:performance.now()};impact(e.player,e.strength,false);}
+  else if(e.type==='smash'){lastHit={...e,strength:1,at:performance.now()};impact(e.player,1,true);if(e.player===0)say('SMASH!',.9);}
+  else if(e.type==='goal')impact(e.scorer,.6,false);
 }
 
 // ---- Options menu ----------------------------------------------------------
@@ -239,12 +249,16 @@ renderer.setAnimationLoop((now,frame)=>{
   if(pressed&&performance.now()>pressed.until){pressed=null;menuDirty=true;}
   if(menuDirty&&menu.mesh.visible)buttons=drawMenu();
   const live=renderer.xr.isPresenting?session?.visibilityState==='visible':!document.hidden;
-  if(playing&&!menuOpen&&tracked&&live){followHand(smoothTarget,target,dt);acc+=dt;while(acc>=1/60){
-    move(state,0,smoothTarget.x,smoothTarget.y);const ai=opponentMove(state,opponent,1/60);move(state,1,ai.x,ai.y);
-    const vx=state.puck.vx,vy=state.puck.vy,score=state.score.join();step(state);
-    if(state.score.join()!==score||vx*state.puck.vx<0||vy*state.puck.vy<0)impact(state.puck.y>.9?0:1);if(state.winner){menuOpen=true;menuDirty=true;}acc-=1/60;
+  if(playing&&!menuOpen&&tracked&&live){followHand(smoothTarget,target,dt);acc+=dt;
+    // Spread this frame's hand movement evenly over its physics ticks, so the
+    // paddle's speed is the hand's real speed (not a jump on one tick and zero
+    // on the next), which is what hit strength and SMASH are measured from.
+    const ticks=Math.floor(acc*60+1e-9),fx=driven.x,fy=driven.y;let tick=0;
+    while(acc>=1/60){tick++;const f=Math.min(1,tick/Math.max(1,ticks));
+    drive(state,0,fx+(smoothTarget.x-fx)*f,fy+(smoothTarget.y-fy)*f,1/60);if(f===1){driven.x=smoothTarget.x;driven.y=smoothTarget.y;}const ai=opponentMove(state,opponent,1/60);drive(state,1,ai.x,ai.y,1/60,1e9);
+    for(const e of step(state,1/60))onEvent(e);if(state.winner){menuOpen=true;menuDirty=true;}acc-=1/60;
   }}else acc=0;
-  paddles.forEach((m,i)=>m.position.set(state.paddles[i].x-.5,0,state.paddles[i].y-.9));puck.position.set(state.puck.x-.5,.028,state.puck.y-.9);
+  paddles.forEach((m,i)=>m.position.set(state.paddles[i].x-.5,0,state.paddles[i].y-.9));puck.position.set(state.puck.x-.5,.028,state.puck.y-.9);puck.material.emissive.setHex(state.puck.smashT>0?0xffd15f:0x443366);
   orb.rotation.y+=dt*.65;halo.rotation.z+=dt*.4;orb.scale.lerp(new THREE.Vector3(1,1,1),Math.min(1,dt*7));
   const label=notice?notice+(calibrating?'  '+Math.ceil(calibrating.t):''):intro?'BUILT FOR THE FOLD   ·   prodbyKCTW':state.winner?(state.winner===1?'YOU WIN':'CPU WINS'):menuOpen?(started?'PAUSED':'PICK PLAY TO START'):!playing?'OPEN THE MENU TO PLAY':!tracked?'TRACKING PAUSED — SHOW YOUR PADDLE HAND':state.countdown>0?'READY…':'FIRST TO 7';
   const sub=intro?'PINCH OR TRIGGER TO SKIP':menuOpen?'TOUCH A BUTTON · OR POINT AND PINCH':desktop&&!renderer.xr.isPresenting?'MOUSE TO PLAY · M FOR MENU':'FREE-HAND PINCH OR MENU TAB FOR OPTIONS';
@@ -258,6 +272,6 @@ renderer.setAnimationLoop((now,frame)=>{
 });
 addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);});
 // Test hook (local server or ?qa=1 only), same convention as the phone game.
-if(/^(localhost|127\.0\.0\.1)$/.test(location.hostname)||new URLSearchParams(location.search).has('qa'))window.__creaseVR={options,get state(){return state;},get tableHeight(){return tableHeight;},get menuOpen(){return menuOpen;},get playing(){return playing;},get intro(){return intro;},get target(){return target;},press,handleSelect,hover,
+if(/^(localhost|127\.0\.0\.1)$/.test(location.hostname)||new URLSearchParams(location.search).has('qa'))window.__creaseVR={options,get state(){return state;},get tableHeight(){return tableHeight;},get menuOpen(){return menuOpen;},get playing(){return playing;},get intro(){return intro;},get lastHit(){return lastHit;},hitLog,get target(){return target;},press,handleSelect,hover,
   menuPoint(id){const b=buttons.find(x=>x.id===id);if(!b)return null;menu.mesh.updateMatrixWorld();const p=menu.mesh.localToWorld(new THREE.Vector3(((b.x+b.w/2)/MENU_W-.5)*PANEL_W,(.5-(b.y+b.h/2)/MENU_H)*PANEL_H,0));const n=new THREE.Vector3(0,0,1).transformDirection(menu.mesh.matrixWorld);return {p:{x:p.x,y:p.y,z:p.z},n:{x:n.x,y:n.y,z:n.z}};}};
 try{const supported=await navigator.xr?.isSessionSupported('immersive-vr');enter.disabled=!supported;enter.textContent=supported?'Enter VR':'Open in Quest Browser';}catch{enter.textContent='VR unavailable';}
