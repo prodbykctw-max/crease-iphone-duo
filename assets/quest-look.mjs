@@ -8,14 +8,17 @@ import {FIELD_PX,FIELD_MARGIN,fieldPlaneSize,railPlan,railCorners,handBones,palm
 const PADDLE_R=.085,PUCK_R=.042,BUMPER_R=.05;
 const DARK=0x0b0d1c;
 
+// Physical (clearcoat) materials are plain standard ones on a software GL, which cannot afford the extra lobe.
+let SOFT=false;
+function phys(o){if(SOFT){delete o.clearcoat;delete o.clearcoatRoughness;return new THREE.MeshStandardMaterial(o);}return new THREE.MeshPhysicalMaterial(o);}
 function glossy(color,{metalness=.85,roughness=.28,clearcoat=.6,env=1.1,emissive=0x000000,emissiveIntensity=1}={}){
-  return new THREE.MeshPhysicalMaterial({color,metalness,roughness,clearcoat,clearcoatRoughness:.18,envMapIntensity:env,emissive,emissiveIntensity});
+  return phys({color,metalness,roughness,clearcoat,clearcoatRoughness:.18,envMapIntensity:env,emissive,emissiveIntensity});
 }
 function neon(color,intensity=1.6){
   const m=new THREE.MeshStandardMaterial({color:0x050508,emissive:color,emissiveIntensity:intensity,roughness:.4,metalness:0});return m;
 }
-function canvasTex(canvas,renderer){
-  const t=new THREE.CanvasTexture(canvas);t.colorSpace=THREE.SRGBColorSpace;t.anisotropy=renderer?renderer.capabilities.getMaxAnisotropy():8;t.generateMipmaps=true;t.minFilter=THREE.LinearMipmapLinearFilter;t.magFilter=THREE.LinearFilter;return t;
+function canvasTex(canvas,aniso=8){
+  const t=new THREE.CanvasTexture(canvas);t.colorSpace=THREE.SRGBColorSpace;t.anisotropy=aniso;t.generateMipmaps=true;t.minFilter=THREE.LinearMipmapLinearFilter;t.magFilter=THREE.LinearFilter;return t;
 }
 
 // A small neon-tinted room, turned into an environment map so the glossy pieces and the table reflect something. (Three's RoomEnvironment
@@ -37,15 +40,17 @@ function buildEnvironment(renderer,scene){
   }catch{return null;}
 }
 
-export function createLook({scene,table,renderer,onHeight}){
-  const out={};
+export function createLook({scene,table,renderer,onHeight,soft=false}){
+  const out={};SOFT=soft;
+  const aniso=soft?1:renderer.capabilities.getMaxAnisotropy();
   out.env=buildEnvironment(renderer,scene);
   const maxAniso=renderer.capabilities.getMaxAnisotropy();
 
   // ---- Table top: the phone's own field drawing -----------------------------------------------------------------
   const fp=fieldPlaneSize();
-  const topMat=new THREE.MeshPhysicalMaterial({color:0x000000,emissive:0xffffff,emissiveIntensity:1,roughness:.45,metalness:0,clearcoat:.85,clearcoatRoughness:.14,envMapIntensity:.55});
-  topMat.emissive.setRGB(.001,.001,.001);
+  // (software GL: a plain unlit top, no clearcoat/env reflection)
+  const topMat=soft?new THREE.MeshBasicMaterial({color:0x0a0618}):phys({color:0x000000,emissive:0xffffff,emissiveIntensity:1,roughness:.45,metalness:0,clearcoat:.85,clearcoatRoughness:.14,envMapIntensity:.55});
+  if(!soft)topMat.emissive.setRGB(.001,.001,.001);
   const top=new THREE.Mesh(new THREE.PlaneGeometry(fp.w,fp.d),topMat);top.rotation.x=-Math.PI/2;top.position.y=.0015;table.add(top);
   // while no texture has arrived yet the top is a plain dark panel
   topMat.color.set(0x0a0618);
@@ -59,7 +64,7 @@ export function createLook({scene,table,renderer,onHeight}){
     const t0=performance.now();
     try{
       const cv=host.renderField(F.px,F.opts);
-      if(cv!==fieldCanvas){fieldCanvas=cv;if(fieldTex)fieldTex.dispose();fieldTex=canvasTex(cv,renderer);topMat.map=fieldTex;topMat.emissiveMap=fieldTex;topMat.emissive.setRGB(1,1,1);topMat.color.set(0x000000);topMat.needsUpdate=true;}
+      if(cv!==fieldCanvas){fieldCanvas=cv;if(fieldTex)fieldTex.dispose();fieldTex=canvasTex(cv,aniso);topMat.map=fieldTex;if(soft)topMat.color.set(0xffffff);else{topMat.emissiveMap=fieldTex;topMat.emissive.setRGB(1,1,1);topMat.color.set(0x000000);}topMat.needsUpdate=true;}
       fieldTex.needsUpdate=true;F.ok=true;F.errors=0;
     }catch(e){F.errors++;F.lastError=String(e&&e.message||e);return false;}
     const dt=performance.now()-t0;F.ms=F.ms?F.ms*.9+dt*.1:dt;F.frames++;
@@ -82,44 +87,55 @@ export function createLook({scene,table,renderer,onHeight}){
   const frameMat=glossy(0x120a24,{metalness:.8,roughness:.34,clearcoat:.7});
   const body=new THREE.Mesh(new THREE.BoxGeometry(1.06,.07,1.86),frameMat);body.position.y=-.037;table.add(body);
   const skirt=new THREE.Mesh(new THREE.BoxGeometry(1.0,.05,1.8),glossy(0x07050f,{metalness:.9,roughness:.4}));skirt.position.y=-.095;table.add(skirt);
+  // Static pieces are merged per material (a few draw calls instead of ~120; the headset draws every call twice, once per eye).
+  const _m4=new THREE.Matrix4(),_q4=new THREE.Quaternion(),_e4=new THREE.Euler(),_p4=new THREE.Vector3(),_s4=new THREE.Vector3();
+  const xf=(x=0,y=0,z=0,rx=0,ry=0,rz=0,sx=1,sy=1,sz=1)=>new THREE.Matrix4().compose(_p4.set(x,y,z),_q4.setFromEuler(_e4.set(rx,ry,rz)),_s4.set(sx,sy,sz));
+  const mergeAdd=(list,geo,m)=>{const g=geo.index?geo.toNonIndexed():geo.clone();g.applyMatrix4(m);
+    if(m.determinant()<0)for(const k of ['position','normal','uv']){const a=g.getAttribute(k);if(!a)continue;const n=a.itemSize,arr=a.array;for(let i=0;i<arr.length;i+=n*3)for(let j=0;j<n;j++){const t=arr[i+n+j];arr[i+n+j]=arr[i+2*n+j];arr[i+2*n+j]=t;}}
+    list.push(g);};
+  const mergeDone=list=>{const out=new THREE.BufferGeometry();for(const k of ['position','normal','uv']){let n=0;const it=list[0].getAttribute(k).itemSize;for(const g of list)n+=g.getAttribute(k).array.length;const arr=new Float32Array(n);let o=0;for(const g of list){arr.set(g.getAttribute(k).array,o);o+=g.getAttribute(k).array.length;}out.setAttribute(k,new THREE.BufferAttribute(arr,it));}for(const g of list)g.dispose();return out;};
   const underglow=[];
-  for(const [side,z] of [['p2',-.905],['p1',.905]]){const m=new THREE.Mesh(new THREE.BoxGeometry(.9,.006,.01),neon(side==='p1'?0x2de2e6:0xff2a8a,2.2));m.position.set(0,-.073,z);m.userData.side=side;table.add(m);underglow.push(m);}
-  for(const sx of [-1,1])for(const [side,z] of [['p2',-.45],['p1',.45]]){const m=new THREE.Mesh(new THREE.BoxGeometry(.01,.006,.88),neon(side==='p1'?0x2de2e6:0xff2a8a,2.2));m.position.set(sx*.505,-.073,z);m.userData.side=side;table.add(m);underglow.push(m);}
+  {const L1={p1:[],p2:[]};
+    for(const [side,z] of [['p2',-.905],['p1',.905]])mergeAdd(L1[side],new THREE.BoxGeometry(.9,.006,.01),xf(0,-.073,z));
+    for(const sx of [-1,1])for(const [side,z] of [['p2',-.45],['p1',.45]])mergeAdd(L1[side],new THREE.BoxGeometry(.01,.006,.88),xf(sx*.505,-.073,z));
+    for(const side of ['p1','p2']){const m=new THREE.Mesh(mergeDone(L1[side]),neon(side==='p1'?0x2de2e6:0xff2a8a,2.2));m.userData.side=side;table.add(m);underglow.push(m);}}
   // legs: tapered, glossy; scaled in y by the caller (unit height)
+  const legMat=glossy(0x1a1030,{metalness:.9,roughness:.32});
   const legGeo=new THREE.CylinderGeometry(.034,.042,1,20);
-  const legs=[];for(const x of [-.4,.4])for(const z of [-.7,.7]){const m=new THREE.Mesh(legGeo,glossy(0x1a1030,{metalness:.9,roughness:.32}));m.position.set(x,-.5,z);table.add(m);legs.push(m);}
+  const legs=[];for(const x of [-.4,.4])for(const z of [-.7,.7]){const m=new THREE.Mesh(legGeo,legMat);m.position.set(x,-.5,z);table.add(m);legs.push(m);}
   out.legs=legs;out.underglow=underglow;
 
-  // Rails: dark glossy body with a neon tube along the top inner edge, pink (p2) on the CPU half, cyan (p1) on yours.
-  const railMats={p1:[],p2:[]},tubeMats={p1:[],p2:[]};
+
+  // Rails: dark glossy body with a neon tube along the top inner edge, pink (p2) on the CPU half, cyan (p1) on yours. One merged body mesh and one
+  // merged neon mesh per side (the beat pulse and the arena colours drive the two neon materials).
   const railBody=glossy(DARK,{metalness:.9,roughness:.3,clearcoat:.8});
+  const tubeMats={p1:[],p2:[]},railMats={p1:[],p2:[]};
+  const bodyList=[],neonList={p1:[],p2:[]};
   const tubeGeoCache=new Map();
   function tube(len,radius=.0065){const k=len.toFixed(3)+radius;let g=tubeGeoCache.get(k);if(!g){g=new THREE.CylinderGeometry(radius,radius,len,10);tubeGeoCache.set(k,g);}return g;}
-  const mkTube=(side,len,axis,x,y,z)=>{const m=neon(side==='p1'?0x2de2e6:0xff2a8a,1.8);const t=new THREE.Mesh(tube(len),m);t.rotation.x=axis==='z'?Math.PI/2:0;t.rotation.z=axis==='x'?Math.PI/2:0;t.position.set(x,y,z);table.add(t);tubeMats[side].push(m);return t;};
   for(const s of railPlan()){
     const horizontalX=s.axis==='x';
-    const g=new THREE.Mesh(new THREE.BoxGeometry(horizontalX?s.len:.03,.058,horizontalX?.03:s.len),railBody);g.position.set(s.x,.027,s.z);table.add(g);
+    mergeAdd(bodyList,new THREE.BoxGeometry(horizontalX?s.len:.03,.058,horizontalX?.03:s.len),xf(s.x,.027,s.z));
     const inner=s.kind==='side'?-Math.sign(s.x)*.0125:0,innerZ=s.kind==='end'?-Math.sign(s.z)*.0125:0;
-    mkTube(s.side,s.len-.004,s.axis,s.x+inner,.062,s.z+innerZ);
+    mergeAdd(neonList[s.side],tube(s.len-.004),xf(s.x+inner,.062,s.z+innerZ,s.axis==='z'?Math.PI/2:0,0,s.axis==='x'?Math.PI/2:0));
     // a thin lower accent line so the rail reads as a lit channel
-    const acc=new THREE.Mesh(new THREE.BoxGeometry(horizontalX?s.len-.01:.004,.004,horizontalX?.004:s.len-.01),neon(s.side==='p1'?0x2de2e6:0xff2a8a,1));acc.position.set(s.x+inner*1.35,.02,s.z+innerZ*1.35);table.add(acc);tubeMats[s.side].push(acc.material);
+    mergeAdd(neonList[s.side],new THREE.BoxGeometry(horizontalX?s.len-.01:.004,.004,horizontalX?.004:s.len-.01),xf(s.x+inner*1.35,.02,s.z+innerZ*1.35));
   }
   // Corners: a solid wedge outside the spring arc, with a neon arc tube along the curve.
   {const R=.15,sh=new THREE.Shape();sh.moveTo(R,0);sh.lineTo(R,R);sh.lineTo(0,R);sh.absarc(0,0,R,Math.PI/2,0,true);
     const g=new THREE.ExtrudeGeometry(sh,{depth:.058,bevelEnabled:false,curveSegments:14});g.rotateX(-Math.PI/2);
     const arcGeo=new THREE.TorusGeometry(R-.004,.0065,8,24,Math.PI/2);
     for(const c of railCorners()){
-      const m=new THREE.Mesh(g,railBody);m.position.set(c.x,0,c.z);m.scale.set(c.sx,1,-c.sz);table.add(m);
-      const mat=neon(c.side==='p1'?0x2de2e6:0xff2a8a,1.8);tubeMats[c.side].push(mat);
-      // the torus arc runs from +x to +y; laid flat (rotation.x = 90 deg) it covers the quadrant (+x,+z), and the pivot turns it to this corner
-      const pivot=new THREE.Group();pivot.position.set(c.x,.062,c.z);pivot.rotation.y=c.sx>0?(c.sz>0?0:Math.PI/2):(c.sz<0?Math.PI:Math.PI*1.5);
-      const t=new THREE.Mesh(arcGeo,mat);t.rotation.x=Math.PI/2;pivot.add(t);table.add(pivot);
+      mergeAdd(bodyList,g,xf(c.x,0,c.z,0,0,0,c.sx,1,-c.sz));
+      // the torus arc runs from +x to +y; laid flat (rotation.x = 90 deg) it covers the quadrant (+x,+z), and the turn about y points it at this corner
+      const ry=c.sx>0?(c.sz>0?0:Math.PI/2):(c.sz<0?Math.PI:Math.PI*1.5);
+      mergeAdd(neonList[c.side],arcGeo,xf(c.x,.062,c.z,0,ry,0).multiply(xf(0,0,0,Math.PI/2)));
     }}
-  out.tubeMats=tubeMats;out.railMats=railMats;
   // Goal posts: short bright caps where the end rails stop, so the goal mouth reads.
-  const posts=[];
-  for(const [side,z] of [['p2',-.915],['p1',.915]])for(const sx of [-1,1]){const m=new THREE.Mesh(new THREE.BoxGeometry(.016,.07,.034),neon(side==='p1'?0x2de2e6:0xff2a8a,2.4));m.position.set(sx*.19,.03,z);m.userData.side=side;table.add(m);posts.push(m);tubeMats[side].push(m.material);}
-  out.posts=posts;
+  for(const [side,z] of [['p2',-.915],['p1',.915]])for(const sx of [-1,1])mergeAdd(neonList[side],new THREE.BoxGeometry(.016,.07,.034),xf(sx*.19,.03,z));
+  table.add(new THREE.Mesh(mergeDone(bodyList),railBody));
+  for(const side of ['p1','p2']){const m=neon(side==='p1'?0x2de2e6:0xff2a8a,1.8);tubeMats[side].push(m);table.add(new THREE.Mesh(mergeDone(neonList[side]),m));}
+  out.tubeMats=tubeMats;out.railMats=railMats;out.posts=[];
 
   // ---- Pieces: paddles ------------------------------------------------------------------------------------------
   const sharedBodyMat=glossy(0x080a16,{metalness:.9,roughness:.24,clearcoat:1,env:1.4});
@@ -130,11 +146,11 @@ export function createLook({scene,table,renderer,onHeight}){
   const ringGeo=new THREE.TorusGeometry(PADDLE_R*.845,.0072,12,64);
   const bandGeo=new THREE.TorusGeometry(.0395,.0034,10,40);
   const pieceTex=new Map(); // art canvas -> texture
-  function artTexture(canvas){let t=pieceTex.get(canvas);if(!t){t=canvasTex(canvas,renderer);pieceTex.set(canvas,t);}return t;}
+  function artTexture(canvas){let t=pieceTex.get(canvas);if(!t){t=canvasTex(canvas,aniso);pieceTex.set(canvas,t);}return t;}
   out.paddles=[0,1].map(i=>{
     const g=new THREE.Group();
     const base=new THREE.Mesh(bodyGeo,sharedBodyMat);g.add(base);
-    const capMat=new THREE.MeshPhysicalMaterial({color:0x000000,emissive:0xffffff,emissiveIntensity:.9,roughness:.4,metalness:0,clearcoat:.9,clearcoatRoughness:.1,envMapIntensity:.8});
+    const capMat=phys({color:0x000000,emissive:0xffffff,emissiveIntensity:.9,roughness:.4,metalness:0,clearcoat:.9,clearcoatRoughness:.1,envMapIntensity:.8});
     const cap=new THREE.Mesh(capGeo,capMat);cap.rotation.x=-Math.PI/2;cap.position.y=.0322;g.add(cap);
     const ringMat=new THREE.MeshStandardMaterial({color:0x2de2e6,emissive:0x2de2e6,emissiveIntensity:1.1,metalness:1,roughness:.22,envMapIntensity:1.4});
     const bevel=new THREE.Mesh(ringGeo,ringMat);bevel.rotation.x=Math.PI/2;bevel.position.y=.0318;g.add(bevel);
@@ -157,7 +173,7 @@ export function createLook({scene,table,renderer,onHeight}){
   out.pucks=[0,1,2].map(()=>{
     const g=new THREE.Group();
     const base=new THREE.Mesh(puckBodyGeo,puckBodyMat);g.add(base);
-    const capMat=new THREE.MeshPhysicalMaterial({color:0x000000,emissive:0xffffff,emissiveIntensity:.9,roughness:.4,metalness:0,clearcoat:.9,clearcoatRoughness:.1,envMapIntensity:.8,transparent:true});
+    const capMat=phys({color:0x000000,emissive:0xffffff,emissiveIntensity:.9,roughness:.4,metalness:0,clearcoat:.9,clearcoatRoughness:.1,envMapIntensity:.8,transparent:true});
     const cap=new THREE.Mesh(puckCapGeo,capMat);cap.rotation.x=-Math.PI/2;cap.position.y=.0228;g.add(cap);
     const rimMat=new THREE.MeshStandardMaterial({color:0xffffff,emissive:0xffffff,emissiveIntensity:.8,metalness:1,roughness:.22,transparent:true});
     const rim=new THREE.Mesh(puckRimGeo,rimMat);rim.rotation.x=Math.PI/2;rim.position.y=.0125;g.add(rim);
@@ -177,7 +193,7 @@ export function createLook({scene,table,renderer,onHeight}){
   const bumperRimGeo=new THREE.TorusGeometry(BUMPER_R*1.03,.0032,8,48);
   out.bumpers=[0,1].map(()=>{
     const g=new THREE.Group();
-    const m=new THREE.Mesh(bumperGeo,new THREE.MeshPhysicalMaterial({color:0xffffff,metalness:0,roughness:.05,transparent:true,opacity:.16,clearcoat:1,clearcoatRoughness:.04,envMapIntensity:1.6,depthWrite:false}));m.position.y=.008;g.add(m);
+    const m=new THREE.Mesh(bumperGeo,phys({color:0xffffff,metalness:0,roughness:.05,transparent:true,opacity:.16,clearcoat:1,clearcoatRoughness:.04,envMapIntensity:1.6,depthWrite:false}));m.position.y=.008;g.add(m);
     const ring=new THREE.Mesh(bumperRimGeo,new THREE.MeshStandardMaterial({color:0xffffff,emissive:0xffffff,emissiveIntensity:.9,metalness:1,roughness:.2,transparent:true,opacity:.8}));ring.rotation.x=Math.PI/2;ring.position.y=.0165;g.add(ring);
     g.userData={m,ring};g.visible=false;table.add(g);return g;});
 

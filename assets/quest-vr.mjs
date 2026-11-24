@@ -6,6 +6,7 @@ import {ease,introFrame,introBeats,INTRO_END,victoryFrame,popFrame,ringFrame,bar
 import {fieldToTable,inputToField,fieldToInput,pickupStyle,envVictim,boardLabel,powerLine,detectEvents,newEventState,usableArena,backdropSize} from './quest-engine.mjs';
 import {createLook} from './quest-look.mjs';
 import {XR_SCALE,FOVEATION,newQuality,qualityStep,paddleRingColour,JOINT_NAMES} from './quest-look-pure.mjs';
+import {ONLINE_BUTTON,createOnline,onlineIntent,onlineEvent,onlineTick,onlineFail,onlinePage,drawOnlinePanel,onlineBoard,drawOnlineBoard,mine,feelEvents,mountOnlineFrame} from './quest-online.mjs';
 
 const storage=(()=>{try{return localStorage;}catch{return null;}})();
 const options=loadOptions(storage);const save=()=>saveOptions(storage,options);
@@ -51,10 +52,17 @@ function engineSettled(){
   }
 }
 const usingEngine=()=>engine.state==='ready';
+// Online play (see the Online section near the end and assets/quest-online.mjs).
+const OL={on:false,m:createOnline(),frame:null,frameSeen:'',prev:{},boardKey:'',dotsT:0,savedPlaying:false,keptStarted:false,gameState:'',wasAway:false,v:null};
 
 const scene=new THREE.Scene();scene.background=new THREE.Color('#080514');scene.fog=new THREE.Fog('#080514',5,15);
 const camera=new THREE.PerspectiveCamera(60,innerWidth/innerHeight,.01,40);
-const renderer=new THREE.WebGLRenderer({antialias:true});renderer.setPixelRatio(Math.min(devicePixelRatio,1.5));renderer.setSize(innerWidth,innerHeight);renderer.xr.enabled=true;renderer.xr.setReferenceSpaceType('local-floor');renderer.xr.setFoveation(FOVEATION);renderer.xr.setFramebufferScaleFactor(XR_SCALE);document.body.append(renderer.domElement);
+const renderer=new THREE.WebGLRenderer({antialias:true});renderer.setPixelRatio(Math.min(devicePixelRatio,1.5));renderer.setSize(innerWidth,innerHeight);renderer.xr.enabled=true;renderer.xr.setReferenceSpaceType('local-floor');renderer.xr.setFoveation(FOVEATION);document.body.append(renderer.domElement);
+// A software GL (SwiftShader, llvmpipe: emulators, CI) cannot rasterise the 1024 px field every frame; it gets the plain eye buffer and a field
+// refresh every SOFT_FIELD_EVERY frames so the page stays responsive. Real headsets never take this path. ?fullfield=1 turns it off.
+const softGL=(()=>{try{const gl=renderer.getContext(),e=gl.getExtension('WEBGL_debug_renderer_info');return !/[?&]fullfield/.test(location.search)&&/swiftshader|llvmpipe|software/i.test(String(e?gl.getParameter(e.UNMASKED_RENDERER_WEBGL):''));}catch{return false;}})();
+const SOFT_FIELD_EVERY=30;
+renderer.xr.setFramebufferScaleFactor(softGL?1:XR_SCALE);
 scene.add(new THREE.HemisphereLight(0xc7bbff,0x170924,1.1));
 const light=new THREE.DirectionalLight(0xffffff,1.6);light.position.set(-2,4,1);scene.add(light);
 
@@ -67,9 +75,9 @@ function glowMat(color,opacity=1){return new THREE.MeshBasicMaterial({color,tran
 // engine draws itself (host.renderField); the pieces are 3D bodies capped with the phone's own paddle and puck art (host.pieceArt).
 // Text canvases are drawn at CANVAS_SCALE x their layout size so lettering stays crisp in the headset; all drawing code keeps using the
 // layout coordinates (the context carries the scale), so button positions and hit-testing are unchanged.
-const CANVAS_SCALE=2,ANISO=Math.min(8,renderer.capabilities.getMaxAnisotropy());
+const CANVAS_SCALE=softGL?1:2,ANISO=softGL?1:Math.min(8,renderer.capabilities.getMaxAnisotropy());
 const puckArt=new Map(); // puck tint -> the phone's puck art canvas for it
-const lk=createLook({scene,table,renderer});
+const lk=createLook({scene,table,renderer,soft:softGL});
 const legs=lk.legs,paddles=lk.paddles,pucks=lk.pucks,bumpers=lk.bumpers,MAX_PUCKS=pucks.length;
 let grid=new THREE.GridHelper(16,32,0x842e8f,0x271438);grid.position.y=-.01;scene.add(grid);
 // Power-up pick-up: the phone's flat ring, glow and glyph are in the table texture; a faint light beam rising from it shows it from across the room.
@@ -85,7 +93,7 @@ const backdrop=new THREE.Mesh(new THREE.CylinderGeometry(5.5,5.5,5.2,48,1,true,0
 const textures=new Map();const loader=new THREE.TextureLoader();
 function plateTexture(id,cb){
   if(textures.has(id)){cb(textures.get(id));return;}
-  loader.load('assets/arenas/'+id+'.webp',t=>{t.colorSpace=THREE.SRGBColorSpace;t.wrapS=THREE.RepeatWrapping;t.repeat.x=-1;t.offset.x=1;t.anisotropy=4;textures.set(id,t);while(textures.size>3){const k=textures.keys().next().value;textures.get(k).dispose();textures.delete(k);}cb(t);},undefined,()=>cb(null));
+  loader.load('assets/arenas/'+id+'.webp',t=>{t.colorSpace=THREE.SRGBColorSpace;t.wrapS=THREE.RepeatWrapping;t.repeat.x=-1;t.offset.x=1;t.anisotropy=softGL?1:4;textures.set(id,t);while(textures.size>3){const k=textures.keys().next().value;textures.get(k).dispose();textures.delete(k);}cb(t);},undefined,()=>cb(null));
 }
 let backdropFor='';
 let arenaCols=null;
@@ -251,7 +259,9 @@ function clickSound(high=false){
 function menuView(){return {started,over:usingEngine()?engine.host.game.state==='over':!!state.winner,difficulty:options.difficulty,height:options.height,hand:options.hand,sound:options.sound,haptics:options.haptics,calibrating,inVR:renderer.xr.isPresenting,arenas:usingEngine()?arenaList:[],arena:arenaIx,daily:usingEngine()?engine.host.daily():null};}
 function drawLock(c,x,y,col){c.strokeStyle=col;c.fillStyle=col;c.lineWidth=3;c.beginPath();c.arc(x,y-4,6,Math.PI,0);c.stroke();c.fillRect(x-8,y-4,16,12);}
 function drawMenu(){
+  if(OL.on)return drawOnlineMenu();
   const c=menu.ctx,buttons=menuButtons(menuView()),hot=new Set([...hover.values()].filter(h=>h.kind==='menu'&&h.button).map(h=>h.button.id)),nowMs=performance.now();
+  buttons.push({...ONLINE_BUTTON});
   const over=usingEngine()?engine.host.game.state==='over':!!state.winner,score=usingEngine()?engine.host.game.score:state.score,winner=usingEngine()?engine.host.game.winner:state.winner;
   c.clearRect(0,0,MENU_W,MENU_H);c.fillStyle='#100821f2';roundRect(c,6,6,MENU_W-12,MENU_H-12,40);c.fill();c.strokeStyle='#734394';c.lineWidth=6;c.stroke();
   c.textBaseline='middle';c.textAlign='left';c.fillStyle='#36eeee';c.font='bold 54px sans-serif';c.fillText('CREASE VR',56,66);
@@ -283,6 +293,7 @@ function chooseArena(i){
 }
 function press(id,source){
   flashes.set(id,performance.now()+220);clickSound(id==='primary');menuDirty=true;
+  if(id==='online'||id.startsWith('ol:')){onlinePress(id,source);haptic(source,.35,20);return;}
   if(id.startsWith('arena:')){if(usingEngine())chooseArena(+id.slice(6));save();menuDirty=true;haptic(source,.35,20);return;}
   const action=applyButton(options,id);
   if(action==='primary'){const over=usingEngine()?engine.host.game.state==='over':!!state.winner;if(!started||over)startMatch();else{menuOpen=false;}}
@@ -338,6 +349,7 @@ enter.onclick=async()=>{
     if(engine.state==='ready'&&engine.host){let dead=false;try{dead=!engine.frame?.contentWindow||!engine.host.game;}catch{dead=true;}if(dead)recoverEngine('frame gone');}
     session.addEventListener('visibilitychange',()=>onSessionVisibility(session));
     session.addEventListener('inputsourceschange',()=>{pokes.clear();pinches.clear();buttonsDown.clear();hover.clear();lastSelect.clear();menuDirty=true;});
+    onlineExit();session.addEventListener('end',()=>onlineExit());
     session.addEventListener('end',()=>{playing=false;menuOpen=false;calibrating=null;resetInputState();if(usingEngine())engine.host.pause();audio?.suspend?.().catch(()=>{});document.body.classList.remove('in-vr');enter.disabled=false;enter.textContent='Enter VR';status.textContent='VR ended. Enter again or return to the phone game.';});
     await renderer.xr.setSession(session);enter.textContent='In VR';
   }catch(e){await session?.end().catch(()=>{});status.textContent='VR could not start: '+e.message;enter.disabled=false;}
@@ -508,7 +520,7 @@ renderer.setAnimationLoop((now,frame)=>{
   table.position.x=0;table.position.z=-1.25; // the jolt is added after input is read, so it never feeds the paddle
   const session=renderer.xr.getSession();
   // Keep the headset's frame rate: sustained slow frames raise foveation, then draw the field texture every other frame.
-  if(session&&okGap){const qs=qualityStep(quality,gap*1000,1000/(session.frameRate||72),lk.field.ms);if(qs.foveation!==curFov){curFov=qs.foveation;try{renderer.xr.setFoveation(curFov);}catch{}}lk.field.every=qs.fieldEvery;}
+  if(session&&okGap){const qs=qualityStep(quality,gap*1000,1000/(session.frameRate||72),lk.field.ms);if(qs.foveation!==curFov){curFov=qs.foveation;try{renderer.xr.setFoveation(curFov);}catch{}}lk.field.every=softGL?Math.max(qs.fieldEvery,SOFT_FIELD_EVERY):qs.fieldEvery;}
   if(frame&&session){
     tracked=false;const ref=renderer.xr.getReferenceSpace(),inputs=[...session.inputSources];
     const vp=frame.getViewerPose(ref);if(vp){eyeY=vp.transform.position.y;if(autoPending&&eyeY>.6){autoPending=false;applyHeight(autoTableHeight(eyeY));}}
@@ -552,7 +564,7 @@ renderer.setAnimationLoop((now,frame)=>{
   // The engine is paused whenever the menu is open or the paddle hand is gone for a moment.
   lostT=tracked?0:lostT+dt;
   let over=false;
-  if(eng){
+  if(eng&&!OL.on){
     over=g.state==='over';
     if(started){
       const wantPause=menuOpen||(lostT>.4&&playing)||hiddenNow();
@@ -570,9 +582,10 @@ renderer.setAnimationLoop((now,frame)=>{
       }
       if(over){if(!overHandled){overHandled=true;onMatchOver();}if(!menuOpen&&victoryFrame(g.overT).ready){menuOpen=true;menuDirty=true;}}
     }
-    if(started&&usingEngine()){syncEngine(dt,t);const L=eng.view.L;drawParticles(g.parts,L);if(!lk.field.ok)drawRings(g.rings,L);drawPops(menuOpen?[]:g.pops,L);drawBars(g,eng);
+    if(started&&usingEngine()){syncEngine(dt,t);const L=eng.view.L;drawParticles(g.parts,L);if(!lk.field.ok||softGL)drawRings(g.rings,L);drawPops(menuOpen?[]:g.pops,L);drawBars(g,eng);
       if(over&&!menuOpen)applyVictory(g,eng);else hideStamp();}
     else if(!started){for(const m of pucks)m.visible=false;if(!intro)fxOff();}
+  }else if(OL.on){over=onlineFrame(dt,t,tracked);
   }else if(started&&engine.state==='failed'){
     over=!!state.winner;
     if(playing&&!menuOpen&&tracked&&!hiddenNow()){followHand(smoothTarget,target,dt);acc+=dt;while(acc>=1/60){
@@ -582,12 +595,13 @@ renderer.setAnimationLoop((now,frame)=>{
     }}else acc=0;
     syncSimple();
   }else{for(const m of paddles)m.visible=true;}
-  if(!started&&!intro){const rest=[[.5,1.6],[.5,.2]];paddles.forEach((m,i)=>{m.position.set(rest[i][0]-.5,0,rest[i][1]-.9);m.scale.set(1,1,1);});}
+  if(!started&&!intro&&!OL.on){const rest=[[.5,1.6],[.5,.2]];paddles.forEach((m,i)=>{m.position.set(rest[i][0]-.5,0,rest[i][1]-.9);m.scale.set(1,1,1);});}
   if(intro&&introFrameNow)applyIntro(introFrameNow);
+  else if(OL.on){fxOff();hideStamp();}
   else if(started&&!usingEngine())fxOff();
   if(usingEngine()){for(const e of engine.host.takeEvents()){const line=unlockLine(e);if(line)toasts.push(line);if(e.type==='stage'){try{arenaList=engine.host.arenas();}catch{}menuDirty=true;}}}
   drawToast(now);
-  {const shk=intro?introFxState.shake:(eng&&started?g.shake:0),o=shakeOffset(shk,Math.random(),Math.random());table.position.x=o.x;table.position.z=-1.25+o.z;}
+  {const shk=intro?introFxState.shake:(eng&&started&&!OL.on?g.shake:0),o=shakeOffset(shk,Math.random(),Math.random());table.position.x=o.x;table.position.z=-1.25+o.z;}
   if(menuDirty&&menu.mesh.visible)buttons=drawMenu();
   // Scoreboard: score, the engine's own message, and the active arena power.
   const score=eng?g.score:state.score;
@@ -604,7 +618,7 @@ renderer.setAnimationLoop((now,frame)=>{
   if(over&&!notice)label=(eng?g.winner:state.winner)===1?'YOU WIN':'CPU WINS';
   sub=away?'CLOSE IT (QUEST BUTTON) TO KEEP PLAYING':intro?'PINCH OR TRIGGER TO SKIP':menuOpen?'TOUCH A BUTTON · OR POINT AND PINCH':(eng&&powerLine(g))||(desktop&&!renderer.xr.isPresenting?'MOUSE TO PLAY · M FOR MENU':'FREE-HAND PINCH OR MENU TAB FOR OPTIONS');
   const text=(intro?'INTRO':started?score.join(' : '):'MENU')+' / '+label+' / '+sub;
-  if(text!==lastLabel){lastLabel=text;const c=board.ctx;c.fillStyle='#100821';c.fillRect(0,0,1024,256);c.textAlign='center';c.textBaseline='alphabetic';const pulse=intro?1+.05*Math.sin(introT*5):1;c.save();c.translate(512,95);c.scale(pulse,pulse);c.fillStyle=intro?'#ff3195':'#36eeee';c.font='bold 70px sans-serif';
+  if(text!==lastLabel&&!OL.on){lastLabel=text;const c=board.ctx;c.fillStyle='#100821';c.fillRect(0,0,1024,256);c.textAlign='center';c.textBaseline='alphabetic';const pulse=intro?1+.05*Math.sin(introT*5):1;c.save();c.translate(512,95);c.scale(pulse,pulse);c.fillStyle=intro?'#ff3195':'#36eeee';c.font='bold 70px sans-serif';
     if(window.CreaseLogo){const LG=window.CreaseLogo,lh=58,lw=LG.width(lh);if(!started)LG.draw(c,-lw/2,-lh,lh);else{const sc=score.join(' : '),sw=c.measureText(sc).width,gap=40,tot=lw+gap+sw;LG.draw(c,-tot/2,-lh,lh);c.textAlign='left';c.fillText(sc,-tot/2+lw+gap,0);c.textAlign='center';}}
     else c.fillText(started?'CREASE   '+score.join(' : '):'CREASE',0,0);
     c.restore();c.fillStyle='#fff';c.font=label.length>34?'bold 24px sans-serif':'bold 30px sans-serif';c.fillText(label,512,174);c.fillStyle=eng&&g.env&&g.env.t>0?'#ffd15f':'#ff3195';c.font='18px sans-serif';c.fillText(sub,512,220);board.texture.needsUpdate=true;status.textContent=label;}
@@ -615,17 +629,91 @@ renderer.setAnimationLoop((now,frame)=>{
   // The table top: the phone's own drawing of the field, refreshed every frame. Menu and intro (no live match) get the bare table with the
   // paddles' shadows where the 3D paddles are.
   if(eng&&!hiddenNow()){
-    const F=lk.field,live=started&&!intro;F.opts.bare=!live;F.opts.pucks=null;F.opts.score=null;if(F.opts.paddles.length!==2||F.opts.paddles[0].u===undefined)F.opts.paddles=[];const pa=F.opts.paddles;
+    const F=lk.field,olv=OL.on&&OL.v,live=started&&!intro&&!OL.on;F.opts.bare=!live;F.opts.pucks=null;F.opts.score=null;if(F.opts.paddles.length!==2||F.opts.paddles[0].u===undefined)F.opts.paddles=[];const pa=F.opts.paddles;
     if(!live){if(pa.length!==2){pa.length=0;pa.push({p:1,u:.5,v:1.6,r:.085,ptr:null,big:0,punch:0},{p:2,u:.5,v:.2,r:.085,ptr:null,big:0,punch:0});}
       const Lh=eng.view.L;if(intro&&introFrameNow){const f=introFrameNow;pa[0].u=f.p1.u;pa[0].v=f.padsOn?f.p1.v:-9;pa[1].u=f.p2.u;pa[1].v=f.padsOn?f.p2.v:-9;}
       else{pa[0].u=.5;pa[0].v=1.6*Lh/1.8;pa[1].u=.5;pa[1].v=.2*Lh/1.8;}}
-    lk.updateField(eng);flatInTexture=F.ok;
+    if(olv)lk.setExternal(eng.view.L,olv.me,olv.them,olv.puck,olv.score);
+    lk.updateField(eng);flatInTexture=F.ok&&!softGL;
   }
   renderer.render(scene,camera);
 });
 addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);});
 document.addEventListener('visibilitychange',()=>{if(renderer.xr.isPresenting)return;if(document.hidden){if(started&&playing&&!intro){menuOpen=true;menuDirty=true;}}else{last=0;needSync=true;audio?.resume?.().catch(()=>{});}});
 loadEngine();
+
+// ---- Online: play another person, on a phone or in a headset ----------------------
+// The ONLINE button opens these pages on the menu panel. The phone game's own online
+// client (online.html) runs in a hidden frame and this page only presses its buttons,
+// sends your hand and draws what the server says: the server owns the puck and score.
+function onlineBridge(){const f=OL.frame;if(!f||f.state!=='ready')return null;try{if(!f.frame.contentWindow)throw 0;return f.host;}catch{f.state='failed';return null;}}
+function onlineEnv(){const br=onlineBridge();return {loading:OL.frame?.state==='loading',failed:OL.frame?.state==='failed',configured:br?br.configured:undefined};}
+function onlineOpen(){
+  OL.on=true;OL.m=createOnline();OL.prev={};OL.boardKey='';OL.savedPlaying=playing;OL.keptStarted=started;OL.gameState=usingEngine()?engine.host.game.state:'';
+  if(!OL.frame||OL.frame.state==='failed'){try{OL.frame?.frame?.remove();}catch{}OL.frame=mountOnlineFrame(document);}
+  menuOpen=true;menuDirty=true;lastLabel='';
+}
+function onlineExit(){
+  if(!OL.on)return;const br=onlineBridge();try{br?.cancel();}catch{}
+  OL.on=false;OL.m=createOnline();playing=started&&OL.savedPlaying;menuDirty=true;lastLabel='';hover.clear();
+  for(let i=0;i<pucks.length;i++)pucks[i].visible=false;
+}
+// A CPU match started (Desktop practice) while online: that wins.
+function localMatchStarted(){return started&&(!OL.keptStarted||usingEngine()&&engine.host.game.state!=='paused'&&engine.host.game.state!==OL.gameState);}
+function onlinePress(id,source){
+  if(id==='online'){onlineOpen();return;}
+  const b=buttons.find(x=>x.id===id);if(b?.locked){say(onlineEnv().loading?'ONLINE IS STILL LOADING':id==='ol:join'?'TYPE ALL TEN CHARACTERS FIRST':'ONLINE PLAY IS NOT AVAILABLE',2.5);return;}
+  if(id==='ol:reload'){try{OL.frame?.frame?.remove();}catch{}OL.frame=mountOnlineFrame(document);return;}
+  const br=onlineBridge(),fx=onlineIntent(OL.m,id,{now:performance.now(),serial:br?br.serial:0});
+  if(fx.leave)try{br?.cancel();}catch{}
+  if(fx.resume)menuOpen=false;
+  if(fx.exit){onlineExit();menuOpen=true;}
+  menuDirty=true;OL.boardKey='';
+}
+function runOnline(br,cmd){
+  const ok=cmd.do==='quick'?br.quick():cmd.do==='create'?br.create(cmd.code):cmd.do==='join'?br.join(cmd.code):cmd.do==='leave'?br.cancel():true;
+  if(!ok&&cmd.do!=='leave')onlineFail(OL.m,'server',performance.now());
+}
+function drawOnlineMenu(){
+  const nowMs=performance.now(),hot=new Set([...hover.values()].filter(h=>h.kind==='menu'&&h.button).map(h=>h.button.id)),pressed=new Set([...flashes].filter(([,end])=>end>nowMs).map(([id])=>id));
+  const page=onlinePage(OL.m,onlineEnv());drawOnlinePanel(menu.ctx,page,{hot,pressed,t:nowMs/1000});
+  menu.texture.needsUpdate=true;menuDirty=false;return page.buttons;
+}
+// One frame of online play; returns true when the match is over.
+function onlineFrame(dt,t,tracked){
+  if(localMatchStarted()){onlineExit();return false;}
+  const now=performance.now(),m=OL.m,before=m.phase,br=onlineBridge();
+  if(br){let snap=null;try{snap=br.poll();}catch{}
+    if(snap){for(const ev of snap.events)onlineEvent(m,ev,now);const cmd=onlineTick(m,snap,now);if(cmd)try{runOnline(br,cmd);}catch{onlineFail(m,'server',now);}}}
+  else if(OL.frame?.state==='failed'&&m.phase!=='idle'&&m.phase!=='lost')onlineFail(m,'server',now);
+  const ph=m.phase,fs=OL.frame?.state;if(fs!==OL.frameSeen){OL.frameSeen=fs;menuDirty=true;} // loading -> ready unlocks the buttons
+  if(ph!==before){menuDirty=true;OL.boardKey='';notice='';noticeT=0;
+    if(ph==='found'||ph==='playing'&&before!=='found'){if(ph==='found')haptic(paddleSource(),.6,60);menuOpen=false;}
+    else if(ph!=='playing')menuOpen=true;}
+  if(ph==='idle'&&!menuOpen){onlineExit();return false;} // closed the ONLINE pages (B / Esc)
+  playing=ph!=='idle';
+  if(ph==='searching'||ph==='connecting'||ph==='waiting'){OL.dotsT+=dt;if(OL.dotsT>.33){OL.dotsT=0;menuDirty=true;}}
+  const away=hiddenNow();if(away!==OL.wasAway){OL.wasAway=away;OL.boardKey='';if(!away&&(ph==='found'||ph==='playing'))say('WELCOME BACK · THE MATCH IS LIVE',2.5);}
+  // your hand drives your paddle; the server limits its speed and keeps it on your half
+  if(br&&(ph==='found'||ph==='playing')&&m.state&&!m.winner&&tracked&&!away)try{br.move(target.x,target.y);}catch{}
+  // draw the server's table from your end
+  const v=m.state&&ph!=='searching'&&ph!=='waiting'&&ph!=='connecting'?mine(m.state,m.player):null;
+  const rest=[{x:.5,y:1.6},{x:.5,y:.2}],at=v?[v.me,v.them]:rest;
+  OL.v=v;
+  // The same phone-art pieces as a CPU match, from the server's positions: the table texture draws the paddle glows, the puck's
+  // glow and the score numbers (see the field block in the loop); here are the 3D bodies.
+  const oh=usingEngine()?engine.host:null;if(oh)refreshArt(oh,performance.now());
+  for(let i=0;i<2;i++){paddles[i].visible=true;paddles[i].position.set(at[i].x-.5,0,at[i].y-.9);paddles[i].scale.set(1,1,1);lk.setPaddleRing(i,paddleRingColour(look,false,false));}
+  pucks[0].visible=!!v;if(v){pucks[0].position.set(v.puck.x-.5,0,v.puck.y-.9);pucks[0].scale.set(1,1,1);lk.tintPuck(pucks[0],'#ffffff',oh?puckArtFor(oh,'#ffffff'):null,false,1);}
+  for(let i=1;i<pucks.length;i++)pucks[i].visible=false;
+  for(const x of bumpers)x.visible=false;pickup.visible=false;envOrb.visible=false;
+  const ev=feelEvents(OL.prev,v);
+  if(ev.hit)haptic(paddleSource(),.65,45);if(ev.goalFor)haptic(paddleSource(),ev.goalFor===1?.8:.5,ev.goalFor===1?120:80);
+  // scoreboard
+  const bv=onlineBoard(m,{away,notice}),key=bv.score+'|'+bv.label+'|'+bv.sub;
+  if(key!==OL.boardKey){OL.boardKey=key;drawOnlineBoard(board.ctx,bv,window.CreaseLogo);board.texture.needsUpdate=true;status.textContent=bv.label;}
+  return ph==='over';
+}
 // Old-style view of the engine match for tests and tools: table units (x across [0,1], y along [0,1.8]);
 // the puck fields and `countdown` can be written, which moves the engine's own puck / starts play.
 let compat=null;
@@ -647,7 +735,7 @@ if(/^(localhost|127\.0\.0\.1)$/.test(location.hostname)||new URLSearchParams(loc
   // Table-unit view of the match (x across [0,1], y along [0,1.8]) whichever game is running.
   get hitLog(){return hitLog;},get hitches(){return hitches;},
   get state(){return usingEngine()?engineCompat():state;},
-  get field(){const F=lk.field;return {ok:F.ok,ms:F.ms,frames:F.frames,every:F.every,errors:F.errors,err:F.lastError||'',w:F.canvas()?.width||0,h:F.canvas()?.height||0};},get look3(){return lk;},get renderer(){return renderer;},
+  get field(){const F=lk.field;return {ok:F.ok,ms:F.ms,frames:F.frames,every:F.every,errors:F.errors,err:F.lastError||'',w:F.canvas()?.width||0,h:F.canvas()?.height||0};},get look3(){return lk;},get softGL(){return softGL;},get renderer(){return renderer;},
   get engine(){return engine.host;},get engineState(){return engine.state;},get arenaList(){return arenaList;},get arenaIx(){return arenaIx;},
   get audio(){return audio;},get backdrop(){return {visible:backdrop.visible,map:!!backdrop.material.map,id:backdropFor};},
   get visible(){return {pucks:pucks.filter(p=>p.visible).length,pickup:pickup.visible,envOrb:envOrb.visible,shields:usingEngine()?engine.host.game.shields.filter(v=>v>0).length:0, // goal walls are drawn by the table texture
@@ -657,4 +745,5 @@ if(/^(localhost|127\.0\.0\.1)$/.test(location.hostname)||new URLSearchParams(loc
   skipIntro,set introT(v){introT=v;},get introFrame(){return introFrameNow;},
   get tableHeight(){return tableHeight;},get menuOpen(){return menuOpen;},get playing(){return playing;},get intro(){return intro;},get target(){return target;},startMatch,press,handleSelect,hover,
   menuPoint(id){const b=buttons.find(x=>x.id===id);if(!b)return null;menu.mesh.updateMatrixWorld();const p=menu.mesh.localToWorld(new THREE.Vector3(((b.x+b.w/2)/MENU_W-.5)*PANEL_W,(.5-(b.y+b.h/2)/MENU_H)*PANEL_H,0));const n=new THREE.Vector3(0,0,1).transformDirection(menu.mesh.matrixWorld);return {p:{x:p.x,y:p.y,z:p.z},n:{x:n.x,y:n.y,z:n.z}};}};
+if(window.__creaseVR)window.__creaseVR.online={get on(){return OL.on;},get m(){return OL.m;},get frame(){return OL.frame?.state||'';},get buttons(){return buttons;},get bridge(){return onlineBridge();}};
 try{const supported=await navigator.xr?.isSessionSupported('immersive-vr');enter.disabled=!supported;enter.textContent=supported?'Enter VR':'Open in Quest Browser';}catch{enter.textContent='VR unavailable';}
