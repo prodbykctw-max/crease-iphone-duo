@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="referrer" content="strict-origin-when-cross-origin">
 <!-- Content-Security-Policy: installed by the next script, except on a local test server (localhost / 127.0.0.1) where the capture harness rewrites the game script. Update hashes with: node tools/csp-hash.mjs -->
-<meta name="crease-csp" content="default-src 'self'; script-src 'self' 'sha256-9kyMFOQq/HLwXlyiVTgCTQzmo6H4oBBvtdWEJb0rIFI=' 'sha256-34SLTF+AfZmb1nspvgxNmfDhmNRK+CP5PLTcCyrhJa8='; connect-src 'self' https://crease-metrics.prodbykctw.workers.dev https://crease-license.prodbykctw.workers.dev; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta name="crease-csp" content="default-src 'self'; script-src 'self' 'sha256-9kyMFOQq/HLwXlyiVTgCTQzmo6H4oBBvtdWEJb0rIFI=' 'sha256-SIQ0aVzoYnJgr9hK//fCFNrE2wZQlyshcDEXoC9JlRE='; connect-src 'self' https://crease-metrics.prodbykctw.workers.dev https://crease-license.prodbykctw.workers.dev; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <script>(function(){var h=location.hostname;if(h==='localhost'||h==='127.0.0.1')return;var p=document.querySelector('meta[name="crease-csp"]'),m=document.createElement('meta');m.httpEquiv='Content-Security-Policy';m.content=p.content;document.head.appendChild(m);})();</script>
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -566,12 +566,15 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--p1);outline-offset:
 (() => {
 'use strict';
 const cv = document.getElementById('cv');
-const ctx = cv.getContext('2d', { alpha: false });
+let ctx = cv.getContext('2d', { alpha: false });   // HOST: the field-texture render swaps this for its own canvas, then puts it back
 const $ = id => document.getElementById(id);
 // VR host mode (?vrhost=1 inside a same-origin parent page, i.e. the VR page): this page runs only the game engine,
 // with no boot/intro/menu, no render loop and no 2D drawing; the parent steps it and draws it in 3D.
 // Everything marked HOST below is inert on the normal game.
 const HOST = (() => { try { return /[?&]vrhost=1(&|$)/.test(location.search) && window.parent !== window && !!window.parent.document; } catch (_) { return false; } })();
+// HOST only: what the VR page's field texture and piece art renders are doing right now. mode 0 = normal drawing (always, on the phone),
+// 1 = field texture (flat paddle and puck bodies are left out, the VR page draws them in 3D), 2 = a single piece's top art (no glow, trail or flames).
+const hostF = { on: false, mode: 0, w: 0, h: 0, cv: null, c: null, key: '', pcv: null, pc: null, pieces: {} };
 
 // ---------- Glide: nothing just appears ----------
 // Dialogs and overlays grow out of the button that opened them and shrink back into it. Motion only:
@@ -2530,10 +2533,10 @@ function paintTable(c, bright) {
 }
 
 function buildBg() {
-  if (HOST) return;   // no 2D scenery in VR host mode
+  if (HOST && !hostF.on) return;   // no 2D scenery in VR host mode, except while the VR field texture is being (re)built
   const { L, s } = view;
-  const W = cv.width, Hh = cv.height;
-  bg.width = W; bg.height = Hh; glow.width = W; glow.height = Hh; crt.width = W; crt.height = Hh;
+  const W = hostF.on ? hostF.w : cv.width, Hh = hostF.on ? hostF.h : cv.height;
+  bg.width = W; bg.height = Hh; glow.width = W; glow.height = Hh; if (!hostF.on) { crt.width = W; crt.height = Hh; }
   const c = bgc;
   c.setTransform(1, 0, 0, 1, 0, 0);
   const og = c.createRadialGradient(W / 2, Hh / 2, 0, W / 2, Hh / 2, Math.hypot(W, Hh) / 2);
@@ -2574,7 +2577,8 @@ function buildBg() {
   glowc.setTransform(1, 0, 0, 1, 0, 0); glowc.clearRect(0, 0, W, Hh);
   fieldTf(glowc); paintTable(glowc, true);
 
-  // CRT scanlines + vignette, drawn over everything each frame
+  // CRT scanlines + vignette, drawn over everything each frame (not on the VR field texture: it would moire on a 3D surface)
+  if (hostF.on) return;
   crtc.setTransform(1, 0, 0, 1, 0, 0); crtc.clearRect(0, 0, W, Hh);
   const step = Math.max(2, Math.round(view.dpr * 1.5));
   crtc.fillStyle = 'rgba(0,0,0,.16)';
@@ -3480,8 +3484,11 @@ function drawPaddle(pd, glowA) {
   if(mine)style={...style,ring:studio.d.ring||style.ring,core:studio.d.core||style.core,trail:studio.d.trail||style.trail};
   const ring = pd.big > 0 ? COL.BIG : col;
   const D = s1 && s1.design, op = D ? D.opacity : 1;   // opacity applies to every look; shape and texture only to the Custom look
-  glowCircle(pd.u, pd.v, pd.r * 1.7, style.trail, (glowA+(game.fire[pd.p-1]>0?.18:0))*op);
-  drawFlames(pd.u, pd.v, pd.r, fireAmt(pd.p), pd.p);
+  if (hostF.mode !== 2) {
+    glowCircle(pd.u, pd.v, pd.r * 1.7, style.trail, (glowA+(game.fire[pd.p-1]>0?.18:0))*op);
+    drawFlames(pd.u, pd.v, pd.r, fireAmt(pd.p), pd.p);
+  }
+  if (hostF.mode === 1) return;   // HOST field texture: the VR page draws the paddle body in 3D
   if (s1 && s1.body && (op < 1 ? PA().paddleAlpha(pd, tiltField(), s1.body, op) : PA().paddle(pd, tiltField(), s1.body))) return;   // a signature look (equipped, or the base of a custom-paddle mix)
   if (D && (D.shape !== 'circle' || D.texture !== 'none' || op < 1)) { drawCustomPaddle(pd, style, D); return; }
   // Raised glossy body: shadow, outer bevel, metallic rim, glass core.
@@ -3507,14 +3514,17 @@ function drawPaddle(pd, glowA) {
 function drawPuck(pk, tint, scale = 1, alpha = 1) {
   const px = 1 / view.s;
   const tr = pk.trail, n = tr.length / 2;
-  for (let i = 0; i < n - 1; i++) {
+  if (hostF.mode !== 2) for (let i = 0; i < n - 1; i++) {
     const a = (i + 1) / n;
     glowCircle(tr[i * 2], tr[i * 2 + 1], pk.r * (0.35 + 0.6 * a), tint, 0.18 * a * alpha);
   }
   const r = pk.r * scale;
   const fire=pk.last&&game.fire[pk.last-1]>0;
-  if(fire)drawFlames(pk.u,pk.v,r,fireAmt(pk.last)*.9,3+pk.last);
-  glowCircle(pk.u, pk.v, r * 2.2, tint, 0.2 * alpha);
+  if (hostF.mode !== 2) {
+    if(fire)drawFlames(pk.u,pk.v,r,fireAmt(pk.last)*.9,3+pk.last);
+    glowCircle(pk.u, pk.v, r * 2.2, tint, 0.2 * alpha);
+  }
+  if (hostF.mode === 1) return;   // HOST field texture: the VR page draws the puck body in 3D
   ctx.globalAlpha = alpha;
   const tk=tiltField();
   ctx.fillStyle='rgba(0,0,0,.48)';ctx.beginPath();ctx.ellipse(pk.u+r*(.12+tk.u*.3),pk.v+r*(.19+tk.v*.3),r*.98,r*.54,0,0,Math.PI*2);ctx.fill();
@@ -3539,6 +3549,91 @@ function drawCrease(alpha, from = 0.02, to = 0.98) {
   ctx.beginPath(); ctx.moveTo(from, L / 2); ctx.lineTo(to, L / 2); ctx.stroke();
   ctx.globalAlpha = 1;
 }
+// The field-space layers of drawGame, split out so the VR host's field texture draws them with the very same code.
+function drawShields() {
+  const L = view.L, px = 1 / view.s;
+  // shields
+  const gw = CFG.goalW / 2;
+  for (let i = 0; i < 2; i++) {
+    const t = game.shields[i]; if (t <= 0) continue;
+    const vy = i === 0 ? L - 0.012 : 0.012;
+    const blink = t < 1.5 ? (Math.sin(game.t * 30) > 0 ? 1 : 0.3) : 1;
+    ctx.strokeStyle = COL.WALL; ctx.lineCap = 'round';
+    ctx.globalAlpha = 0.3 * blink; ctx.lineWidth = 16 * px;
+    ctx.beginPath(); ctx.moveTo(0.5 - gw - 0.02, vy); ctx.lineTo(0.5 + gw + 0.02, vy); ctx.stroke();
+    ctx.globalAlpha = blink; ctx.lineWidth = 5 * px; ctx.stroke();
+    ctx.globalAlpha = 1;
+  }
+}
+function drawPowerups() {
+  const px = 1 / view.s;
+  // power-ups
+  for (const pu of game.pups) {
+    const col = COL[pu.type];
+    const bob = 1 + 0.08 * Math.sin(game.t * 6);
+    const fade = pu.life < 2 ? (Math.sin(game.t * 20) > 0 ? 1 : 0.35) : 1;
+    glowCircle(pu.u, pu.v, pu.r * 1.9 * bob, col, 0.15 * fade);
+    ctx.globalAlpha = fade;
+    ctx.lineWidth = 3 * px; ctx.strokeStyle = col;
+    ctx.beginPath(); ctx.arc(pu.u, pu.v, pu.r * bob, 0, Math.PI * 2); ctx.stroke();
+    ctx.fillStyle = col;
+    if (pu.type === 'BIG') { ctx.beginPath(); ctx.arc(pu.u, pu.v, pu.r * 0.55, 0, Math.PI * 2); ctx.fill(); }
+    else if (pu.type === 'MULTI') {
+      for (const o of [-1, 1]) { ctx.beginPath(); ctx.arc(pu.u + o * pu.r * 0.38, pu.v, pu.r * 0.26, 0, Math.PI * 2); ctx.fill(); }
+    } else { ctx.fillRect(pu.u - pu.r * 0.6, pu.v - pu.r * 0.16, pu.r * 1.2, pu.r * 0.32); }
+    ctx.globalAlpha = 1;
+  }
+}
+// spawn: the phone game's smash puck throws sparks as it is drawn; the VR texture render passes false (drawing must not change the game).
+function drawPucksPaddles(spawn) {
+  // pucks
+  for (const pk of game.pucks) {
+    const tint = pk.last === 1 ? COL.p1 : pk.last === 2 ? COL.p2 : '#ffffff';
+    if (pk.smashT > 0) {                      // white-hot smash puck with RGB split
+      const a = Math.min(1, pk.smashT / 0.3), o = 0.012 * a;
+      glowCircle(pk.u - o, pk.v, pk.r * 1.15, COL.p1, 0.55 * a);
+      glowCircle(pk.u + o, pk.v, pk.r * 1.15, COL.p2, 0.55 * a);
+      glowCircle(pk.u, pk.v, pk.r * 2.6, COL.gold, 0.18 * a);
+      if (spawn && Math.random() < 0.7) game.parts.push({ u: pk.u, v: pk.v, vu: rand(-0.2, 0.2), vv: rand(-0.2, 0.2), life: 0.3, max: 0.3, col: Math.random() < 0.5 ? COL.gold : COL.orange, sz: rand(0.006, 0.012) });
+    }
+    const uvHide = game.env && game.env.type === 'UV' && game.env.t > 0 && (game.env.who === 1 ? pk.v < view.L / 2 : pk.v > view.L / 2);
+    if (game.env && game.env.type === 'LAVA' && pk.last === game.env.who) drawFlames(pk.u, pk.v, pk.r, 0.8, 5);
+    drawPuck(pk, pk.smashT > 0 ? COL.gold : tint, 1, uvHide ? 0.12 : 1);
+  }
+
+  // paddles
+  for (const pd of game.paddles) {
+    const k = pd.punch || 0, r0 = pd.r;
+    pd.r = r0 * (1 + k * 0.18);
+    drawPaddle(pd, (pd.ptr !== null ? 0.24 : 0.14) + k * 0.3);
+    if (k > 0.05) glowCircle(pd.u, pd.v, pd.r * 0.9, '#ffffff', k * 0.35);
+    pd.r = r0;
+  }
+}
+function drawParticlesAndRailHits() {
+  const L = view.L, px = 1 / view.s;
+  // particles
+  for (const p of game.parts) {
+    const a = Math.max(0, p.life / p.max);
+    if (p.streak) {
+      const depth=clamp(1+(p.z||0)*1.7,.45,1.9);ctx.globalAlpha = a; ctx.strokeStyle = p.col;ctx.shadowColor=p.col;ctx.shadowBlur=p.sz*view.s*4*depth;ctx.lineWidth = p.sz * (1 + p.streak)*depth;
+      ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.moveTo(p.u, p.v); ctx.lineTo(p.u - p.vu * 0.035 * p.streak, p.v - p.vv * 0.035 * p.streak); ctx.stroke();
+      ctx.globalAlpha = 1;ctx.shadowBlur=0;
+    } else if (p.shape) PAi.shard(p, a); else drawFxFragment(p, a);
+  }
+  if (PAi) PAi.drawFx();
+  for (const rh of game.railHits) {                          // rails flare where the puck struck
+    const a = 1 - rh.t / 0.5;
+    ctx.globalAlpha = a * (0.5 + rh.k * 0.5); ctx.strokeStyle = rh.col; ctx.lineCap = 'round';
+    ctx.lineWidth = (4 + rh.k * 8) * px * (1 + (1 - a));
+    const spread = 0.06 + (1 - a) * 0.16;
+    ctx.beginPath();
+    if (rh.u < 0.12 || rh.u > 0.88) { const x = rh.u < 0.5 ? 0 : 1; ctx.moveTo(x, rh.v - spread); ctx.lineTo(x, rh.v + spread); }
+    else { const y = rh.v < L / 2 ? 0 : L; ctx.moveTo(rh.u - spread, y); ctx.lineTo(rh.u + spread, y); }
+    ctx.stroke(); ctx.globalAlpha = 1;
+  }
+}
 function drawGame(sx, sy) {
   const { L, s } = view;
   const px = 1 / s;
@@ -3562,82 +3657,13 @@ function drawGame(sx, sy) {
   drawCornerSprings();
   drawTableGloss();
 
-  // shields
-  const gw = CFG.goalW / 2;
-  for (let i = 0; i < 2; i++) {
-    const t = game.shields[i]; if (t <= 0) continue;
-    const vy = i === 0 ? L - 0.012 : 0.012;
-    const blink = t < 1.5 ? (Math.sin(game.t * 30) > 0 ? 1 : 0.3) : 1;
-    ctx.strokeStyle = COL.WALL; ctx.lineCap = 'round';
-    ctx.globalAlpha = 0.3 * blink; ctx.lineWidth = 16 * px;
-    ctx.beginPath(); ctx.moveTo(0.5 - gw - 0.02, vy); ctx.lineTo(0.5 + gw + 0.02, vy); ctx.stroke();
-    ctx.globalAlpha = blink; ctx.lineWidth = 5 * px; ctx.stroke();
-    ctx.globalAlpha = 1;
-  }
-
-  // power-ups
-  for (const pu of game.pups) {
-    const col = COL[pu.type];
-    const bob = 1 + 0.08 * Math.sin(game.t * 6);
-    const fade = pu.life < 2 ? (Math.sin(game.t * 20) > 0 ? 1 : 0.35) : 1;
-    glowCircle(pu.u, pu.v, pu.r * 1.9 * bob, col, 0.15 * fade);
-    ctx.globalAlpha = fade;
-    ctx.lineWidth = 3 * px; ctx.strokeStyle = col;
-    ctx.beginPath(); ctx.arc(pu.u, pu.v, pu.r * bob, 0, Math.PI * 2); ctx.stroke();
-    ctx.fillStyle = col;
-    if (pu.type === 'BIG') { ctx.beginPath(); ctx.arc(pu.u, pu.v, pu.r * 0.55, 0, Math.PI * 2); ctx.fill(); }
-    else if (pu.type === 'MULTI') {
-      for (const o of [-1, 1]) { ctx.beginPath(); ctx.arc(pu.u + o * pu.r * 0.38, pu.v, pu.r * 0.26, 0, Math.PI * 2); ctx.fill(); }
-    } else { ctx.fillRect(pu.u - pu.r * 0.6, pu.v - pu.r * 0.16, pu.r * 1.2, pu.r * 0.32); }
-    ctx.globalAlpha = 1;
-  }
+  drawShields();
+  drawPowerups();
 
   drawEnv();
-  // pucks
-  for (const pk of game.pucks) {
-    const tint = pk.last === 1 ? COL.p1 : pk.last === 2 ? COL.p2 : '#ffffff';
-    if (pk.smashT > 0) {                      // white-hot smash puck with RGB split
-      const a = Math.min(1, pk.smashT / 0.3), o = 0.012 * a;
-      glowCircle(pk.u - o, pk.v, pk.r * 1.15, COL.p1, 0.55 * a);
-      glowCircle(pk.u + o, pk.v, pk.r * 1.15, COL.p2, 0.55 * a);
-      glowCircle(pk.u, pk.v, pk.r * 2.6, COL.gold, 0.18 * a);
-      if (Math.random() < 0.7) game.parts.push({ u: pk.u, v: pk.v, vu: rand(-0.2, 0.2), vv: rand(-0.2, 0.2), life: 0.3, max: 0.3, col: Math.random() < 0.5 ? COL.gold : COL.orange, sz: rand(0.006, 0.012) });
-    }
-    const uvHide = game.env && game.env.type === 'UV' && game.env.t > 0 && (game.env.who === 1 ? pk.v < view.L / 2 : pk.v > view.L / 2);
-    if (game.env && game.env.type === 'LAVA' && pk.last === game.env.who) drawFlames(pk.u, pk.v, pk.r, 0.8, 5);
-    drawPuck(pk, pk.smashT > 0 ? COL.gold : tint, 1, uvHide ? 0.12 : 1);
-  }
+  drawPucksPaddles(true);
 
-  // paddles
-  for (const pd of game.paddles) {
-    const k = pd.punch || 0, r0 = pd.r;
-    pd.r = r0 * (1 + k * 0.18);
-    drawPaddle(pd, (pd.ptr !== null ? 0.24 : 0.14) + k * 0.3);
-    if (k > 0.05) glowCircle(pd.u, pd.v, pd.r * 0.9, '#ffffff', k * 0.35);
-    pd.r = r0;
-  }
-
-  // particles
-  for (const p of game.parts) {
-    const a = Math.max(0, p.life / p.max);
-    if (p.streak) {
-      const depth=clamp(1+(p.z||0)*1.7,.45,1.9);ctx.globalAlpha = a; ctx.strokeStyle = p.col;ctx.shadowColor=p.col;ctx.shadowBlur=p.sz*view.s*4*depth;ctx.lineWidth = p.sz * (1 + p.streak)*depth;
-      ctx.lineCap = 'round';
-      ctx.beginPath(); ctx.moveTo(p.u, p.v); ctx.lineTo(p.u - p.vu * 0.035 * p.streak, p.v - p.vv * 0.035 * p.streak); ctx.stroke();
-      ctx.globalAlpha = 1;ctx.shadowBlur=0;
-    } else if (p.shape) PAi.shard(p, a); else drawFxFragment(p, a);
-  }
-  if (PAi) PAi.drawFx();
-  for (const rh of game.railHits) {                          // rails flare where the puck struck
-    const a = 1 - rh.t / 0.5;
-    ctx.globalAlpha = a * (0.5 + rh.k * 0.5); ctx.strokeStyle = rh.col; ctx.lineCap = 'round';
-    ctx.lineWidth = (4 + rh.k * 8) * px * (1 + (1 - a));
-    const spread = 0.06 + (1 - a) * 0.16;
-    ctx.beginPath();
-    if (rh.u < 0.12 || rh.u > 0.88) { const x = rh.u < 0.5 ? 0 : 1; ctx.moveTo(x, rh.v - spread); ctx.lineTo(x, rh.v + spread); }
-    else { const y = rh.v < L / 2 ? 0 : L; ctx.moveTo(rh.u - spread, y); ctx.lineTo(rh.u + spread, y); }
-    ctx.stroke(); ctx.globalAlpha = 1;
-  }
+  drawParticlesAndRailHits();
   drawRaceBars();
   for (const p of game.pops) drawPop(p);
   fieldTf();
@@ -5473,6 +5499,96 @@ if (/[?&]nointro\b/.test(location.search) || challenged) show('menu', true); els
 requestAnimationFrame(t => { last = t; requestAnimationFrame(frame); });
 }
 
+// ---------- VR host: the field texture and the pieces' top art (nothing here runs on the phone) ----------
+// The VR page draws the table top as a texture made by the phone game's own drawing code, and the paddles and the puck as 3D
+// bodies capped with the phone's own paddle and puck art. view and ctx are borrowed for the render and put back, so the engine
+// never notices; view.L is never touched.
+const HOST_MARGIN = 0.03;   // field units of rail glow around the table; matches the 1.06 x 1.86 m VR table body
+// opts.bare (menu and intro, when the engine is not showing a live match): no pucks, pick-ups, scores or effects, and the paddles' contact
+// shadows go under opts.paddles ([{u, v, r}] in field units) instead of the engine's own paddle positions.
+// Display-only (online matches, where the server owns the match and no engine runs): with opts.bare also pass opts.pucks ([{u, v, r, last, smashT}]),
+// opts.score ([a, b]) and give each opts.paddles entry p (1 or 2), and the phone's pucks, paddle glows and big score numbers are drawn from those
+// instead. Nothing is stepped or kept: the engine's own game objects are put back.
+function hostRenderField(pxPerUnit, opts) {
+  const F = hostF, L = view.L, W = Math.round((1 + 2 * HOST_MARGIN) * pxPerUnit), H = Math.round((L + 2 * HOST_MARGIN) * pxPerUnit);
+  if (!F.cv) { F.cv = document.createElement('canvas'); F.c = F.cv.getContext('2d'); }
+  const saved = { dpr: view.dpr, vw: view.vw, vh: view.vh, land: view.land, s: view.s, ox: view.ox, oy: view.oy }, sctx = ctx;
+  view.dpr = 1; view.land = false; view.vw = W; view.vh = H; view.s = pxPerUnit; view.ox = view.oy = HOST_MARGIN * pxPerUnit;
+  try {
+    if (F.cv.width !== W || F.cv.height !== H) { F.cv.width = W; F.cv.height = H; F.key = ''; }
+    if (window.CreaseArenas && F.arena !== stageIx) { F.arena = stageIx; window.CreaseArenas.select(stageIx); }
+    const st = ST(), key = [stageIx, L, W, H, st.base[0], st.base[1], st.grid, st.rail].join('|');
+    if (F.key !== key) { F.key = key; F.w = W; F.h = H; F.on = true; try { sceneLayers.key = ''; buildBg(); } finally { F.on = false; } }
+    const c = F.c; ctx = c; F.mode = 1;
+    const bare = !!(opts && opts.bare), ext = bare && !!opts.pucks, keep = bare ? { p: game.paddles, k: game.pucks, a: game.parts, h: game.railHits, r: game.rings, u: game.pups, s: game.shields, o: game.envOrb, e: game.env, b: game.board, sc: game.score } : null;
+    if (bare) {
+      game.paddles = opts.paddles || []; game.pucks = ext ? opts.pucks : []; game.parts = []; game.railHits = []; game.rings = []; game.pups = []; game.shields = [0, 0]; game.envOrb = null; game.env = null; game.board = null;
+      if (ext && opts.score) { game.score = opts.score; game.board = hostF.board || (hostF.board = [{ shake: 0, numP: 0, flash: 0 }, { shake: 0, numP: 0, flash: 0 }]); }
+    }
+    try {
+    c.setTransform(1, 0, 0, 1, 0, 0); c.globalAlpha = 1; c.globalCompositeOperation = 'source-over'; c.shadowBlur = 0;
+    c.drawImage(bg, 0, 0);
+    c.save(); c.globalCompositeOperation = 'lighter'; c.globalAlpha = game.beat * 0.4 + 0.04; c.drawImage(glow, 0, 0); c.restore();   // the kick-drum flash of the table
+    drawScenery(game.t);
+    drawFloorGrid(game.t);
+    fieldTf();
+    drawDepthRails();
+    drawScoreNums();
+    fieldTf();
+    drawCrease(0.25 + 0.15 * Math.sin(game.t * 2.2) + game.crease * 0.6 + game.beat * 0.2);
+    drawBumpers();
+    drawCornerSprings();
+    drawTableGloss();
+    drawShields();
+    drawPowerups();
+    drawEnv();
+    drawPucksPaddles(false);
+    drawParticlesAndRailHits();
+    drawRings();
+    c.setTransform(1, 0, 0, 1, 0, 0); c.globalAlpha = 1;
+    } finally {
+      if (keep) { game.paddles = keep.p; game.pucks = keep.k; game.parts = keep.a; game.railHits = keep.h; game.rings = keep.r; game.pups = keep.u; game.shields = keep.s; game.envOrb = keep.o; game.env = keep.e; game.board = keep.b; game.score = keep.sc; }
+    }
+    return F.cv;
+  } finally {
+    F.mode = 0; ctx = sctx;
+    view.dpr = saved.dpr; view.vw = saved.vw; view.vh = saved.vh; view.land = saved.land; view.s = saved.s; view.ox = saved.ox; view.oy = saved.oy;
+  }
+}
+// The look a paddle is drawn with (same choice drawPaddle makes): ring and core colours for the 3D body.
+function hostPaddleStyle(p) {
+  let style = CreaseProduct.paddleStyle();
+  const s1 = p === 1 ? p1Sig() : null;
+  if (s1 && s1.skin) style = s1.skin;
+  if (p === 1 && studioOn('pad')) style = { ...style, ring: studio.d.ring || style.ring, core: studio.d.core || style.core, trail: style.trail };
+  const pd = game.paddles[p - 1], big = !!(pd && pd.big > 0), fire = game.fire[p - 1] > 0;
+  return { ring: big ? COL.BIG : style.ring, core: style.core, trail: style.trail, big, fire, col: p === 1 ? COL.p1 : COL.p2 };
+}
+// One piece's top art, drawn by the phone's own drawPaddle / drawPuck into a small square canvas, clipped to the disc. The disc
+// radius is the piece's real radius, so the VR cap reads exactly like the phone piece. Redrawn when its look changes or every 250 ms
+// (the Garage studio images arrive late), never allocated per frame.
+const HOST_PIECE = 256;
+function hostPieceArt(kind, a) {
+  const F = hostF, S = HOST_PIECE, id = kind + (a || ''), now = performance.now();
+  let pc = F.pieces[id];
+  if (!pc) { const cv2 = document.createElement('canvas'); cv2.width = cv2.height = S; pc = F.pieces[id] = { cv: cv2, c: cv2.getContext('2d'), key: '', at: -1e9 }; }
+  let key;
+  if (kind === 'paddle') { const i = hostPaddleStyle(a); key = [i.ring, i.core, i.big, i.fire, game.paddles[a - 1] ? game.paddles[a - 1].r : 0].join('|'); }
+  else key = String(a);
+  if (pc.key === key && now - pc.at < 250) return pc.cv;
+  pc.key = key; pc.at = now;
+  const saved = { dpr: view.dpr, land: view.land, s: view.s }, sctx = ctx, R = kind === 'paddle' ? CFG.padR : CFG.puckR, k = S / (2 * R), c = pc.c;
+  view.dpr = 1; view.land = false; view.s = k; ctx = c; hostF.mode = 2;
+  try {
+    c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, S, S); c.globalAlpha = 1; c.globalCompositeOperation = 'source-over';
+    c.save(); c.setTransform(k, 0, 0, k, S / 2, S / 2); c.beginPath(); c.arc(0, 0, R, 0, Math.PI * 2); c.clip();
+    if (kind === 'paddle') { const src = game.paddles[a - 1] || {}; drawPaddle(Object.assign({}, src, { p: a, u: 0, v: 0, r: R, big: src.big || 0, punch: 0 }), 0); }
+    else drawPuck({ u: 0, v: 0, r: R, trail: [], last: 0 }, a, 1, 1);
+    c.restore();
+  } finally { hostF.mode = 0; ctx = sctx; view.dpr = saved.dpr; view.land = saved.land; view.s = saved.s; }
+  return pc.cv;
+}
+
 // ---------- VR host bridge ----------
 // What the VR page needs from the engine, nothing more. The parent creates the AudioContext inside its own click
 // (so sound is allowed) and hands it over; the engine keeps its own music and effects.
@@ -5510,6 +5626,13 @@ if (HOST) window.__creaseHost = {
   startDaily() { const st = dailyState(); if (st.last && st.last.day === nyDay()) return false; if (!dailyPrevDiff) dailyPrevDiff = game.diff; setDiff('hard'); track('daily_start'); start('solo', 'new', true); return game.mode === 'solo' && !!game.daily; },
   finishDaily() { if (game.daily && game.state === 'over') return recordDaily(); return null; },
   restoreDifficulty() { restoreDailyDiff(); },
+  // The table top as the phone draws it, top-down and unrotated, pxPerUnit pixels across the 1-unit table width plus the rail-glow margin
+  // (fieldMargin on each side). The returned canvas is reused every call. Paddle and puck bodies are left out: see pieceArt.
+  renderField(pxPerUnit, opts) { return hostRenderField(pxPerUnit > 0 ? pxPerUnit : 1024, opts); },
+  fieldMargin: HOST_MARGIN,
+  // Top art for a 3D piece: kind 'paddle' (a = player 1 or 2) or 'puck' (a = the tint colour, a CSS colour string). A small canvas, disc clipped.
+  pieceArt(kind, a) { return hostPieceArt(kind, a); },
+  paddleLook(p) { return hostPaddleStyle(p); },
 };
 
 // Test hooks for automated checks: only on a local server (localhost / 127.0.0.1) or with ?qa=1.
