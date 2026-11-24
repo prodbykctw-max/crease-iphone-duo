@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="referrer" content="strict-origin-when-cross-origin">
 <!-- Content-Security-Policy: installed by the next script, except on a local test server (localhost / 127.0.0.1) where the capture harness rewrites the game script. Update hashes with: node tools/csp-hash.mjs -->
-<meta name="crease-csp" content="default-src 'self'; script-src 'self' 'sha256-9kyMFOQq/HLwXlyiVTgCTQzmo6H4oBBvtdWEJb0rIFI=' 'sha256-MTbEPxfCM9WvMawQd918s/RFi7F1L+XO3KJGCQLITNQ='; connect-src 'self' https://crease-metrics.prodbykctw.workers.dev https://crease-license.prodbykctw.workers.dev; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta name="crease-csp" content="default-src 'self'; script-src 'self' 'sha256-9kyMFOQq/HLwXlyiVTgCTQzmo6H4oBBvtdWEJb0rIFI=' 'sha256-34SLTF+AfZmb1nspvgxNmfDhmNRK+CP5PLTcCyrhJa8='; connect-src 'self' https://crease-metrics.prodbykctw.workers.dev https://crease-license.prodbykctw.workers.dev; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <script>(function(){var h=location.hostname;if(h==='localhost'||h==='127.0.0.1')return;var p=document.querySelector('meta[name="crease-csp"]'),m=document.createElement('meta');m.httpEquiv='Content-Security-Policy';m.content=p.content;document.head.appendChild(m);})();</script>
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -684,7 +684,9 @@ const storage = {
   set(key, value) { try { localStorage.setItem(key, value); } catch (_) {} },
 };
 let achievementBatch=[],achievementTimer=0,achievementHide=0;
+const hostEvents=[];   // VR host: unlock events for the headset's own toast
 const progress=window.CreaseProgression.create({getItem:key=>localStorage.getItem(key),setItem:(key,value)=>localStorage.setItem(key,value)},event=>{
+  if(HOST){hostEvents.push(event.type==='stage'?{type:'stage',name:event.name}:{type:'achievement',name:event.item&&event.item.name||''});if(hostEvents.length>20)hostEvents.shift();}
   achievementBatch.push(event);clearTimeout(achievementTimer);
   achievementTimer=setTimeout(()=>{
     const stages=achievementBatch.filter(e=>e.type==='stage'),earned=achievementBatch.filter(e=>e.type==='achievement');
@@ -5498,11 +5500,21 @@ if (HOST) window.__creaseHost = {
   pause() { if (game.mode === 'demo' || game.state === 'paused' || game.state === 'over') return; const st = game.state; game.resume = st === 'play' ? 'countdown' : st; if (st === 'play') game.timer = 0.6; game.state = 'paused'; },
   resume() { if (game.state === 'paused') game.state = game.resume; },
   envPower: () => envPower(),
+  // Garage look equipped on the phone. CreaseProduct only returns a style this player may use (premium needs the Pass, Founder's Gold needs the claim).
+  paddleStyle() { const st = CreaseProduct.paddleStyle(); return { name: st.name, ring: st.ring, core: st.core, trail: st.trail, premium: !!st.premium, founder: !!st.founder }; },
+  // Unlock events (achievements, arenas) since the last call.
+  takeEvents() { return hostEvents.splice(0); },
+  tone, fanfare,
+  // Daily Challenge: one try a day against CTW. Same rules and storage as the phone's DAILY CHALLENGE button.
+  daily() { const st = dailyState(), today = nyDay(), done = !!(st.last && st.last.day === today); return { no: dailyNo(), done, a: done ? st.last.a : 0, b: done ? st.last.b : 0 }; },
+  startDaily() { const st = dailyState(); if (st.last && st.last.day === nyDay()) return false; if (!dailyPrevDiff) dailyPrevDiff = game.diff; setDiff('hard'); track('daily_start'); start('solo', 'new', true); return game.mode === 'solo' && !!game.daily; },
+  finishDaily() { if (game.daily && game.state === 'over') return recordDaily(); return null; },
+  restoreDifficulty() { restoreDailyDiff(); },
 };
 
 // Test hooks for automated checks: only on a local server (localhost / 127.0.0.1) or with ?qa=1.
 if (/^(localhost|127\.0\.0\.1)$/.test(location.hostname) || new URLSearchParams(location.search).get('qa') === '1') window.__crease = {
-  game, view, coach, COACH_KEY, skipIntro, layout, newMatch, start, pause, playIntro, endIntro, showBoot, playStudio, endStudio, bootMarkRender, setStage, STAGES, stage: () => stageIx, perf, music, audio: () => ac,
+  game, view, coach, COACH_KEY, progress, skipIntro, layout, newMatch, start, pause, playIntro, endIntro, showBoot, playStudio, endStudio, bootMarkRender, setStage, STAGES, stage: () => stageIx, perf, music, audio: () => ac,
   sim(seconds, step = 1 / 60) { for (let t = 0; t < seconds; t += step) update(step); },
   matchSnapshot, drawShareCard: snap => drawResultCard(document.createElement('canvas'), snap || matchSnapshot()).toDataURL('image/png'),
   toScreen, toField,
