@@ -1,4 +1,4 @@
-<!doctype html><html lang="en"><meta charset="utf-8"><link rel="icon" href="favicon.ico?v=logo-a" sizes="32x32"><link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=logo-a"><link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png?v=logo-a"><meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-WhFseu3mNnxvjIvpb0Ul6sLWYbQ3wSuQMfEbF6aMFYQ='; connect-src 'self' https://crease-online.prodbykctw.workers.dev wss://crease-online.prodbykctw.workers.dev; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'none'; form-action 'none'"><meta name="referrer" content="strict-origin-when-cross-origin"><meta name="viewport" content="width=device-width,initial-scale=1"><title>CREASE · Play Air Hockey Online, Free</title>
+<!doctype html><html lang="en"><meta charset="utf-8"><link rel="icon" href="favicon.ico?v=logo-a" sizes="32x32"><link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=logo-a"><link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png?v=logo-a"><meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-O+7xP4+30yjEdogWsEF4OSrPKMALpd/27ZEBJrfZDpw='; connect-src 'self' https://crease-online.prodbykctw.workers.dev wss://crease-online.prodbykctw.workers.dev; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'none'; form-action 'none'"><meta name="referrer" content="strict-origin-when-cross-origin"><meta name="viewport" content="width=device-width,initial-scale=1"><title>CREASE · Play Air Hockey Online, Free</title>
 <meta name="description" content="Play CREASE online free — neon air hockey against another person in your browser. Tap QUICK MATCH to be paired with whoever is looking for a game, or share a room code to play a friend. No download, no account.">
 <link rel="canonical" href="https://playcrease.app/online.html">
 <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large">
@@ -71,7 +71,7 @@ function connect(code,create){
   const url=new URL('/room/'+room,endpoint);
   url.protocol=url.protocol==='https:'?'wss:':'ws:';
   if(create)url.searchParams.set('create','1');
-  state=null;ws=new WebSocket(url);
+  state=null;ws=new WebSocket(url);if(hostTap)hostTap(ws);
   setLobby(false);$('cancel').hidden=false;$('cancel').focus();
   ws.onmessage=e=>{
     let m;try{m=JSON.parse(e.data);}catch{return;}
@@ -140,12 +140,15 @@ $('copy').onclick=async()=>{
 };
 
 function input(e){
-  if(!ws||ws.readyState!==1||!state)return;
-  const now=performance.now();if(now-lastSend<30)return;lastSend=now;
   const r=$('table').getBoundingClientRect();
-  let x=(e.clientX-r.left)/r.width,y=(e.clientY-r.top)/r.height*1.8;
+  sendMove((e.clientX-r.left)/r.width,(e.clientY-r.top)/r.height*1.8);
+}
+// x across [0,1], y along [0,1.8], seen from your own end (the bottom).
+function sendMove(x,y){
+  if(!ws||ws.readyState!==1||!state)return false;
+  const now=performance.now();if(now-lastSend<30)return false;lastSend=now;
   if(player===1){x=1-x;y=1.8-y;}
-  ws.send(JSON.stringify({type:'move',x,y}));
+  ws.send(JSON.stringify({type:'move',x,y}));return true;
 }
 $('table').onpointerdown=e=>{$('table').setPointerCapture(e.pointerId);input(e);};
 $('table').onpointermove=e=>{if(e.buttons||e.pointerType==='touch')input(e);};
@@ -168,4 +171,27 @@ draw();
 // a local server (localhost / 127.0.0.1) or with ?qa=1.
 if(/^(localhost|127\.0\.0\.1)$/.test(location.hostname)||new URLSearchParams(location.search).get('qa')==='1')window.__online={get state(){return state;},get player(){return player;},get room(){return room;},
   get status(){return $('status').textContent;},get connected(){return !!ws&&ws.readyState===1;}};
+// VR host: vr.html loads this page in a hidden frame with ?vrhost=1 and plays online in
+// the headset through this same client (same lobby, rooms and messages as the phone).
+// The headset reads what happened with poll() and presses the same buttons a phone
+// player would. Inert on the normal page and when not framed by a same-origin page.
+var hostTap=null;
+if((()=>{try{return new URLSearchParams(location.search).get('vrhost')==='1'&&window.parent!==window&&!!window.parent.document;}catch{return false;}})()){
+  const events=[],idle=()=>!searching&&(!ws||ws.readyState===3);let serial=0;
+  hostTap=s=>{const sid=++serial,r=room;
+    s.addEventListener('message',e=>{let m;try{m=JSON.parse(e.data);}catch{return;}
+      if(m.type==='joined')events.push({sid,type:'joined',player:m.player,room:r});
+      else if(m.type==='ready')events.push({sid,type:'ready'});
+      else if(m.type==='state'){const last=events[events.length-1];if(last&&last.type==='state'&&last.sid===sid)last.state=m.state;else events.push({sid,type:'state',state:m.state});}});
+    s.addEventListener('close',e=>events.push({sid,type:'close',code:e.code}));};
+  window.__creaseOnline={version:1,
+    get configured(){return !!endpoint;},get serial(){return serial;},
+    poll(){if(events.length>200)events.splice(0,events.length-200);return {events:events.splice(0),serial,searching,tries,busy:!idle(),open:!!ws&&ws.readyState===1,player,room};},
+    quick(){if(!endpoint||!idle())return false;$('quick').click();return searching;},
+    create(code){if(!endpoint||!idle())return false;if(code===undefined){$('create').click();return !idle();}
+      if(!/^[A-Z2-9]{10}$/.test(code))return false;searching=false;tries=0;connect(code,true);return true;},
+    join(code){if(!endpoint||!idle())return false;$('code').value=String(code||'');$('join').click();return !idle();},
+    cancel(){if(idle())return false;$('cancel').click();return true;},
+    move:(x,y)=>sendMove(x,y)};
+}
 </script></html>
