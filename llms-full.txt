@@ -22,7 +22,7 @@ Open https://playcrease.app/online.html. Tap QUICK MATCH to be paired with whoev
 
 ## VR (Meta Quest)
 
-Open https://playcrease.app/vr.html in the Quest browser, pick your paddle hand and enter VR. Play the CPU with a controller (with haptic feedback), with hand tracking (the paddle follows your index finger; pinch to start), or by looking where you want the paddle. On a computer there is a desktop practice mode.
+Open https://playcrease.app/vr.html in the Quest browser, pick your paddle hand and enter VR. No controllers needed: play the CPU with your bare hands (hand tracking; the paddle follows your palm and you touch or pinch the menu buttons), or with Quest controllers (with vibration), or by looking where you want the paddle. The table fits your height automatically, and the in-headset Options menu sets the CPU level (Normal, Hard, CTW), table height, paddle hand, sound and vibration. On a computer there is a desktop practice mode.
 
 ## Mechanics
 

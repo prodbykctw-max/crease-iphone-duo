@@ -35,7 +35,7 @@ Other pages on the same site:
 
 ## VR
 
-`vr.html` loads `assets/quest-vr.mjs`, which uses a vendored three.js r170 (`assets/vendor/`) and the same physics module as the online relay (`backend/online/physics.mjs`). Controllers, hand tracking or gaze; "Desktop practice" plays with the mouse.
+`vr.html` loads `assets/quest-vr.mjs`, which uses a vendored three.js r170 (`assets/vendor/`) and the same physics module as the online relay (`backend/online/physics.mjs`). Bare-hand tracking needs no controllers (the paddle follows the palm; menu buttons take a fingertip touch or a pinch ray); controllers and gaze also work. The table auto-fits the player's eye height on entry. The in-headset Options menu (free-hand pinch, the MENU tab, or A/B/X/Y) sets CPU level, table height (−/+, AUTO, MATCH MY HAND), paddle hand, sound and vibration, saved per headset (`assets/quest-options.mjs`). "Desktop practice" plays with the mouse; M opens the menu.
 
 ## Analytics
 
