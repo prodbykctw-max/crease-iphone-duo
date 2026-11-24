@@ -35,7 +35,7 @@ Other pages on the same site:
 
 ## VR
 
-`vr.html` loads `assets/quest-vr.mjs`, which uses a vendored three.js r170 (`assets/vendor/`) and the same physics module as the online relay (`backend/online/physics.mjs`). Bare-hand tracking needs no controllers (the paddle follows the palm; menu buttons take a fingertip touch or a pinch ray); controllers and gaze also work. The table auto-fits the player's eye height on entry. The in-headset Options menu (free-hand pinch, the MENU tab, or A/B/X/Y) sets CPU level, table height (−/+, AUTO, MATCH MY HAND), paddle hand, sound and vibration, saved per headset (`assets/quest-options.mjs`). "Desktop practice" plays with the mouse; M opens the menu.
+`vr.html` loads `assets/quest-vr.mjs`, which uses a vendored three.js r170 (`assets/vendor/`). It runs the real game engine from `index.html`: a hidden same-origin frame opens `index.html?vrhost=1` (host mode: no screens, no render loop, only the engine and `window.__creaseHost`), VR feeds it the hand position in field units (1 m = 1 field unit across, so a fast swing smashes exactly like a flick on the phone), steps it every frame and draws its state in 3D (pucks, paddles, bumpers, BIG/MULTI/WALL, arena powers, Fire Mode). Rules, music, sound effects, progress and unlocks are the phone game's; the arena picker lists only unlocked arenas and uses the arena artwork as a curved backdrop. If the frame cannot load, the older simple physics (`backend/online/physics.mjs`) is used with a notice. Not in VR yet: intro and victory scenes, Garage paddle styles, the daily challenge, online play. Pure helpers (coordinate mapping, scoreboard text, haptic events) are in `assets/quest-engine.mjs`. Bare-hand tracking needs no controllers (the paddle follows the palm; menu buttons take a fingertip touch or a pinch ray); controllers and gaze also work. The table auto-fits the player's eye height on entry. The in-headset Options menu (free-hand pinch, the MENU tab, or A/B/X/Y) sets CPU level, table height (−/+, AUTO, MATCH MY HAND), paddle hand, sound and vibration, saved per headset (`assets/quest-options.mjs`). "Desktop practice" plays with the mouse; M opens the menu.
 
 ## Analytics
 
@@ -88,7 +88,7 @@ assets/
   progression.js        Achievements, records, arena unlocks
   monetization.js       Local leaderboard, paddle styles, premium pass + license-key redeem
   commerce-config.js    Checkout settings (Stripe checkout link, price label, sales start; Lemon Squeezy ids unused)
-  quest-vr.mjs          VR game; quest-controls.mjs = hand/controller smoothing
+  quest-vr.mjs          VR scene; quest-engine.mjs = engine/VR helpers; quest-controls.mjs = fallback hand smoothing
   arenas/               Arena plates and thumbnails (.webp)
   vendor/               three.js r170
 backend/                Metrics Worker + D1 migration (see backend/README.md)

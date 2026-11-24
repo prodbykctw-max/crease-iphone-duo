@@ -69,7 +69,7 @@ function coachHarness({ stored = null, fine = false, mode = 'solo', throwing = f
     : { getItem: k => (k === 'crease.coach.v1' ? stored : null), setItem: (k, v) => writes.push([k, v]) };
   const clamp = (x, a, b) => x < a ? a : x > b ? b : x;
   const ctx = vm.createContext({
-    localStorage: ls, clamp, matchMedia: () => ({ matches: false }),
+    localStorage: ls, HOST: false, clamp, matchMedia: () => ({ matches: false }),
     game: { mode, state: 'countdown', paddles: [{ u: 0.5, v: 1.6, tu: 0.5, tv: 1.6 }, { u: 0.5, v: 0.2, tu: 0.5, tv: 0.2 }] },
     finePointer: () => fine,
   });

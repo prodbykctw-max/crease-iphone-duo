@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {autoTableHeight,heightFromHand,stepHeight,clampHeight,sanitize,loadOptions,saveOptions,updatePoke,menuButtons,hitButton,applyButton,TABLE_MIN,TABLE_MAX,TABLE_DEFAULT,DEFAULTS} from '../assets/quest-options.mjs';
+import {updatePinch,acceptSelect,SLOP as HIT_SLOP,autoTableHeight,heightFromHand,stepHeight,clampHeight,sanitize,loadOptions,saveOptions,updatePoke,menuButtons,hitButton,applyButton,TABLE_MIN,TABLE_MAX,TABLE_DEFAULT,DEFAULTS} from '../assets/quest-options.mjs';
 import {createOpponent,opponentMove,LEVELS} from '../assets/quest-controls.mjs';
 import {initial,move} from '../backend/online/physics.mjs';
 
@@ -35,8 +35,8 @@ test('a fingertip press fires once per push through the panel',()=>{
 });
 test('menu buttons fit the panel, never overlap, and map back from a point',()=>{
   for(const view of [{},{started:true,inVR:true},{started:true,over:true,inVR:true,calibrating:{t:2}}]){
-    const b=menuButtons({difficulty:'easy',hand:'right',sound:true,haptics:true,height:'auto',...view});
-    for(const x of b){assert.ok(x.x>=40&&x.x+x.w<=1010&&x.y>=120&&x.y+x.h<=750,x.id);}
+    const b=menuButtons({difficulty:'easy',hand:'right',sound:true,haptics:true,height:'auto',arenas:Array.from({length:10},(_,i)=>({index:i,name:'ARENA '+i,unlocked:i<3})),arena:0,...view});
+    for(const x of b){assert.ok(x.x>=40&&x.x+x.w<=1010&&x.y>=100&&x.y+x.h<=810,x.id);}
     for(let i=0;i<b.length;i++)for(let j=i+1;j<b.length;j++){const p=b[i],q=b[j];assert.ok(p.x+p.w<=q.x||q.x+q.w<=p.x||p.y+p.h<=q.y||q.y+q.h<=p.y,p.id+' overlaps '+q.id);}
     for(const x of b)assert.equal(hitButton(b,x.x+x.w/2,x.y+x.h/2).id,x.id);
   }
@@ -63,15 +63,40 @@ test('NORMAL keeps the original VR CPU; HARD and CTW react faster and move faste
     const p=opponentMove(s,ai,1/60),old=s.paddles[1];assert.ok(p.x>=.07&&p.x<=.93&&p.y>=.07&&p.y<=.81);
     assert.ok(Math.hypot(p.x-old.x,p.y-old.y)<=1.25*1.4/60+1e-10);move(s,1,p.x,p.y);}
 });
-import {updatePinch,SLOP} from '../assets/quest-options.mjs';
+test('arena buttons: ten of them, locked ones marked, ids carry the engine index',()=>{
+  const arenas=Array.from({length:10},(_,i)=>({index:i,name:'A'+i,unlocked:i<3}));
+  const b=menuButtons({arenas,arena:1}).filter(x=>x.id.startsWith('arena:'));
+  assert.equal(b.length,10);assert.deepEqual(b.map(x=>x.locked),arenas.map(a=>!a.unlocked));
+  assert.equal(b.find(x=>x.active).id,'arena:1');
+  assert.equal(applyButton({...DEFAULTS},'arena:4'),'arena');
+  assert.equal(menuButtons({}).filter(x=>x.id.startsWith('arena:')).length,0);
+});
+test('saved arena is validated',()=>{
+  assert.equal(sanitize({arena:3}).arena,3);assert.equal(sanitize({arena:12}).arena,0);assert.equal(sanitize({arena:'x'}).arena,0);
+});
+test('hit slop: a near miss lands on the nearest button, a far miss on none',()=>{
+  const b=[{id:'a',x:100,y:100,w:100,h:50},{id:'b',x:230,y:100,w:100,h:50}];
+  assert.equal(hitButton(b,150,120).id,'a');assert.equal(hitButton(b,205,120,0),null,'no slop, no hit');
+  assert.equal(hitButton(b,205,120,HIT_SLOP).id,'a');assert.equal(hitButton(b,222,120,HIT_SLOP).id,'b');
+  assert.equal(hitButton(b,500,500,HIT_SLOP),null);assert.equal(hitButton(b,100,85,HIT_SLOP).id,'a');
+});
+test('pinch has hysteresis: closes under 2 cm, opens over 4 cm',()=>{
+  const p={down:false};
+  assert.equal(updatePinch(p,.06),null);assert.equal(updatePinch(p,.03),null);assert.equal(updatePinch(p,.019),'start');
+  assert.equal(updatePinch(p,.03),null,'between 2 and 4 cm stays pinched');assert.equal(updatePinch(p,.018),null,'no second down');
+  assert.equal(updatePinch(p,.041),'end');assert.equal(updatePinch(p,.03),null);assert.equal(updatePinch(p,.01),'start');
+  assert.equal(updatePinch(p,NaN),null);
+});
+test('one pinch is one click even when two detectors report it',()=>{
+  const last=new Map();
+  assert.equal(acceptSelect(last,'right',1000),true);assert.equal(acceptSelect(last,'right',1060),false);
+  assert.equal(acceptSelect(last,'left',1060),true,'the other hand is independent');
+  assert.equal(acceptSelect(last,'right',1400),true,'a later pinch counts');
+  assert.equal(acceptSelect(last,'right',900),true,'clock going backwards resets rather than blocking');
+});
+import {SLOP} from '../assets/quest-options.mjs';
 test('a press just outside a button still lands on the nearest one; far misses do not',()=>{
   const b=menuButtons({difficulty:'easy',hand:'right'}),p=b.find(x=>x.id==='primary');
   assert.equal(hitButton(b,p.x-SLOP+2,p.y+10).id,'primary');
   assert.equal(hitButton(b,p.x+p.w/2,p.y-SLOP-5),null);
-});
-test('one pinch is one click: hysteresis stops flicker near the threshold',()=>{
-  const p={down:false},seq=[.05,.03,.019,.022,.018,.03,.035,.041,.03,.015];
-  const ev=seq.map(d=>updatePinch(p,d)).filter(Boolean);
-  assert.deepEqual(ev,['start','end','start']);
-  assert.equal(updatePinch(p,NaN),null);
 });
