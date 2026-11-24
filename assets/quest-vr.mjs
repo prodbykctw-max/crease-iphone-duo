@@ -98,7 +98,7 @@ function impact(player=0,k=.5,smash=false){
   const f0=smash?950:260+260*k,f1=smash?160:110,vol=smash?.11:.02+.06*k;
   o.type=smash?'sawtooth':'sine';o.frequency.setValueAtTime(f0,t);o.frequency.exponentialRampToValueAtTime(f1,t+(smash?.16:.09));g.gain.setValueAtTime(vol,t);g.gain.exponentialRampToValueAtTime(.001,t+(smash?.18:.1));o.connect(g).connect(p).connect(audio.destination);o.start();o.stop(t+.2);
 }
-let lastHit=null;const hitLog=[];
+let lastHit=null,hitches=0;const hitLog=[];
 function onEvent(e){
   if(e.type==='hit'||e.type==='smash'){hitLog.push({...e,at:performance.now()});if(hitLog.length>40)hitLog.shift();}
   if(e.type==='hit'){lastHit={...e,at:performance.now()};impact(e.player,e.strength,false);}
@@ -203,8 +203,17 @@ function jointPos(frame,hand,name,ref,out){const s=hand.get(name),p=s&&frame.get
 // The paddle sits under the middle of your palm, like holding a real mallet.
 function palm(frame,hand,ref,out){const w=jointPos(frame,hand,'wrist',ref,tmp2),k=w&&jointPos(frame,hand,'middle-finger-phalanx-proximal',ref,out);return k?out.add(w).multiplyScalar(.5):null;}
 
+// Touch-press: a fingertip or controller tip that crosses the menu panel (or
+// the MENU tab) from the front presses whatever is under it, once per push.
+function pokeAt(key,tip,source){
+  let poke=pokes.get(key);if(!poke){poke={armed:false};pokes.set(key,poke);}
+  const panel=calibrating?null:menuOpen?menu.mesh:tab.mesh.visible?tab.mesh:null; // no presses while the hand is held still for MATCH MY HAND
+  if(!tip||!panel){poke.armed=false;return;}
+  const lp=panel.worldToLocal(tip.clone()),w=panel===menu.mesh?PANEL_W:TAB_W,h=panel===menu.mesh?PANEL_H:TAB_H,inside=Math.abs(lp.x)<w/2+.01&&Math.abs(lp.y)<h/2+.01;
+  if(updatePoke(poke,inside?lp.z:NaN)){unlockSound();if(panel===tab.mesh)openMenu();else{const b=hitButton(buttons,(lp.x/w+.5)*MENU_W,(.5-lp.y/h)*MENU_H);if(b)press(b.id,source);}}
+}
 renderer.setAnimationLoop((now,frame)=>{
-  const gap=(now-last)/1000;const dt=last&&gap>0&&gap<.25?Math.min(gap,.05):0;last=now;let tracked=desktop,paddleY=NaN;
+  const gap=(now-last)/1000;const dt=last&&gap>0&&gap<.25?gap:0;last=now;let tracked=desktop,paddleY=NaN;
   const session=renderer.xr.getSession();
   if(frame&&session){
     tracked=false;const ref=renderer.xr.getReferenceSpace(),inputs=[...session.inputSources];
@@ -220,16 +229,14 @@ renderer.setAnimationLoop((now,frame)=>{
     for(const s of inputs){
       if(s.hand){let hv=handVisuals.get(s.handedness);if(!hv){hv=makeHandVisual();handVisuals.set(s.handedness,hv);}hv.visible=true;for(let j=0;j<jointNames.length;j++)if(jointPos(frame,s.hand,jointNames[j],ref,tmp2))hv.children[j].position.copy(tmp2);
         // Touch the menu or the MENU tab with your index fingertip.
-        let poke=pokes.get(s.handedness);if(!poke){poke={armed:false};pokes.set(s.handedness,poke);}
-        const tip=jointPos(frame,s.hand,'index-finger-tip',ref,tmp2),panel=calibrating?null:menuOpen?menu.mesh:tab.mesh.visible?tab.mesh:null; // no presses while the hand is held still for MATCH MY HAND
-        if(tip&&panel){const lp=panel.worldToLocal(tip.clone()),w=panel===menu.mesh?PANEL_W:TAB_W,h=panel===menu.mesh?PANEL_H:TAB_H,inside=Math.abs(lp.x)<w/2+.01&&Math.abs(lp.y)<h/2+.01;
-          if(updatePoke(poke,inside?lp.z:NaN)){unlockSound();if(panel===tab.mesh)openMenu();else{const b=hitButton(buttons,(lp.x/w+.5)*MENU_W,(.5-lp.y/h)*MENU_H);if(b)press(b.id,s);}}}
-        else poke.armed=false;
+        pokeAt(s.handedness,jointPos(frame,s.hand,'index-finger-tip',ref,tmp2),s);
         // Pinch (thumb tip to index tip) = select, for pinch-ray presses and the free-hand menu pinch.
         let pinch=pinches.get(s.handedness);if(!pinch){pinch={down:false};pinches.set(s.handedness,pinch);}
         const th=jointPos(frame,s.hand,'thumb-tip',ref,tmp),ix=jointPos(frame,s.hand,'index-finger-tip',ref,tmp2);
         if(th&&ix&&updatePinch(pinch,th.distanceTo(ix))==='start'){let id=null;for(const [k,v] of sources)if(v===s)id=k;handleSelect(id??s.handedness,s);}
       }
+      // Controllers can also press buttons by touching them with the tip (the front of the controller).
+      if(!s.hand&&s.targetRaySpace){const tp=frame.getPose(s.targetRaySpace,ref);pokeAt(s.handedness+'-controller',tp?tmp2.set(tp.transform.position.x,tp.transform.position.y,tp.transform.position.z):null,s);}
       // Controller A/B/X/Y opens or closes the menu.
       const pad=s.gamepad;if(pad){const pressed=!!(pad.buttons[4]?.pressed||pad.buttons[5]?.pressed),was=buttonsDown.get(s)||false;buttonsDown.set(s,pressed);
         if(pressed&&!was){if(intro)skipIntro();else if(menuOpen&&started&&!state.winner){menuOpen=false;menuDirty=true;}else openMenu();}}
@@ -249,6 +256,14 @@ renderer.setAnimationLoop((now,frame)=>{
   if(pressed&&performance.now()>pressed.until){pressed=null;menuDirty=true;}
   if(menuDirty&&menu.mesh.visible)buttons=drawMenu();
   const live=renderer.xr.isPresenting?session?.visibilityState==='visible':!document.hidden;
+  // Frames up to 0.25 s are simulated in full (up to 15 physics ticks), with the hand's
+  // movement spread over them, so its speed stays real even when the headset stutters.
+  // Longer gaps (first frame back, a big hang) must never count as a swing: the paddle
+  // jumps to the hand with no speed.
+  if(playing&&!menuOpen&&tracked&&live&&gap>0&&dt<gap-1e-4){
+    smoothTarget.x=Math.max(.07,Math.min(.93,target.x));smoothTarget.y=Math.max(.99,Math.min(1.73,target.y));
+    hitches++;driven.x=smoothTarget.x;driven.y=smoothTarget.y;const p0=state.paddles[0];p0.x=driven.x;p0.y=driven.y;p0.vx=0;p0.vy=0;
+  }
   if(playing&&!menuOpen&&tracked&&live){followHand(smoothTarget,target,dt);acc+=dt;
     // Spread this frame's hand movement evenly over its physics ticks, so the
     // paddle's speed is the hand's real speed (not a jump on one tick and zero
@@ -260,8 +275,11 @@ renderer.setAnimationLoop((now,frame)=>{
   }}else acc=0;
   paddles.forEach((m,i)=>m.position.set(state.paddles[i].x-.5,0,state.paddles[i].y-.9));puck.position.set(state.puck.x-.5,.028,state.puck.y-.9);puck.material.emissive.setHex(state.puck.smashT>0?0xffd15f:0x443366);
   orb.rotation.y+=dt*.65;halo.rotation.z+=dt*.4;orb.scale.lerp(new THREE.Vector3(1,1,1),Math.min(1,dt*7));
-  const label=notice?notice+(calibrating?'  '+Math.ceil(calibrating.t):''):intro?'BUILT FOR THE FOLD   ·   prodbyKCTW':state.winner?(state.winner===1?'YOU WIN':'CPU WINS'):menuOpen?(started?'PAUSED':'PICK PLAY TO START'):!playing?'OPEN THE MENU TO PLAY':!tracked?'TRACKING PAUSED — SHOW YOUR PADDLE HAND':state.countdown>0?'READY…':'FIRST TO 7';
-  const sub=intro?'PINCH OR TRIGGER TO SKIP':menuOpen?'TOUCH A BUTTON · OR POINT AND PINCH':desktop&&!renderer.xr.isPresenting?'MOUSE TO PLAY · M FOR MENU':'FREE-HAND PINCH OR MENU TAB FOR OPTIONS';
+  // While the Quest's own menu is open the headset keeps all input to itself (you
+  // see its grey controllers and pointer); the game can't be pressed until it closes.
+  const away=!!session&&session.visibilityState!=='visible';
+  const label=away?'QUEST MENU IS OPEN':notice?notice+(calibrating?'  '+Math.ceil(calibrating.t):''):intro?'BUILT FOR THE FOLD   ·   prodbyKCTW':state.winner?(state.winner===1?'YOU WIN':'CPU WINS'):menuOpen?(started?'PAUSED':'PICK PLAY TO START'):!playing?'OPEN THE MENU TO PLAY':!tracked?'TRACKING PAUSED — SHOW YOUR PADDLE HAND':state.countdown>0?'READY…':'FIRST TO 7';
+  const sub=away?'CLOSE IT (QUEST BUTTON) TO KEEP PLAYING':intro?'PINCH OR TRIGGER TO SKIP':menuOpen?'TOUCH A BUTTON · OR POINT AND PINCH':desktop&&!renderer.xr.isPresenting?'MOUSE TO PLAY · M FOR MENU':'FREE-HAND PINCH OR MENU TAB FOR OPTIONS';
   const text=(intro?'INTRO':started?state.score.join(' : '):'MENU')+' / '+label+' / '+sub;
   if(text!==lastLabel){lastLabel=text;const c=board.ctx;c.fillStyle='#100821';c.fillRect(0,0,1024,256);c.textAlign='center';c.textBaseline='alphabetic';const pulse=intro?1+.05*Math.sin(introT*5):1;c.save();c.translate(512,95);c.scale(pulse,pulse);c.fillStyle=intro?'#ff3195':'#36eeee';c.font='bold 70px sans-serif';
     if(window.CreaseLogo){const LG=window.CreaseLogo,lh=58,lw=LG.width(lh);if(!started)LG.draw(c,-lw/2,-lh,lh);else{const sc=state.score.join(' : '),sw=c.measureText(sc).width,gap=40,tot=lw+gap+sw;LG.draw(c,-tot/2,-lh,lh);c.textAlign='left';c.fillText(sc,-tot/2+lw+gap,0);c.textAlign='center';}}
@@ -272,6 +290,6 @@ renderer.setAnimationLoop((now,frame)=>{
 });
 addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);});
 // Test hook (local server or ?qa=1 only), same convention as the phone game.
-if(/^(localhost|127\.0\.0\.1)$/.test(location.hostname)||new URLSearchParams(location.search).has('qa'))window.__creaseVR={options,get state(){return state;},get tableHeight(){return tableHeight;},get menuOpen(){return menuOpen;},get playing(){return playing;},get intro(){return intro;},get lastHit(){return lastHit;},hitLog,get target(){return target;},press,handleSelect,hover,
+if(/^(localhost|127\.0\.0\.1)$/.test(location.hostname)||new URLSearchParams(location.search).has('qa'))window.__creaseVR={options,get state(){return state;},get tableHeight(){return tableHeight;},get menuOpen(){return menuOpen;},get playing(){return playing;},get intro(){return intro;},get lastHit(){return lastHit;},get hitches(){return hitches;},hitLog,get target(){return target;},press,handleSelect,hover,
   menuPoint(id){const b=buttons.find(x=>x.id===id);if(!b)return null;menu.mesh.updateMatrixWorld();const p=menu.mesh.localToWorld(new THREE.Vector3(((b.x+b.w/2)/MENU_W-.5)*PANEL_W,(.5-(b.y+b.h/2)/MENU_H)*PANEL_H,0));const n=new THREE.Vector3(0,0,1).transformDirection(menu.mesh.matrixWorld);return {p:{x:p.x,y:p.y,z:p.z},n:{x:n.x,y:n.y,z:n.z}};}};
 try{const supported=await navigator.xr?.isSessionSupported('immersive-vr');enter.disabled=!supported;enter.textContent=supported?'Enter VR':'Open in Quest Browser';}catch{enter.textContent='VR unavailable';}
