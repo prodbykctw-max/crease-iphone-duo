@@ -4,6 +4,11 @@ import {followHand,createOpponent,opponentMove} from './quest-controls.mjs';
 import {updatePinch,acceptSelect,SLOP as HIT_SLOP,loadOptions,saveOptions,autoTableHeight,heightFromHand,stepHeight,clampHeight,updatePoke,MENU_W,MENU_H,menuButtons,hitButton,applyButton,TABLE_DEFAULT} from './quest-options.mjs';
 import {ease,introFrame,introBeats,INTRO_END,victoryFrame,popFrame,ringFrame,barCells,shakeOffset,unlockLine,paddleLook} from './quest-juice.mjs';
 import {fieldToTable,inputToField,fieldToInput,pickupStyle,envVictim,boardLabel,powerLine,detectEvents,newEventState,usableArena,backdropSize} from './quest-engine.mjs';
+import {createLook} from './quest-look.mjs';
+import {createCentre} from './quest-centre.mjs';
+import {createDiorama} from './quest-diorama.mjs';
+import {ARENA_KINDS} from './quest-centre-pure.mjs';
+import {XR_SCALE,FOVEATION,newQuality,qualityStep,paddleRingColour,JOINT_NAMES} from './quest-look-pure.mjs';
 import {ONLINE_BUTTON,createOnline,onlineIntent,onlineEvent,onlineTick,onlineFail,onlinePage,drawOnlinePanel,onlineBoard,drawOnlineBoard,mine,feelEvents,mountOnlineFrame} from './quest-online.mjs';
 
 const storage=(()=>{try{return localStorage;}catch{return null;}})();
@@ -51,93 +56,58 @@ function engineSettled(){
 }
 const usingEngine=()=>engine.state==='ready';
 // Online play (see the Online section near the end and assets/quest-online.mjs).
-const OL={on:false,m:createOnline(),frame:null,frameSeen:'',prev:{},boardKey:'',dotsT:0,savedPlaying:false,keptStarted:false,gameState:'',wasAway:false};
+const OL={on:false,m:createOnline(),frame:null,frameSeen:'',prev:{},boardKey:'',dotsT:0,savedPlaying:false,keptStarted:false,gameState:'',wasAway:false,v:null};
 
 const scene=new THREE.Scene();scene.background=new THREE.Color('#080514');scene.fog=new THREE.Fog('#080514',5,15);
 const camera=new THREE.PerspectiveCamera(60,innerWidth/innerHeight,.01,40);
-const renderer=new THREE.WebGLRenderer({antialias:true});renderer.setPixelRatio(Math.min(devicePixelRatio,1.5));renderer.setSize(innerWidth,innerHeight);renderer.xr.enabled=true;renderer.xr.setReferenceSpaceType('local-floor');document.body.append(renderer.domElement);
-scene.add(new THREE.HemisphereLight(0xc7bbff,0x170924,2));
-const light=new THREE.DirectionalLight(0xffffff,3);light.position.set(-2,4,1);scene.add(light);
+const renderer=new THREE.WebGLRenderer({antialias:true});renderer.setPixelRatio(Math.min(devicePixelRatio,1.5));renderer.setSize(innerWidth,innerHeight);renderer.xr.enabled=true;renderer.xr.setReferenceSpaceType('local-floor');renderer.xr.setFoveation(FOVEATION);document.body.append(renderer.domElement);
+// A software GL (SwiftShader, llvmpipe: emulators, CI) cannot rasterise the 1024 px field every frame; it gets the plain eye buffer and a field
+// refresh every SOFT_FIELD_EVERY frames so the page stays responsive. Real headsets never take this path. ?fullfield=1 turns it off.
+const softGL=(()=>{try{const gl=renderer.getContext(),e=gl.getExtension('WEBGL_debug_renderer_info');return !/[?&]fullfield/.test(location.search)&&/swiftshader|llvmpipe|software/i.test(String(e?gl.getParameter(e.UNMASKED_RENDERER_WEBGL):''));}catch{return false;}})();
+const SOFT_FIELD_EVERY=30;
+renderer.xr.setFramebufferScaleFactor(softGL?1:XR_SCALE);
+scene.add(new THREE.HemisphereLight(0xc7bbff,0x170924,1.1));
+const light=new THREE.DirectionalLight(0xffffff,1.6);light.position.set(-2,4,1);scene.add(light);
 
 // local-floor is measured from the Quest floor. The table top sits at
 // tableHeight (auto-fitted to the player, or set in the options menu).
 const table=new THREE.Group();table.position.set(0,TABLE_DEFAULT,-1.25);scene.add(table);
 function mesh(geometry,color,emissive=0){return new THREE.Mesh(geometry,new THREE.MeshStandardMaterial({color,emissive,roughness:.32,metalness:.55}));}
 function glowMat(color,opacity=1){return new THREE.MeshBasicMaterial({color,transparent:true,opacity,depthWrite:false,blending:THREE.AdditiveBlending});}
-function box(w,h,d,x,y,z,color,glow=0){const m=mesh(new THREE.BoxGeometry(w,h,d),color,glow);m.position.set(x,y,z);table.add(m);return m;}
-const GOAL_HALF=.19; // engine goal mouth is .38 wide
-box(1.06,.1,1.86,0,-.06,0,0x180d2c);const windowMesh=box(1,.018,1.8,0,0,0,0x091b28);
-// Rails and walls take the arena's colours (see applyArena).
-const trimMats=[];const trim=(w,h,d,x,y,z)=>{const m=box(w,h,d,x,y,z,0x4ce9ff,0x126478);trimMats.push(m.material);return m;};
-for(const x of [-.515,.515])trim(.025,.07,1.8,x,.025,0);
-for(const z of [-.915,.915])for(const sx of [-1,1])trim(.5-GOAL_HALF+.015,.07,.025,sx*((.5+GOAL_HALF)/2),.025,z);
-// Goal mouths: the far one is the CPU's (pink), yours is cyan.
-const goalGlow=[-.925,.925].map(z=>box(GOAL_HALF*2,.018,.012,0,.03,z,z<0?0xff3195:0x2de2e6,z<0?0x99195f:0x126478));
-// Corners are quarter-circle springs in the engine; a solid wedge outside the curve.
-{const R=.15,sh=new THREE.Shape();sh.moveTo(R,0);sh.lineTo(R,R);sh.lineTo(0,R);sh.absarc(0,0,R,Math.PI/2,0,true);
-  const g=new THREE.ExtrudeGeometry(sh,{depth:.07,bevelEnabled:false,curveSegments:10});g.rotateX(-Math.PI/2);
-  for(const sx of [-1,1])for(const sz of [-1,1]){const m=mesh(g,0x4ce9ff,0x126478);m.position.set(sx*(.5-R),0,sz*(.9-R));m.scale.set(sx,1,-sz);table.add(m);trimMats.push(m.material);}}
-const creaseLine=box(1,.002,.008,0,.012,0,0xbb66ff,0x673399);
-let legs=[];for(const x of [-.4,.4])for(const z of [-.7,.7])legs.push(box(.07,1,.07,x,-.5,z,0x25143b));
+// The table, rails, legs, paddles, pucks, bumpers, hands and controllers live in quest-look.mjs. The table top is a texture the phone
+// engine draws itself (host.renderField); the pieces are 3D bodies capped with the phone's own paddle and puck art (host.pieceArt).
+// Text canvases are drawn at CANVAS_SCALE x their layout size so lettering stays crisp in the headset; all drawing code keeps using the
+// layout coordinates (the context carries the scale), so button positions and hit-testing are unchanged.
+const CANVAS_SCALE=softGL?1:2,ANISO=softGL?1:Math.min(8,renderer.capabilities.getMaxAnisotropy());
+const puckArt=new Map(); // puck tint -> the phone's puck art canvas for it
+const lk=createLook({scene,table,renderer,soft:softGL});
+// The arena's centrepiece (sun, crystal, ringed planet ...) as a real 3D object floating over the table; see quest-centre.mjs.
+const centre=createCentre({table,soft:softGL}),centreInfo={kind:'sun',index:0},sightPts=new Float32Array(3*(2+3)),eyeV=new THREE.Vector3();let centreTries=0;
+// The window scene of the arena (ridges, towers, trees, cacti ...) as a small 3D diorama on the table; see quest-diorama.mjs.
+const diorama=createDiorama({table,soft:softGL});
+const legs=lk.legs,paddles=lk.paddles,pucks=lk.pucks,bumpers=lk.bumpers,MAX_PUCKS=pucks.length;
 let grid=new THREE.GridHelper(16,32,0x842e8f,0x271438);grid.position.y=-.01;scene.add(grid);
-const paddles=[0x2de2e6,0xff3195].map(color=>{const g=new THREE.Group();
-  const base=mesh(new THREE.CylinderGeometry(.082,.09,.038,40),color,color);base.position.y=.027;g.add(base);g.userData.base=base;
-  const bevel=mesh(new THREE.TorusGeometry(.066,.007,10,40),0xffffff,color);bevel.rotation.x=Math.PI/2;bevel.position.y=.052;g.add(bevel);g.userData.bevel=bevel;
-  const grip=mesh(new THREE.CylinderGeometry(.03,.042,.08,28),color,color);grip.position.y=.075;g.add(grip);g.userData.grip=grip;
-  const cap=mesh(new THREE.SphereGeometry(.021,20,12),0xffffff,color);cap.position.set(0,.12,-.006);g.add(cap);g.userData.cap=cap;
-  // The glow under the paddle takes the Garage look's trail colour.
-  const glow=new THREE.Mesh(new THREE.CircleGeometry(.15,36),glowMat(0x2de2e6,.28));glow.rotation.x=-Math.PI/2;glow.position.y=.008;g.add(glow);g.userData.glow=glow;
-  table.add(g);return g;});
-// Fire Mode: a hot glow under the paddle of whoever is on a streak.
-const fireDiscs=[0,1].map(()=>{const m=new THREE.Mesh(new THREE.CircleGeometry(.2,32),glowMat(0xff7a2f,0));m.rotation.x=-Math.PI/2;m.position.y=.02;m.visible=false;table.add(m);return m;});
-// Pucks (the engine allows up to 3 with MULTI).
-const MAX_PUCKS=3;
-const pucks=[];for(let i=0;i<MAX_PUCKS;i++){const g=new THREE.Group();const body=mesh(new THREE.CylinderGeometry(.042,.042,.022,28),0xffffff,0x443366);body.position.y=.014;g.add(body);
-  const halo=new THREE.Mesh(new THREE.RingGeometry(.05,.075,32),glowMat(0xffd23f,0));halo.rotation.x=-Math.PI/2;halo.position.y=.03;g.add(halo);g.userData={body,halo};g.visible=false;table.add(g);pucks.push(g);}
-// Gold bumpers on the crease: solid for most of a cycle, ghosted when "phased".
-const bumpers=[0,1].map(()=>{const g=new THREE.Group();const m=mesh(new THREE.CylinderGeometry(.05,.056,.05,32),0xffffff,0x444444);m.position.y=.03;g.add(m);
-  const ring=new THREE.Mesh(new THREE.TorusGeometry(.04,.005,8,32),glowMat(0xffffff,.9));ring.rotation.x=Math.PI/2;ring.position.y=.058;g.add(ring);g.userData={m,ring};g.visible=false;table.add(g);return g;});
-// Goal wall (WALL power-up): a shield bar across the goal.
-const shields=[0,1].map(()=>{const m=new THREE.Mesh(new THREE.BoxGeometry(GOAL_HALF*2+.06,.09,.02),glowMat(0xb26bff,.7));m.visible=false;table.add(m);return m;});
-// Power-up pick-up: ring + disc + glyph, bobbing on the crease.
-function glyphTexture(kind){const c=document.createElement('canvas');c.width=c.height=128;const x=c.getContext('2d');x.clearRect(0,0,128,128);x.fillStyle='#ffffff';
-  if(kind==='big'){x.beginPath();x.arc(64,64,34,0,7);x.fill();}
-  else if(kind==='multi'){for(const o of [-1,1]){x.beginPath();x.arc(64+o*26,64,19,0,7);x.fill();}}
-  else{x.fillRect(22,46,84,36);}
-  const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;return t;}
-const glyphTex={big:glyphTexture('big'),multi:glyphTexture('multi'),wall:glyphTexture('wall')};
-const pickup=(()=>{const g=new THREE.Group();const disc=new THREE.Mesh(new THREE.CylinderGeometry(.045,.045,.01,32),glowMat(0xffffff,.35));disc.position.y=.012;g.add(disc);
-  const ring=new THREE.Mesh(new THREE.TorusGeometry(.045,.0045,8,40),glowMat(0xffffff,1));ring.rotation.x=Math.PI/2;ring.position.y=.02;g.add(ring);
-  const glyph=new THREE.Mesh(new THREE.PlaneGeometry(.075,.075),new THREE.MeshBasicMaterial({map:glyphTex.big,transparent:true,depthWrite:false}));glyph.rotation.x=-Math.PI/2;glyph.position.y=.05;g.add(glyph);
+// Power-up pick-up: the phone's flat ring, glow and glyph are in the table texture; a faint light beam rising from it shows it from across the room.
+const pickup=(()=>{const g=new THREE.Group();
   const beam=new THREE.Mesh(new THREE.CylinderGeometry(.045,.045,.22,24,1,true),glowMat(0xffffff,.18));beam.position.y=.12;g.add(beam);
-  g.userData={disc,ring,glyph,beam};g.visible=false;table.add(g);return g;})();
-// Arena power orb on the crease, with its name floating above.
-const envOrb=(()=>{const g=new THREE.Group();const core=new THREE.Mesh(new THREE.IcosahedronGeometry(.05,1),glowMat(0xffffff,.9));core.position.y=.07;g.add(core);
-  const ring=new THREE.Mesh(new THREE.TorusGeometry(.075,.005,8,40),glowMat(0xffffff,.9));ring.position.y=.07;g.add(ring);
+  g.userData={beam};g.visible=false;table.add(g);return g;})();
+// Arena power orb on the crease: the orb itself is in the texture; its name floats above it.
+const envOrb=(()=>{const g=new THREE.Group();
   const label=canvasPlane(512,96,.34,.064);label.mesh.position.set(0,.2,0);g.add(label.mesh);
-  g.userData={core,ring,label,name:''};g.visible=false;table.add(g);return g;})();
-// The half of the table an active arena power acts on glows in the arena colour.
-const envTint=new THREE.Mesh(new THREE.PlaneGeometry(1,.9),glowMat(0xffffff,0));envTint.rotation.x=-Math.PI/2;envTint.position.y=.011;envTint.visible=false;table.add(envTint);
-// A true geometry centerpiece below the transparent-looking center window.
-const orb=mesh(new THREE.IcosahedronGeometry(.17,1),0xff9044,0x8a2311);orb.position.set(0,-.25,0);table.add(orb);
-windowMesh.material.transparent=true;windowMesh.material.opacity=.65;windowMesh.material.depthWrite=false;
-const halo=mesh(new THREE.TorusGeometry(.23,.006,8,48),0xff49b6,0x99195f);halo.rotation.x=.7;orb.add(halo);
+  g.userData={label,name:''};g.visible=false;table.add(g);return g;})();
 // Arena backdrop: the arena's own artwork on a curved panel around the far end of the room.
 const backdrop=new THREE.Mesh(new THREE.CylinderGeometry(5.5,5.5,5.2,48,1,true,0,1),new THREE.MeshBasicMaterial({color:0xcccccc,side:THREE.BackSide,fog:false}));backdrop.visible=false;scene.add(backdrop);
 const textures=new Map();const loader=new THREE.TextureLoader();
 function plateTexture(id,cb){
   if(textures.has(id)){cb(textures.get(id));return;}
-  loader.load('assets/arenas/'+id+'.webp',t=>{t.colorSpace=THREE.SRGBColorSpace;t.wrapS=THREE.RepeatWrapping;t.repeat.x=-1;t.offset.x=1;t.anisotropy=4;textures.set(id,t);while(textures.size>3){const k=textures.keys().next().value;textures.get(k).dispose();textures.delete(k);}cb(t);},undefined,()=>cb(null));
+  loader.load('assets/arenas/'+id+'.webp',t=>{t.colorSpace=THREE.SRGBColorSpace;t.wrapS=THREE.RepeatWrapping;t.repeat.x=-1;t.offset.x=1;t.anisotropy=softGL?1:4;textures.set(id,t);while(textures.size>3){const k=textures.keys().next().value;textures.get(k).dispose();textures.delete(k);}cb(t);},undefined,()=>cb(null));
 }
 let backdropFor='';
+let arenaCols=null;
 function applyArena(i){
   const a=arenaList.find(x=>x.index===i);if(!a)return;const c=a.colors;
-  for(const m of trimMats){m.color.set(c.rail||c.grid);m.emissive.set(c.rail||c.grid).multiplyScalar(.45);}
-  goalGlow[0].material.color.set(c.p2);goalGlow[0].material.emissive.set(c.p2).multiplyScalar(.5);goalGlow[1].material.color.set(c.p1);goalGlow[1].material.emissive.set(c.p1).multiplyScalar(.5);
-  for(const k of ['base','grip'])for(const [j,col] of [[0,c.p1],[1,c.p2]]){const m=paddles[j].userData[k].material;m.color.set(col);m.emissive.set(col);}
-  creaseLine.material.color.set(c.horizon||c.grid);creaseLine.material.emissive.set(c.grid).multiplyScalar(.6);
+  lk.applyArena(c);arenaCols=c;refreshPaddleStyle();puckArt.clear();
   scene.remove(grid);grid.geometry.dispose();grid.material.dispose();grid=new THREE.GridHelper(16,32,new THREE.Color(c.grid).multiplyScalar(.7),new THREE.Color(c.grid).multiplyScalar(.2));grid.position.y=-.01;scene.add(grid);
-  orb.material.color.set(c.sun?.[1]||c.grid);orb.material.emissive.set(c.sun?.[0]||c.grid).multiplyScalar(.7);
   scene.background.set(c.base?.[0]||'#080514');scene.fog.color.set(c.base?.[0]||'#080514');
   backdropFor=a.id;
   plateTexture(a.id,t=>{if(backdropFor!==a.id)return;if(!t){backdrop.visible=false;return;}
@@ -147,8 +117,8 @@ function applyArena(i){
 }
 function placeBackdrop(){backdrop.position.set(0,.3+(backdrop.userData.height||5.2)/2,-.6);}
 
-function canvasPlane(w,h,pw,ph){const c=document.createElement('canvas');c.width=w;c.height=h;const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;
-  const m=new THREE.Mesh(new THREE.PlaneGeometry(pw,ph),new THREE.MeshBasicMaterial({map:t,transparent:true,depthWrite:false}));m.renderOrder=5;return {canvas:c,ctx:c.getContext('2d'),texture:t,mesh:m};}
+function canvasPlane(w,h,pw,ph,scale=CANVAS_SCALE){const c=document.createElement('canvas');c.width=w*scale;c.height=h*scale;const x=c.getContext('2d');x.scale(scale,scale);const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;t.anisotropy=ANISO;
+  const m=new THREE.Mesh(new THREE.PlaneGeometry(pw,ph),new THREE.MeshBasicMaterial({map:t,transparent:true,depthWrite:false}));m.renderOrder=5;return {canvas:c,ctx:x,texture:t,mesh:m};}
 const board=canvasPlane(1024,256,1.3,.325);board.mesh.material.side=THREE.DoubleSide;scene.add(board.mesh);
 // Options menu: a panel floating over your own half of the table, within
 // arm's reach, so it can be touched with a fingertip or pointed at and pinched.
@@ -168,9 +138,11 @@ const ringPool=[];for(let i=0;i<14;i++){const m=new THREE.Mesh(new THREE.RingGeo
 const popPool=[];for(let i=0;i<8;i++){const p=canvasPlane(512,128,.4,.1);p.mesh.visible=false;p.key='';table.add(p.mesh);popPool.push(p);}
 const colorCache=new Map(),pc=new THREE.Color();
 function cssColor(c,out){let v=colorCache.get(c);if(!v){try{v=new THREE.Color(c);}catch{v=new THREE.Color(1,1,1);}colorCache.set(c,v);}return out.copy(v);}
+// With the field texture on, the phone draws every spark flat on the table itself; only sparks that have risen above it are drawn here in 3D.
+let flatInTexture=false;
 function drawParticles(parts,L){
   let n=0;
-  for(const p of parts){if(n>=MAX_PARTS)break;fieldToTable(p.u,p.v,L,fp);partPos[n*3]=fp.x;partPos[n*3+1]=Math.max(0,p.z||0)+.01;partPos[n*3+2]=fp.z;
+  for(const p of parts){if(n>=MAX_PARTS)break;if(flatInTexture&&!(p.z>.03))continue;fieldToTable(p.u,p.v,L,fp);partPos[n*3]=fp.x;partPos[n*3+1]=Math.max(0,p.z||0)+.01;partPos[n*3+2]=fp.z;
     cssColor(p.col||'#ffffff',pc);const a=Math.max(0,Math.min(1,p.life/(p.max||.5)));partCol[n*3]=pc.r*a;partCol[n*3+1]=pc.g*a;partCol[n*3+2]=pc.b*a;n++;}
   partGeo.setDrawRange(0,n);partGeo.attributes.position.needsUpdate=true;partGeo.attributes.color.needsUpdate=true;partPts.visible=n>0;
 }
@@ -233,8 +205,11 @@ function drawToast(now){
 let look=paddleLook(null);
 function applyLook(){
   try{look=paddleLook(usingEngine()?engine.host.paddleStyle():null);}catch{look=paddleLook(null);}
-  for(const p of paddles){const u=p.userData;u.bevel.material.color.set(look.ring);u.bevel.material.emissive.set(look.ring);u.cap.material.color.set(look.core);u.cap.material.emissive.set(look.ring);u.glow.material.color.set(look.trail);}
+  for(let i=0;i<2;i++)lk.setPaddleRing(i,look.ring);
+  refreshPaddleStyle();
 }
+// The knob you hold: accent band in the Garage look's trail colour, dome in its core colour, glowing in the side's colour.
+function refreshPaddleStyle(){const c=arenaCols;for(let i=0;i<2;i++)lk.setPaddleAccent(i,c?(i?c.p2:c.p1):(i?'#ff3195':'#2de2e6'),look.trail,look.core);}
 
 // Old simple game (fallback only): state in table units, x across [0,1], y along [0,1.8].
 let introFxState={parts:[],rings:[],shake:0,tones:0,smashed:false,flash:0};
@@ -257,9 +232,9 @@ function applyHeight(h){
 }
 applyHeight(options.height==='auto'?TABLE_DEFAULT:options.height);
 
-const jointNames=['wrist','thumb-metacarpal','thumb-phalanx-proximal','thumb-phalanx-distal','thumb-tip','index-finger-metacarpal','index-finger-phalanx-proximal','index-finger-phalanx-intermediate','index-finger-phalanx-distal','index-finger-tip','middle-finger-metacarpal','middle-finger-phalanx-proximal','middle-finger-phalanx-intermediate','middle-finger-phalanx-distal','middle-finger-tip','ring-finger-metacarpal','ring-finger-phalanx-proximal','ring-finger-phalanx-intermediate','ring-finger-phalanx-distal','ring-finger-tip','pinky-finger-metacarpal','pinky-finger-phalanx-proximal','pinky-finger-phalanx-intermediate','pinky-finger-phalanx-distal','pinky-finger-tip'];
+const jointNames=JOINT_NAMES;
 const handVisuals=new Map(),pokes=new Map(),pinches=new Map(),pinchA=new THREE.Vector3(),pinchB=new THREE.Vector3();
-function makeHandVisual(){const g=new THREE.Group();for(const name of jointNames){const dot=mesh(new THREE.SphereGeometry(name==='wrist'?.022:.014,10,8),0xefffff,0x36eeee);g.add(dot);}g.visible=false;scene.add(g);return g;}
+function makeHandVisual(){const g=lk.makeHand();scene.add(g);return g;}
 
 function startMatch(daily=false){
   if(engine.state==='loading'){pendingStart=true;say('LOADING THE GAME…',3);menuOpen=true;menuDirty=true;return;}
@@ -368,7 +343,7 @@ for(let i=0;i<2;i++){
   const laser=new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(),new THREE.Vector3(0,0,-1)]),new THREE.LineBasicMaterial({color:0x36eeee}));laser.visible=false;controller.add(laser);
   const dot=new THREE.Mesh(new THREE.SphereGeometry(.008,10,8),new THREE.MeshBasicMaterial({color:0xff3195}));dot.visible=false;scene.add(dot);
   lasers.push({controller,laser,dot});
-  const grip=renderer.xr.getControllerGrip(i),gripMesh=mesh(new THREE.CapsuleGeometry(.025,.11,6,12),0x9eecff,0x1685a0);gripMesh.rotation.x=Math.PI/2;gripMesh.visible=false;grip.add(gripMesh);scene.add(grip);
+  const grip=renderer.xr.getControllerGrip(i),gripMesh=lk.makeController();grip.add(gripMesh);scene.add(grip);
   controller.addEventListener('connected',e=>{sources.set(i,e.data);gripMesh.visible=!e.data.hand&&!!e.data.gripSpace;lastLabel='';});
   controller.addEventListener('disconnected',()=>{sources.delete(i);gripMesh.visible=false;hover.delete(i);});
   controller.addEventListener('selectstart',()=>{const s=sources.get(i);if(s?.hand)return;haptic(s,.4,25);selectFrom(s,i);});
@@ -446,49 +421,45 @@ function onSessionVisibility(se){
 }
 // ---- Drawing the engine's state -----------------------------------------------
 function glowTint(m,hex,a){m.material.color.set(hex);m.material.opacity=a;}
+// The phone's own top art for the pieces. Drawn by the engine (drawPaddle / drawPuck) into small canvases, refreshed a few times a second.
+let artAt=-1e9;
+function refreshArt(h,now){
+  if(now-artAt<250)return;artAt=now;
+  try{for(let i=0;i<2;i++)lk.setPaddleArt(i,h.pieceArt('paddle',i+1));for(const [tint] of puckArt)puckArt.set(tint,h.pieceArt('puck',tint));lk.touchArt();}catch{}
+}
+function puckArtFor(h,tint){let c=puckArt.get(tint);if(!c){try{c=h.pieceArt('puck',tint);puckArt.set(tint,c);}catch{c=null;}}return c;}
 function syncEngine(dt,t){
   const h=engine.host;if(!h)return;
   const g=h.game,L=h.view.L,beat=g.beat||0;
-  // paddles
+  refreshArt(h,performance.now());
+  // paddles: 3D bodies; their glow, flames and contact shadow are in the table texture
   for(let i=0;i<2;i++){const pd=g.paddles[i],m=paddles[i];if(!pd){m.visible=false;continue;}m.visible=true;
     fieldToTable(pd.u,pd.v,L,fp);m.position.set(fp.x,0,fp.z);const k=pd.r/.085,p=1+(pd.punch||0)*.12;m.scale.set(k*p,1,k*p);
-    const big=pd.r>.1;m.userData.base.material.emissiveIntensity=big?1.6:1;
-    const fire=g.fire[i]>0?Math.min(1,g.fire[i]*2):0,fd=fireDiscs[i];fd.visible=fire>0;
-    if(fire>0){fd.position.set(fp.x,.02,fp.z);const f=.8+.25*Math.sin(t*14+i)+(g.fire[i]>6.5?.4:0);fd.scale.setScalar(f*(.8+pd.r*2));fd.material.opacity=.55*fire;}}
-  // pucks
+    lk.setPaddleRing(i,paddleRingColour(look,pd.r>.1,g.fire[i]>0,h.COL.BIG));}
+  // pucks: tint, smash gold and UV-arena ghosting follow the engine; the trail, flames and RGB split are in the texture
   const np=Math.min(MAX_PUCKS,g.pucks.length);
   for(let i=0;i<MAX_PUCKS;i++){const m=pucks[i];if(i>=np){m.visible=false;continue;}const pk=g.pucks[i];m.visible=true;
     fieldToTable(pk.u,pk.v,L,fp);m.position.set(fp.x,0,fp.z);m.scale.set(pk.r/.042,1,pk.r/.042);
-    const body=m.userData.body,hot=pk.smashT>0,env=g.env,uv=env&&env.type==='UV'&&env.t>0&&(env.who===1?pk.v<L/2:pk.v>L/2);
+    const hot=pk.smashT>0,env=g.env,uv=env&&env.type==='UV'&&env.t>0&&(env.who===1?pk.v<L/2:pk.v>L/2);
     const col=hot?h.COL.gold:pk.last===1?h.COL.p1:pk.last===2?h.COL.p2:'#ffffff';
-    body.material.color.set(col);body.material.emissive.set(col).multiplyScalar(hot?.9:.35);body.material.transparent=uv;body.material.opacity=uv?.15:1;
-    m.userData.halo.material.opacity=hot?Math.min(1,pk.smashT/.3)*.9:env&&env.type==='LAVA'&&pk.last===env.who&&env.t>0?.6:0;m.userData.halo.material.color.set(hot?h.COL.gold:h.COL.orange);}
-  // bumpers on the crease
+    lk.tintPuck(m,col,puckArtFor(h,col),hot,uv?.15:1);}
+  // bumpers on the crease: real 3D domes (the phone's shell, spinning arcs and core); their glow and shock ring are in the texture. "Phased" ones ghost out.
   for(let i=0;i<2;i++){const b=g.bumpers[i],m=bumpers[i];if(!b){m.visible=false;continue;}m.visible=true;
-    fieldToTable(b.u,b.v,L,fp);m.position.set(fp.x,0,fp.z);const on=h.bumperActive(b),col=b.u<.5?h.COL.p1:h.COL.p2,s=1+Math.max(0,b.punch)*.35+b.flash*.15;m.scale.set(s,1,s);
-    const mat=m.userData.m.material;mat.color.set(col);mat.emissive.set(col).multiplyScalar(.25+b.flash*.7+beat*.15);mat.transparent=true;mat.opacity=on?1:.22;
-    m.userData.ring.material.opacity=on?.9:.35;m.userData.ring.material.color.set(b.flash>.2?'#ffffff':col);}
-  // goal walls
-  for(let i=0;i<2;i++){const s=g.shields[i],m=shields[i];if(s<=0){m.visible=false;continue;}m.visible=true;m.position.set(0,.045,i===0?.89:-.89);
-    m.material.opacity=(s<1.5&&Math.sin(t*30)<=0)?.2:.75;}
-  // power-up pick-up
+    fieldToTable(b.u,b.v,L,fp);m.position.set(fp.x,0,fp.z);const s=1+Math.max(0,b.punch)*.35;m.scale.set(s,1,s);
+    lk.setBumper(i,{col:b.u<.5?h.COL.p1:h.COL.p2,alt:b.u<.5?h.COL.p2:h.COL.p1,flash:b.flash,active:h.bumperActive(b),spin:g.t*4.8+b.u*8,beat});}
+  // power-up pick-up: the table texture draws its ring and glyph; a light beam shows it from afar
   const pu=g.pups[0];
-  if(pu&&!pu.dead){const st=pickupStyle(pu.type),u=pickup.userData;pickup.visible=true;fieldToTable(pu.u,pu.v,L,fp);const bob=1+.08*Math.sin(t*6),fade=pu.life<2?(Math.sin(t*20)>0?1:.35):1;
-    pickup.position.set(fp.x,0,fp.z);pickup.scale.set(bob,1,bob);u.ring.rotation.z=t*2;
-    for(const k of ['disc','ring','beam'])u[k].material.color.set(st.colour);u.disc.material.opacity=.35*fade;u.ring.material.opacity=fade;u.beam.material.opacity=.2*fade;
-    u.glyph.material.map=glyphTex[st.glyph];u.glyph.material.color.set(st.colour);u.glyph.position.y=.05+.012*Math.sin(t*3);}
+  if(pu&&!pu.dead){const st=pickupStyle(pu.type),u=pickup.userData;pickup.visible=true;fieldToTable(pu.u,pu.v,L,fp);const fade=pu.life<2?(Math.sin(t*20)>0?1:.35):1;
+    pickup.position.set(fp.x,0,fp.z);u.beam.material.color.set(st.colour);u.beam.material.opacity=.2*fade;}
   else pickup.visible=false;
-  // arena power orb and the glow of an active power
-  const eo=g.envOrb,col=h.stageColors(h.stage).grid;
-  if(eo){envOrb.visible=true;fieldToTable(eo.u,eo.v,L,fp);envOrb.position.set(fp.x,0,fp.z);const bob=1+.1*Math.sin(t*5),fade=eo.life<2?(Math.sin(t*20)>0?1:.35):1,u=envOrb.userData;
-    u.core.scale.setScalar(bob);u.core.rotation.y=t*2;u.ring.rotation.set(t*1.3,t*.9,0);u.core.material.color.set(col);u.core.material.opacity=.85*fade;u.ring.material.color.set(col);u.ring.material.opacity=fade;
-    u.label.mesh.rotation.y=0;if(u.name!==eo.name){u.name=eo.name;const c=u.label.ctx;c.clearRect(0,0,512,96);c.font='bold 46px sans-serif';c.textAlign='center';c.textBaseline='middle';c.fillStyle='#100821d0';roundRect(c,10,10,492,76,24);c.fill();c.fillStyle='#ffffff';c.fillText(eo.name,256,50);u.label.texture.needsUpdate=true;}
+  // arena power orb: the texture draws the orb; its name floats above it
+  const eo=g.envOrb;
+  if(eo){envOrb.visible=true;fieldToTable(eo.u,eo.v,L,fp);envOrb.position.set(fp.x,0,fp.z);const u=envOrb.userData;
+    if(u.name!==eo.name){u.name=eo.name;const c=u.label.ctx;c.clearRect(0,0,512,96);c.font='bold 46px sans-serif';c.textAlign='center';c.textBaseline='middle';c.fillStyle='#100821d0';roundRect(c,10,10,492,76,24);c.fill();c.fillStyle='#ffffff';c.fillText(eo.name,256,50);u.label.texture.needsUpdate=true;}
     u.label.mesh.lookAt(camera.getWorldPosition(tmp));}
   else envOrb.visible=false;
-  const e=g.env;
-  if(e&&e.t>0){const victim=envVictim(e,L);envTint.visible=true;envTint.position.z=victim===1?.45:-.45;glowTint(envTint,col,.12+.06*Math.sin(t*6));}else envTint.visible=false;
-  // beat: the crease and centrepiece pulse with the music
-  creaseLine.material.emissiveIntensity=.7+beat*1.8;orb.scale.setScalar(1+beat*.08);for(const m of trimMats)m.emissiveIntensity=1+beat*.9;
+  // beat: the rail neon pulses with the music
+  lk.beat(beat);
 }
 
 // ---- Intro: the phone game's cutscene, in 3D (pure timing in quest-juice.mjs) -----------------
@@ -519,11 +490,11 @@ function runIntro(dt){
 function applyIntro(f){
   const L=1.8;table.visible=f.showTable;table.scale.set(1,1,Math.max(.001,f.fold));
   introLine.visible=f.fold<1;introLine.position.set(table.position.x,table.position.y+.012,table.position.z);introLine.scale.x=Math.max(.001,f.crease);introLine.material.opacity=1-f.fold*.8;
-  for(const m of bumpers)m.visible=false;for(const m of shields)m.visible=false;for(const d of fireDiscs)d.visible=false;pickup.visible=false;envOrb.visible=false;envTint.visible=false;
+  for(const m of bumpers)m.visible=false;pickup.visible=false;envOrb.visible=false;
   const ps=[f.p1,f.p2];for(let i=0;i<2;i++){const m=paddles[i];m.visible=f.padsOn;fieldToTable(ps[i].u,ps[i].v,L,fp);m.position.set(fp.x,0,fp.z);m.scale.set(1,1,1);}
   for(let i=1;i<MAX_PUCKS;i++)pucks[i].visible=false;
-  const pk=pucks[0],body=pk.userData.body;pk.visible=f.puck.on&&!f.puck.smashed;fieldToTable(f.puck.u,f.puck.v,L,fp);pk.position.set(fp.x,f.puck.drop,fp.z);pk.scale.set(1,1,1);
-  const col=f.puck.last===1?'#2de2e6':f.puck.last===2?'#ff3195':'#ffffff';body.material.color.set(col);body.material.emissive.set(col).multiplyScalar(.35);body.material.opacity=1;body.material.transparent=false;pk.userData.halo.material.opacity=0;
+  const pk=pucks[0];pk.visible=f.puck.on&&!f.puck.smashed;fieldToTable(f.puck.u,f.puck.v,L,fp);pk.position.set(fp.x,f.puck.drop,fp.z);pk.scale.set(1,1,1);
+  const col=f.puck.last===1?'#2de2e6':f.puck.last===2?'#ff3195':'#ffffff';lk.tintPuck(pk,col,engine.host&&engine.host.pieceArt?puckArtFor(engine.host,col):null,false,1);
   if(f.title>0){setStamp('CREASE','#36eeee',f.tag>0?'BUILT FOR THE FOLD':'');stamp.mesh.visible=true;stamp.mesh.scale.setScalar(Math.max(.01,2.2-1.2*ease.outBack(f.title)));stamp.mesh.material.opacity=f.title*(1-f.fade);
     stamp.mesh.position.set(0,tableHeight+.42,table.position.z);const cam=renderer.xr.isPresenting?renderer.xr.getCamera():camera;cam.getWorldPosition(camWorld);stamp.mesh.lookAt(camWorld);}
   else stamp.mesh.visible=false;
@@ -545,15 +516,18 @@ function onMatchOver(){
 }
 // Old simple game drawn with the same meshes.
 function syncSimple(){
-  for(let i=0;i<2;i++){const p=state.paddles[i];paddles[i].visible=true;paddles[i].position.set(p.x-.5,0,p.y-.9);paddles[i].scale.set(1,1,1);fireDiscs[i].visible=false;}
+  for(let i=0;i<2;i++){const p=state.paddles[i];paddles[i].visible=true;paddles[i].position.set(p.x-.5,0,p.y-.9);paddles[i].scale.set(1,1,1);}
   pucks[0].visible=true;pucks[0].position.set(state.puck.x-.5,0,state.puck.y-.9);pucks[0].scale.set(1,1,1);for(let i=1;i<MAX_PUCKS;i++)pucks[i].visible=false;
-  for(const b of bumpers)b.visible=false;for(const s of shields)s.visible=false;pickup.visible=false;envOrb.visible=false;envTint.visible=false;
+  for(const b of bumpers)b.visible=false;pickup.visible=false;envOrb.visible=false;
 }
 
+const quality=newQuality();let curFov=FOVEATION;
 renderer.setAnimationLoop((now,frame)=>{
   const gap=(now-last)/1000,okGap=!!last&&gap>0&&gap<.25,dt=okGap?gap:1/72,t=now/1000;last=now;let tracked=desktop,paddleY=NaN;
   table.position.x=0;table.position.z=-1.25; // the jolt is added after input is read, so it never feeds the paddle
   const session=renderer.xr.getSession();
+  // Keep the headset's frame rate: sustained slow frames raise foveation, then draw the field texture every other frame.
+  if(session&&okGap){const qs=qualityStep(quality,gap*1000,1000/(session.frameRate||72),lk.field.ms);if(qs.foveation!==curFov){curFov=qs.foveation;try{renderer.xr.setFoveation(curFov);}catch{}}lk.field.every=softGL?Math.max(qs.fieldEvery,SOFT_FIELD_EVERY):qs.fieldEvery;}
   if(frame&&session){
     tracked=false;const ref=renderer.xr.getReferenceSpace(),inputs=[...session.inputSources];
     const vp=frame.getViewerPose(ref);if(vp){eyeY=vp.transform.position.y;if(autoPending&&eyeY>.6){autoPending=false;applyHeight(autoTableHeight(eyeY));}}
@@ -566,7 +540,7 @@ renderer.setAnimationLoop((now,frame)=>{
     if(!tracked&&!inputs.some(s=>s.hand||s.gripSpace)&&vp){const v=vp.views[0],m=new THREE.Matrix4().fromArray(v.transform.matrix);tmp.setFromMatrixPosition(m);dir.set(0,0,-1).applyQuaternion(new THREE.Quaternion().setFromRotationMatrix(m)).normalize();if(new THREE.Ray(tmp,dir).intersectPlane(plane,hit)){setTarget(hit);tracked=true;}}
     for(const hv of handVisuals.values())hv.visible=false;
     for(const s of inputs){
-      if(s.hand){let hv=handVisuals.get(s.handedness);if(!hv){hv=makeHandVisual();handVisuals.set(s.handedness,hv);}hv.visible=true;for(let j=0;j<jointNames.length;j++)if(jointPos(frame,s.hand,jointNames[j],ref,tmp2))hv.children[j].position.copy(tmp2);
+      if(s.hand){let hv=handVisuals.get(s.handedness);if(!hv){hv=makeHandVisual();handVisuals.set(s.handedness,hv);}hv.visible=true;for(let j=0;j<jointNames.length;j++)if(jointPos(frame,s.hand,jointNames[j],ref,tmp2))hv.userData.set(j,tmp2);hv.userData.commit();
         // Touch the menu or the MENU tab with your index fingertip.
         pokeAt(s.handedness,jointPos(frame,s.hand,'index-finger-tip',ref,tmp2),s);
         // Our own pinch detector, so a pinch always registers (the browser's select event is a second, de-duplicated source).
@@ -615,7 +589,7 @@ renderer.setAnimationLoop((now,frame)=>{
       }
       if(over){if(!overHandled){overHandled=true;onMatchOver();}if(!menuOpen&&victoryFrame(g.overT).ready){menuOpen=true;menuDirty=true;}}
     }
-    if(started&&usingEngine()){syncEngine(dt,t);const L=eng.view.L;drawParticles(g.parts,L);drawRings(g.rings,L);drawPops(menuOpen?[]:g.pops,L);drawBars(g,eng);
+    if(started&&usingEngine()){syncEngine(dt,t);const L=eng.view.L;drawParticles(g.parts,L);if(!lk.field.ok||softGL)drawRings(g.rings,L);drawPops(menuOpen?[]:g.pops,L);drawBars(g,eng);
       if(over&&!menuOpen)applyVictory(g,eng);else hideStamp();}
     else if(!started){for(const m of pucks)m.visible=false;if(!intro)fxOff();}
   }else if(OL.on){over=onlineFrame(dt,t,tracked);
@@ -636,7 +610,6 @@ renderer.setAnimationLoop((now,frame)=>{
   drawToast(now);
   {const shk=intro?introFxState.shake:(eng&&started&&!OL.on?g.shake:0),o=shakeOffset(shk,Math.random(),Math.random());table.position.x=o.x;table.position.z=-1.25+o.z;}
   if(menuDirty&&menu.mesh.visible)buttons=drawMenu();
-  orb.rotation.y+=dt*.65;halo.rotation.z+=dt*.4;
   // Scoreboard: score, the engine's own message, and the active arena power.
   const score=eng?g.score:state.score;
   let label,sub;
@@ -660,6 +633,25 @@ renderer.setAnimationLoop((now,frame)=>{
   // An AudioContext the system suspended (call, system menu) is woken again; one that was closed is replaced.
   if(audio&&options.sound&&started&&(renderer.xr.isPresenting||desktop)&&!hiddenNow()&&audio.state!=='running'&&now-lastAudioKick>1000){lastAudioKick=now;
     if(audio.state==='closed'){audio=new AudioContext();if(usingEngine())engine.host.setAudio(audio);}audio.resume().catch(()=>{});}
+  // The table top: the phone's own drawing of the field, refreshed every frame. Menu and intro (no live match) get the bare table with the
+  // paddles' shadows where the 3D paddles are.
+  if(eng&&!hiddenNow()){
+    const F=lk.field,olv=OL.on&&OL.v,live=started&&!intro&&!OL.on;F.opts.bare=!live;F.opts.pucks=null;F.opts.score=null;if(F.opts.paddles.length!==2||F.opts.paddles[0].u===undefined)F.opts.paddles=[];const pa=F.opts.paddles;
+    if(!live){if(pa.length!==2){pa.length=0;pa.push({p:1,u:.5,v:1.6,r:.085,ptr:null,big:0,punch:0},{p:2,u:.5,v:.2,r:.085,ptr:null,big:0,punch:0});}
+      const Lh=eng.view.L;if(intro&&introFrameNow){const f=introFrameNow;pa[0].u=f.p1.u;pa[0].v=f.padsOn?f.p1.v:-9;pa[1].u=f.p2.u;pa[1].v=f.padsOn?f.p2.v:-9;}
+      else{pa[0].u=.5;pa[0].v=1.6*Lh/1.8;pa[1].u=.5;pa[1].v=.2*Lh/1.8;}}
+    if(olv)lk.setExternal(eng.view.L,olv.me,olv.them,olv.puck,olv.score);
+    lk.updateField(eng);flatInTexture=F.ok&&!softGL;
+    // the centrepiece: needs the phone's shader and meshes once, then follows the arena; fades while it would hide the puck or a paddle from your eye
+    if(!centre.ok&&centreTries<600){centreTries++;try{centre.setAssets(eng.centerAssets());}catch{}}
+    if(centre.ok||diorama.ok){const ecam=renderer.xr.isPresenting?renderer.xr.getCamera():camera;ecam.getWorldPosition(eyeV);centreInfo.index=arenaIx;centreInfo.kind=ARENA_KINDS[arenaIx]||'sun';
+      let ns=0;for(const m of paddles)if(m.visible){sightPts[ns*3]=m.position.x;sightPts[ns*3+1]=.02;sightPts[ns*3+2]=m.position.z;ns++;}
+      for(let i=0;i<MAX_PUCKS;i++){const m=pucks[i];if(m.visible){sightPts[ns*3]=m.position.x;sightPts[ns*3+1]=.02;sightPts[ns*3+2]=m.position.z;ns++;}}
+      const ex=eyeV.x-table.position.x,ey=eyeV.y-table.position.y,ez=eyeV.z-table.position.z;
+      if(centre.ok)centre.update(centreInfo,t,OL.on?0:Math.min(1,g.beat||0),dt,ex,ey,ez,sightPts,ns);
+      if(diorama.index!==arenaIx){try{diorama.set(arenaIx,eng.stageColors(arenaIx));}catch{}}
+      diorama.update(t,dt,ex,ey,ez,sightPts,ns);}
+  }
   renderer.render(scene,camera);
 });
 addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);});
@@ -723,10 +715,14 @@ function onlineFrame(dt,t,tracked){
   // draw the server's table from your end
   const v=m.state&&ph!=='searching'&&ph!=='waiting'&&ph!=='connecting'?mine(m.state,m.player):null;
   const rest=[{x:.5,y:1.6},{x:.5,y:.2}],at=v?[v.me,v.them]:rest;
-  for(let i=0;i<2;i++){paddles[i].visible=true;paddles[i].position.set(at[i].x-.5,0,at[i].y-.9);paddles[i].scale.set(.77,1,.77);fireDiscs[i].visible=false;}
-  pucks[0].visible=!!v;if(v){pucks[0].position.set(v.puck.x-.5,0,v.puck.y-.9);pucks[0].scale.set(.8,1,.8);const b=pucks[0].userData.body.material;b.color.set('#ffffff');b.emissive.set('#443366');b.transparent=false;b.opacity=1;pucks[0].userData.halo.material.opacity=0;}
+  OL.v=v;
+  // The same phone-art pieces as a CPU match, from the server's positions: the table texture draws the paddle glows, the puck's
+  // glow and the score numbers (see the field block in the loop); here are the 3D bodies.
+  const oh=usingEngine()?engine.host:null;if(oh)refreshArt(oh,performance.now());
+  for(let i=0;i<2;i++){paddles[i].visible=true;paddles[i].position.set(at[i].x-.5,0,at[i].y-.9);paddles[i].scale.set(1,1,1);lk.setPaddleRing(i,paddleRingColour(look,false,false));}
+  pucks[0].visible=!!v;if(v){pucks[0].position.set(v.puck.x-.5,0,v.puck.y-.9);pucks[0].scale.set(1,1,1);lk.tintPuck(pucks[0],'#ffffff',oh?puckArtFor(oh,'#ffffff'):null,false,1);}
   for(let i=1;i<pucks.length;i++)pucks[i].visible=false;
-  for(const x of bumpers)x.visible=false;for(const x of shields)x.visible=false;pickup.visible=false;envOrb.visible=false;envTint.visible=false;
+  for(const x of bumpers)x.visible=false;pickup.visible=false;envOrb.visible=false;
   const ev=feelEvents(OL.prev,v);
   if(ev.hit)haptic(paddleSource(),.65,45);if(ev.goalFor)haptic(paddleSource(),ev.goalFor===1?.8:.5,ev.goalFor===1?120:80);
   // scoreboard
@@ -748,16 +744,18 @@ function engineCompat(){
   compat={host:h,obj};return obj;
 }
 // Test hook (local server or ?qa=1 only), same convention as the phone game.
-if(/^(localhost|127\.0\.0\.1)$/.test(location.hostname)||new URLSearchParams(location.search).has('qa'))window.__creaseVR={options,get session(){return renderer.xr.getSession();},get freeze(){return freeze;},set freeze(v){freeze=!!v;},get recoveries(){return engine.recoveries||0;},get stalled(){return stallT;},
+if(/^(localhost|127\.0\.0\.1)$/.test(location.hostname)||new URLSearchParams(location.search).has('qa'))window.__creaseVR={options,get session(){return renderer.xr.getSession();},get diorama(){return diorama;},get centre(){return centre;},get renderInfo(){const r=renderer.info.render;return {calls:r.calls,triangles:r.triangles,dioTris:diorama.tris,dioIndex:diorama.index};},get freeze(){return freeze;},set freeze(v){freeze=!!v;},get recoveries(){return engine.recoveries||0;},get stalled(){return stallT;},
   // Drives the engine exactly like a frame would, with the hand at table coordinates (x,y): used to test swing speed.
   feed(x,y,dt){target.x=x;target.y=y;driveEngine(dt,true);},
   resetFeed(x,y){target.x=x;target.y=y;prevT.x=x;prevT.y=y;needSync=false;},
   // Table-unit view of the match (x across [0,1], y along [0,1.8]) whichever game is running.
   get hitLog(){return hitLog;},get hitches(){return hitches;},
   get state(){return usingEngine()?engineCompat():state;},
+  get field(){const F=lk.field;return {ok:F.ok,ms:F.ms,frames:F.frames,every:F.every,errors:F.errors,err:F.lastError||'',w:F.canvas()?.width||0,h:F.canvas()?.height||0};},get look3(){return lk;},get softGL(){return softGL;},get renderer(){return renderer;},
   get engine(){return engine.host;},get engineState(){return engine.state;},get arenaList(){return arenaList;},get arenaIx(){return arenaIx;},
   get audio(){return audio;},get backdrop(){return {visible:backdrop.visible,map:!!backdrop.material.map,id:backdropFor};},
-  get visible(){return {pucks:pucks.filter(p=>p.visible).length,pickup:pickup.visible,envOrb:envOrb.visible,shields:shields.filter(s=>s.visible).length,bumpers:bumpers.filter(b=>b.visible).length};},
+  get visible(){return {pucks:pucks.filter(p=>p.visible).length,pickup:pickup.visible,envOrb:envOrb.visible,shields:usingEngine()?engine.host.game.shields.filter(v=>v>0).length:0, // goal walls are drawn by the table texture
+    bumpers:bumpers.filter(b=>b.visible).length};},
   get fx(){const L=usingEngine()?engine.host.view.L:1.8;return {parts:partPts.visible?partGeo.drawRange.count:0,rings:ringPool.filter(m=>m.visible).length,pops:popPool.filter(m=>m.mesh.visible).length,bars:bars.map(c=>c.filter(k=>k.fill.visible).length),jolt:Math.hypot(table.position.x,table.position.z+1.25),stamp:stamp.mesh.visible,wash:wash.visible,toast:toast.mesh.visible?toastShown:'',toastQueue:toasts.length,introT,look,dailyMatch,introLine:introLine.visible,fold:table.scale.z,L};},
   get paddleLook(){return {ring:'#'+paddles[0].userData.bevel.material.color.getHexString(),core:'#'+paddles[0].userData.cap.material.color.getHexString(),glow:'#'+paddles[0].userData.glow.material.color.getHexString(),ring2:'#'+paddles[1].userData.bevel.material.color.getHexString()};},
   skipIntro,set introT(v){introT=v;},get introFrame(){return introFrameNow;},
