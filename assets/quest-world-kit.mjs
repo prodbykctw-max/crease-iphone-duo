@@ -41,16 +41,19 @@ export function panoUniforms(meta,map,P){const C=c=>new THREE.Color(c);return {
   uZen:{value:C(P.zenith)},uHor:{value:C(P.skyHor)},uGain:{value:P.gain??1},uReflGain:{value:P.reflGain??.8}};}
 
 // The relief. flip = [1, +-1 (reflection in the water), +-1 (the mirrored half behind the player)].
-export function reliefMaterial(U,{flip=[1,1,1],fall=[.45,.85,1]}={}){
+// Flowing parts (waterfalls, lava) run inside the baked mask wherever the painting has the flow's colour: by default water (blue-green
+// brighter than red); fallKey = [wr,wg,wb,threshold] picks another colour (the flow is where dot(colour, w) > threshold, e.g. lava
+// [1,.2,-1,.12]). fall = the highlight colour, fallSpeed its speed, breathe = how much lit windows and glows pulse.
+export function reliefMaterial(U,{flip=[1,1,1],fall=[.45,.85,1],fallKey=null,fallSpeed=1,breathe=.13}={}){
   const refl=flip[1]<0;
-  return new THREE.ShaderMaterial({uniforms:{...U,uFlip:{value:new THREE.Vector3(...flip)},uFall:{value:new THREE.Color(...fall)}},defines:refl?{REFLECT:''}:{},side:THREE.DoubleSide,
+  return new THREE.ShaderMaterial({uniforms:{...U,uFlip:{value:new THREE.Vector3(...flip)},uFall:{value:new THREE.Color(...fall)},uKey:{value:new THREE.Vector4(...(fallKey||[0,0,0,-1]))},uFlow:{value:new THREE.Vector2(fallSpeed,breathe)}},defines:refl?{REFLECT:''}:{},side:THREE.DoubleSide,
     vertexShader:`attribute vec2 aFx;uniform vec3 uFlip;uniform float uTime;uniform vec4 uPano;varying vec2 vUV;varying vec3 vW;varying vec3 vO;varying vec2 vFx;
 void main(){vec3 p=position;float sw=aFx.x;
   p.x+=(sin(uTime*1.1+p.z*.35+p.x*.2)*.09+sin(uTime*2.3+p.x)*.03)*sw;p.z+=cos(uTime*.9+p.x*.3)*.06*sw;
   vO=p;if(uFlip.y<0.)p.y=2.*uPano.w-p.y;p.z*=uFlip.z;
   vec4 w=modelMatrix*vec4(p,1.);vW=w.xyz;vUV=uv;vFx=aFx;gl_Position=projectionMatrix*viewMatrix*w;}`,
     fragmentShader:`${PANO}
-uniform vec3 uFall;varying vec2 vUV;varying vec3 vW;varying vec3 vO;varying vec2 vFx;
+uniform vec3 uFall;uniform vec4 uKey;uniform vec2 uFlow;varying vec2 vUV;varying vec3 vW;varying vec3 vO;varying vec2 vFx;
 void main(){vec2 uv=vUV;float bias=0.;vec3 d=normalize(vO-uEye);
   #ifdef REFLECT
   if(vO.y<uPano.w+.004)discard;
@@ -58,12 +61,12 @@ void main(){vec2 uv=vUV;float bias=0.;vec3 d=normalize(vO-uEye);
   #endif
   vec3 c=art(uv,d,bias);
   // waterfalls: streaks of falling water inside the baked mask, wherever the painting is water-coloured
-  float m=vFx.y*smoothstep(.04,.26,min(c.g,c.b)-c.r*.75);
-  if(m>.01){float s=vn(vec2(uv.x*900.,uv.y*42.-uTime*2.6))*.65+vn(vec2(uv.x*2100.+3.,uv.y*95.-uTime*4.3))*.35;
+  float m=vFx.y*(uKey.a<0.?smoothstep(.04,.26,min(c.g,c.b)-c.r*.75):smoothstep(uKey.a,uKey.a+.22,dot(c,uKey.rgb)));
+  if(m>.01){float ft=uTime*uFlow.x,s=vn(vec2(uv.x*900.,uv.y*42.-ft*2.6))*.65+vn(vec2(uv.x*2100.+3.,uv.y*95.-ft*4.3))*.35;
     c*=mix(1.,.45+1.15*s,m);c+=uFall*pow(s,4.)*m*.4;}
   // lit windows and neon breathe a little, each on its own clock
   float lum=dot(c,vec3(.3,.5,.2)),hh=h21(floor(uv*vec2(1100.,360.)));
-  c*=1.+.13*sin(uTime*(1.+hh*3.)+hh*40.)*smoothstep(.16,.5,lum);
+  c*=1.+uFlow.y*sin(uTime*(1.+hh*3.)+hh*40.)*smoothstep(.16,.5,lum);
   #ifdef REFLECT
   c*=uReflGain;
   #endif
