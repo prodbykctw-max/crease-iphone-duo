@@ -49,8 +49,8 @@ export function four(rad,deg,f){const t=deg*Math.PI/180;for(const sx of [-1,1])f
 
 // P = palette: zenith, skyHor, gain, reflGain, amb, keyDir, key, fillDir, fill, up, rim (see kit), plus a (main light colour), b (second),
 // deep (surface tint). o: relief (options for the relief shader), sky, stone (stoneCanvas options), inlay, mist [{n,r0,r1,y0,y1,s0,s1,sy0,sy1,cols}],
-// motes {n,cols,rise,height,r0,r1,scale}, seed, island (false for none), top (overrides for the island top material).
-export async function openStage({id,plate,aniso=4,P,relief={},sky={},stone={},inlay,mist=[],motes=null,seed=77,island=STAGE_ISLAND,surface={},top={}}){
+// motes {n,cols,rise,height,r0,r1,scale}, seed, island (false for none), top / solidMat (overrides for the island top and the stone material).
+export async function openStage({id,plate,aniso=4,P,relief={},sky={},stone={},inlay,mist=[],motes=null,seed=77,island=STAGE_ISLAND,surface={},top={},solidMat={}}){
   const {meta,data,bytes}=await loadWorldData(id),R=mulberry32(seed),rr=(a,b)=>a+(b-a)*R();
   const tr=newTracker(),group=new THREE.Group();group.name='world';
   const geos=[],mats=[],mirror=[],extras=[],halos=[],A=lin(P.a),B=lin(P.b);
@@ -75,8 +75,8 @@ export async function openStage({id,plate,aniso=4,P,relief={},sky={},stone={},in
   const st={id,meta,data,group,add,U,LU,tr,R,rr,P,A,B,solid,halos,flare,stoneTex,poolR,sprites,aniso,
     finish(extra){
       const sg=solid.geometry();
-      add(new THREE.Mesh(sg,propMaterial(U,LU,{map:stoneTex,sheen:.3,gloss:1.5,spec:.4,shin:50,emis:1.35})),{name:'stone'});
-      add(new THREE.Mesh(sg,propMaterial(U,LU,{map:stoneTex,sheen:.25,emis:1.35,flipY:true})),{name:'stone-reflection',mirror:true});
+      add(new THREE.Mesh(sg,propMaterial(U,LU,{map:stoneTex,sheen:.3,gloss:1.5,spec:.4,shin:50,emis:1.35,...solidMat})),{name:'stone'});
+      add(new THREE.Mesh(sg,propMaterial(U,LU,{map:stoneTex,sheen:.25,emis:1.35,...solidMat,flipY:true})),{name:'stone-reflection',mirror:true});
       if(halos.length)sprites(halos,glowMaterial(U,flare,{pulse:.14,opacity:1}),'halos',{order:6});
       const ms=[];for(const k of mist)for(let i=0;i<k.n;i++){const a=R()*6.283,rad=rr(k.r0,k.r1);ms.push({x:Math.sin(a)*rad,y:meta.waterY+rr(k.y0,k.y1),z:Math.cos(a)*rad,s:rr(k.s0,k.s1),sy:rr(k.sy0,k.sy1),c:k.cols[(R()*k.cols.length)|0]});}
       if(ms.length)sprites(ms,glowMaterial(U,flare,{mist:true,pulse:.3,opacity:.7,drift:1.6}),'mist',{order:4,extra:true});

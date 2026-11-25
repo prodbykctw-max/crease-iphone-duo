@@ -20,7 +20,7 @@ export const WORLD_ARENAS=[
   // -
   // 'ice',
   // -
-  // 'inferno',
+  'inferno',
   // -
   // 'ultraviolet',
   // -
