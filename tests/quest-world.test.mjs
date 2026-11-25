@@ -4,11 +4,12 @@ import { readFileSync, statSync, existsSync } from 'node:fs';
 import { inflateSync } from 'node:zlib';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { WORLD_LIMITS, WORLDS, WORLD_ARENAS, worldFor, worldAllowed, worldDetail, texBytes, MB, sumBudget, withinLimits, panoScale, waterDistance, panoPoint, panoUV, decodeRho,
+import { WORLD_LIMITS, WORLD_ARENAS, worldFor, worldAllowed, worldDetail, texBytes, MB, sumBudget, withinLimits, panoScale, waterDistance, panoPoint, panoUV, decodeRho,
   EXTRA_V, buildRelief, ISLAND, TABLE_KEEP, midnightLayout, mulberry32 } from '../assets/quest-world-pure.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const read = p => readFileSync(join(root, p), 'utf8');
+const WORLDS = Object.fromEntries(WORLD_ARENAS.map(id => [id, JSON.parse(read(`assets/worlds/${id}.json`))]));
 
 // A minimal PNG reader (8-bit RGB, no interlace) so the baked world data can be checked without a browser. Returns RGBA bytes.
 function readPng(path) {
@@ -133,8 +134,8 @@ test('download budget: a world adds little to the page, and nothing until its ar
   assert.match(vr, /import \{createWorlds\} from '\.\/quest-worlds\.mjs'/);
   assert.ok(!/quest-world-(kit|midnight)/.test(vr));
   assert.ok(!/^import .*quest-world-(kit|midnight)/m.test(mgr), 'no static import of the heavy modules');
-  assert.match(mgr, /import\('\.\/quest-world-midnight\.mjs'\)/);
-  for (const id of WORLD_ARENAS) { assert.ok(existsSync(join(root, 'assets/worlds', id + '.png'))); assert.ok(existsSync(join(root, 'assets/arenas', id + '.webp'))); assert.match(mgr, new RegExp(`quest-world-${id}\\.mjs`)); }
+  assert.match(mgr, /import\('\.\/quest-world-'\+id\+'\.mjs'\)/);
+  for (const id of WORLD_ARENAS) { assert.ok(existsSync(join(root, 'assets/worlds', id + '.png'))); assert.ok(existsSync(join(root, 'assets/worlds', id + '.json'))); assert.ok(existsSync(join(root, 'assets/arenas', id + '.webp'))); assert.ok(existsSync(join(root, `assets/quest-world-${id}.mjs`))); assert.match(read(`assets/quest-world-${id}.mjs`), /export async function build\(/); }
 });
 
 test('hooks in quest-vr.mjs: the world follows the arena, updates every frame, follows the quality controller, and the flat plate stays as the fallback', () => {

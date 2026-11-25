@@ -3,7 +3,7 @@
 
 The VR world of an arena IS its painted plate: quest-world-kit.mjs wraps the painting half way round the player and pushes every part of
 it out to its own distance, so the city has real depth, parallax and a reflection. This tool makes the small data image that says how far
-away each part is (assets/worlds/<id>.png):
+away each part is (assets/worlds/<id>.png, with its numbers in assets/worlds/<id>.json):
 
   top half     R,G = 16-bit inverse distance per mesh vertex (0 = open sky), B = how much the vertex sways (painted palms)
   bottom half  R = waterfall mask (where the flowing-water shader runs), G,B = spare
@@ -87,6 +87,7 @@ def main():
     Image.fromarray(out, 'RGB').save(path, optimize=True)
     meta = {'id': cfg['id'], 'grid': [GW, GH], 'vEye': vE, 'vBase': vB, 'vBottom': vBot, 'eyeH': cfg['eyeH'], 'waterY': cfg['waterY'], 'rFar': cfg['rFar'],
             'aspect': round(W / H, 5), 'invNear': INV_NEAR, 'rBase': round(float(rB), 3), 'skyShare': round(float((code == 0).mean()), 3)}
+    json.dump(meta, open(os.path.join(ROOT, 'assets', 'worlds', cfg['id'] + '.json'), 'w'))
     print(json.dumps(meta)); print(path, os.path.getsize(path), 'bytes')
 
 

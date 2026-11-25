@@ -10,14 +10,35 @@ export function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math
 
 // Hard budgets for one arena world on Quest 2 class hardware (the table, hands and menu are on top of these).
 export const WORLD_LIMITS={draws:80,tris:250000,texMB:48};
-// Arenas that have a 3D world, with the numbers their bake printed. Everything else keeps the flat painted plate.
-//   vEye   the row of the painting (0 top, 1 bottom) that sits at eye level        vBase  the row where the scenery meets the water
+// Arenas that have a 3D world. Everything else keeps the flat painted plate. One id per line, with a spacer between, so arenas built in
+// parallel merge cleanly. An arena <id> listed here needs exactly: assets/quest-world-<id>.mjs (exports build()), assets/worlds/<id>.png and
+// assets/worlds/<id>.json (both written by tools/bake-world.py from tools/worlds/<id>.json).
+export const WORLD_ARENAS=[
+  'midnight',
+  // -
+  // 'toxic',
+  // -
+  // 'ice',
+  // -
+  // 'inferno',
+  // -
+  // 'ultraviolet',
+  // -
+  // 'miami',
+  // -
+  // 'gold-rush',
+  // -
+  // 'void',
+  // -
+  // 'sakura',
+  // -
+  // 'kctw',
+];
+// The numbers of a world (its "meta", assets/worlds/<id>.json):
+//   vEye   the row of the painting (0 top, 1 bottom) that sits at eye level        vBase  the row where the scenery meets the water / ground
 //   vBottom the last row the relief uses (a short skirt of painted shore)          eyeH   the eye height the world is built around
-//   waterY the height of the water around the island (the island top, y 0, is the real floor)
-export const WORLDS={
-  midnight:{id:'midnight',grid:[400,100],vEye:.59,vBase:.715,vBottom:.74,eyeH:1.6,waterY:-.12,rFar:220,aspect:3,invNear:4},
-};
-export const WORLD_ARENAS=Object.keys(WORLDS);
+//   waterY the height of the reflecting surface round the island (the island top, y 0, is the real floor)
+//   grid   mesh cells across and down, rFar the far shell, aspect of the plate, invNear the scale of the 16-bit distance code
 export const worldFor=id=>WORLD_ARENAS.includes(id)?id:null;
 // Worlds are on for real GPUs. A software GL (CI, emulators) keeps the cheap flat plate unless ?world=1 forces the world on; ?world=0 always turns it off.
 export function worldAllowed(search,soft){const m=/[?&]world=(\d)/.exec(search||'');if(m)return m[1]==='1';return !soft;}

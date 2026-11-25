@@ -4,7 +4,6 @@
 // The budgets and the mapping are in quest-world-pure.mjs.
 import {worldFor,worldAllowed,worldDetail} from './quest-world-pure.mjs';
 
-const BUILDERS={midnight:()=>import('./quest-world-midnight.mjs')};
 const FAR=700; // metres: the sky dome of a world is far beyond the bare room's 40 m
 
 export function createWorlds({scene,renderer,camera,soft=false,search=''}){
@@ -16,7 +15,7 @@ export function createWorlds({scene,renderer,camera,soft=false,search=''}){
     if(cur&&cur.id===id)return true;
     clear();const my=token;
     try{
-      const mod=await BUILDERS[id]();if(my!==token)return false;
+      const mod=await import('./quest-world-'+id+'.mjs');if(my!==token)return false;
       const w=await mod.build({renderer,colors,plate,aniso:soft?1:Math.min(8,renderer.capabilities.getMaxAnisotropy())});
       if(my!==token){w.dispose();return false;}
       scene.add(w.group);cur=w;w.detail(worldDetail(step));camera.far=FAR;camera.updateProjectionMatrix();lastError='';return true;

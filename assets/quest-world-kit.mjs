@@ -10,13 +10,13 @@
 import * as THREE from './vendor/three.module.min.js';
 import {buildRelief,panoScale,texBytes} from './quest-world-pure.mjs';
 
-// The baked data image -> its bytes. Opaque RGB, read back unchanged (no colour management, no premultiplying).
-export async function loadWorldData(url){
-  const res=await fetch(url);if(!res.ok)throw new Error('world data '+res.status);
-  const blob=await res.blob(),bmp=await createImageBitmap(blob,{colorSpaceConversion:'none',premultiplyAlpha:'none'});
+// The baked world of an arena: its numbers (assets/worlds/<id>.json) and the data image's bytes (opaque RGB, read back unchanged).
+export async function loadWorldData(id){
+  const [jr,pr]=await Promise.all([fetch('assets/worlds/'+id+'.json'),fetch('assets/worlds/'+id+'.png')]);if(!jr.ok||!pr.ok)throw new Error('world data '+jr.status+' '+pr.status);
+  const meta=await jr.json(),blob=await pr.blob(),bmp=await createImageBitmap(blob,{colorSpaceConversion:'none',premultiplyAlpha:'none'});
   const c=document.createElement('canvas');c.width=bmp.width;c.height=bmp.height;const x=c.getContext('2d',{willReadFrequently:true});x.drawImage(bmp,0,0);
   const data=x.getImageData(0,0,c.width,c.height).data;bmp.close?.();c.width=c.height=0;
-  return {data,bytes:blob.size};
+  return {meta,data,bytes:blob.size};
 }
 
 // ---- shader pieces -------------------------------------------------------------------------------------------------------------

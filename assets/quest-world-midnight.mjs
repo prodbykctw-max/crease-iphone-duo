@@ -3,11 +3,10 @@
 // the far skyline) and stands mirrored in the water. Round the island: neon pylons and palms in the water, mist, motes, searchlights and
 // the night traffic of the phone arena.
 import * as THREE from './vendor/three.module.min.js';
-import {WORLDS,waterDistance,midnightLayout,reliefPeak,ISLAND,mulberry32,texBytes} from './quest-world-pure.mjs';
+import {waterDistance,midnightLayout,reliefPeak,ISLAND,mulberry32,texBytes} from './quest-world-pure.mjs';
 import {loadWorldData,panoUniforms,buildReliefMeshes,skyMaterial,waterMaterial,propUniforms,propMaterial,GB,canvas2d,newTracker,noiseCanvas,flareCanvas,glowMaterial,moteMaterial,beamMaterial,measure} from './quest-world-kit.mjs';
 
-const META=WORLDS.midnight;
-export const DATA_URL='assets/worlds/midnight.png';
+let META=null; // the world's numbers, set when it is built
 const lin=c=>{const k=new THREE.Color(c);return [k.r,k.g,k.b];};
 const hexA=(c,a)=>{const k=new THREE.Color(c).convertLinearToSRGB();return `rgba(${Math.round(k.r*255)},${Math.round(k.g*255)},${Math.round(k.b*255)},${a})`;};
 // neon reads as a hot tube: the colour pulled a little towards white
@@ -106,7 +105,7 @@ function palmGeometry(R){const tk=new GB(),fr=new GB(),rr=(a,b)=>a+(b-a)*R(),pat
 export async function build({renderer,colors,plate,aniso=4}){
   const c=colors||{},P={pink:c.grid||'#ff2a8a',cyan:c.p1||'#2de2e6',violet:c.wire||'#c04dff',zenith:'#030108',skyHor:'#150a24',gain:1.08,reflGain:.85,
     amb:'#1c1734',keyDir:[.45,.5,-.75],key:'#7a2456',fillDir:[-.6,.45,.65],fill:'#155f70',up:'#0f5d68',rim:'#3d2c78'};
-  const {data,bytes}=await loadWorldData(DATA_URL);
+  const {meta,data,bytes}=await loadWorldData('midnight');META=meta;
   const R=mulberry32(77),rr=(a,b)=>a+(b-a)*R(),L=midnightLayout(),PINK=lin(P.pink),CYAN=lin(P.cyan),VIO=lin(P.violet);
   const tr=newTracker(),group=new THREE.Group();group.name='world';
   const geos=[],mats=[],mirror=[],extras=[];
