@@ -38,10 +38,10 @@ test('animation numbers are the phone Centerpiece\'s (spin, tilt, breathing, rin
   assert.ok(Math.abs(centreFrame('sun', 0, 1, 0).bob - Math.sin(.75) * .012) < 1e-12);
 });
 
-test('size: the sun is about a third of the table wide, as on the phone, and the beat swells it', () => {
+test('size: the sun is a modest planet (about 14 cm), 40% of the phone\'s relative size, and the beat swells it', () => {
   const f = centreFrame('sun', 0, 0, 0);
   const diameter = 2 * centreRadius(f);
-  assert.ok(diameter > .3 && diameter < .42, 'diameter ' + diameter);
+  assert.ok(diameter > .12 && diameter < .18, 'diameter ' + diameter);
   assert.ok(centreRadius(centreFrame('sun', 0, 0, 1)) > centreRadius(f));
   // a ringed planet is a smaller ball in a wide ring
   const pl = centreFrame('planet', 4, 0, 0);

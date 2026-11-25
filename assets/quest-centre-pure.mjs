@@ -11,7 +11,8 @@ export const CENTRE_GLOW = { sun: '#ff6a1a', core: '#4dff8a', crystal: '#6fd8ff'
 // phone: the object is a 3D scene drawn into a square image that is .66 (UV: .70) table widths across, with the scene's perspective w = 4.5 - z.
 // Around z = 0 one model unit is 2 / 4.5 of the half-image, so one unit is this many table widths (a table is 1 m wide):
 export const UNIT_PER_IMAGE = 2 / 4.5 / 2;
-export const HOVER = .05;           // clear gap between the lowest point of the object and the table
+export const WINDOW_SCALE = .4;     // VR draws the centrepiece as a modest planet in the arena window, not at the phone's full relative size
+export const HOVER = .02;           // clear gap between the lowest point of the object and the table
 export const FADE_MIN = .3;         // opacity while the puck or a paddle is hidden behind the object
 
 // the arena order of the phone engine (assets/arena-engine.js `worlds`): stage index -> centrepiece kind
@@ -32,7 +33,7 @@ export function centreFrame(kind, index, t, beat = 0, out = {}) {
   out.ringTilt = .45 + Math.sin(t * .18) * .13;
   out.ringScale = .82;
   out.image = (index === 4 ? .70 : .66) * (1 + Math.sin(t * .7 + index) * .018 + pulse * .045);   // table widths
-  out.unit = UNIT_PER_IMAGE * out.image;                                                        // metres per model unit
+  out.unit = UNIT_PER_IMAGE * out.image * WINDOW_SCALE;                                                        // metres per model unit
   out.bob = Math.sin(t * .75 + index * 1.7) * .012;                                             // the phone's own float, in table widths = metres
   return out;
 }
