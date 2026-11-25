@@ -255,13 +255,13 @@ export class GB{
     for(let j=0;j<seg;j++)this.idx.push(c0,b+j+1,b+j);}
   // Double-sided curved leaf strip (spine [[x,y,z],...], half widths w[i], side = the direction the leaf is wide in); uv.x across, uv.y along.
   strip(spine,widths,side,o={}){
-    const t=o.tint||[1,1,1],base=this.n,v=new THREE.Vector3(),sd=new THREE.Vector3(side[0],side[1],side[2]).normalize(),nrm=new THREE.Vector3(),fold=o.fold||0;
+    const t=o.tint||[1,1,1],base=this.n,v=new THREE.Vector3(),sd=new THREE.Vector3(side[0],side[1],side[2]).normalize(),nrm=new THREE.Vector3(),fold=o.fold||0,gl=o.glow||0;
     for(let i=0;i<spine.length;i++){const a=spine[Math.max(0,i-1)],b=spine[Math.min(spine.length-1,i+1)];v.set(b[0]-a[0],b[1]-a[1],b[2]-a[2]).normalize();
       nrm.crossVectors(v,sd).normalize();const w=widths[i],k=o.ramp?o.ramp(i/(spine.length-1)):1,tt=[t[0]*k,t[1]*k,t[2]*k],f=i/(spine.length-1);
       // a V-fold along the rib: the two edges droop below the spine
-      this.v(spine[i][0]-sd.x*w-nrm.x*w*fold,spine[i][1]-sd.y*w-nrm.y*w*fold,spine[i][2]-sd.z*w-nrm.z*w*fold,nrm.x,nrm.y,nrm.z,0,f,tt,0);
-      this.v(spine[i][0],spine[i][1],spine[i][2],nrm.x,nrm.y,nrm.z,.5,f,tt,0);
-      this.v(spine[i][0]+sd.x*w-nrm.x*w*fold,spine[i][1]+sd.y*w-nrm.y*w*fold,spine[i][2]+sd.z*w-nrm.z*w*fold,nrm.x,nrm.y,nrm.z,1,f,tt,0);}
+      this.v(spine[i][0]-sd.x*w-nrm.x*w*fold,spine[i][1]-sd.y*w-nrm.y*w*fold,spine[i][2]-sd.z*w-nrm.z*w*fold,nrm.x,nrm.y,nrm.z,0,f,tt,gl);
+      this.v(spine[i][0],spine[i][1],spine[i][2],nrm.x,nrm.y,nrm.z,.5,f,tt,gl);
+      this.v(spine[i][0]+sd.x*w-nrm.x*w*fold,spine[i][1]+sd.y*w-nrm.y*w*fold,spine[i][2]+sd.z*w-nrm.z*w*fold,nrm.x,nrm.y,nrm.z,1,f,tt,gl);}
     for(let i=0;i<spine.length-1;i++){const a=base+i*3;this.idx.push(a,a+1,a+4,a,a+4,a+3,a+1,a+2,a+5,a+1,a+5,a+4);}
   }
   geometry(){const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(this.pos,3));g.setAttribute('normal',new THREE.Float32BufferAttribute(this.nor,3));g.setAttribute('uv',new THREE.Float32BufferAttribute(this.uv,2));

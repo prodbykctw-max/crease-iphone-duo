@@ -16,7 +16,7 @@ export const WORLD_LIMITS={draws:80,tris:250000,texMB:48};
 export const WORLD_ARENAS=[
   'midnight',
   // -
-  // 'toxic',
+  'toxic',
   // -
   // 'ice',
   // -

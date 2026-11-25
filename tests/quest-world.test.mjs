@@ -36,7 +36,6 @@ test('worlds: on for real GPUs, the flat plate for a software GL unless forced, 
   assert.equal(worldAllowed('?world=1', true), true);
   assert.equal(worldAllowed('?fullfield=1&world=0', false), false);
   assert.equal(worldFor('midnight'), 'midnight');
-  assert.equal(worldFor('toxic'), null);
   assert.equal(worldFor('nope'), null);
   assert.ok(WORLD_ARENAS.includes('midnight'));
 });
@@ -152,4 +151,19 @@ test('no per-frame allocation in a world update, and no developer text in the wo
   assert.ok(upd, 'update() found');
   assert.ok(!/\bnew\b|\[\]|\{\}|\.map\(|\.filter\(|\.slice\(|\.clone\(/.test(upd[1]), 'update() only writes uniforms and instance matrices in place');
   for (const f of ['assets/quest-worlds.mjs', 'assets/quest-world-kit.mjs', 'assets/quest-world-midnight.mjs']) assert.ok(!/fillText|console\.(log|warn|error)|alert\(/.test(read(f)), f);
+});
+
+test('every listed world: its relief is built from its baked data, keeps out of the pool, lies on the water and fits the triangle budget', () => {
+  for (const id of WORLD_ARENAS) {
+    const m = WORLDS[id], png = readPng(join(root, `assets/worlds/${id}.png`));
+    assert.equal(png.w, m.grid[0] + 1, id); assert.equal(png.h, 2 * (m.grid[1] + 1), id);
+    const hi = buildRelief(m, png.data, 1), lo = buildRelief(m, png.data, 2), rB = waterDistance(m, m.vBase);
+    assert.ok(rB > 9 && rB < 18, `${id}: shore at ${rB.toFixed(1)} m`);
+    let minR = 1e9;
+    for (let k = 0; k < hi.position.length / 3; k++) { if (hi.sky[k]) continue; const x = hi.position[k * 3], y = hi.position[k * 3 + 1], z = hi.position[k * 3 + 2];
+      assert.ok(Number.isFinite(x + y + z), id); minR = Math.min(minR, Math.hypot(x, z)); if (hi.uv[k * 2 + 1] >= m.vBase) assert.ok(y < m.waterY && y > m.waterY - .02, id); }
+    assert.ok(minR > rB * .7, `${id}: nearest relief point ${minR.toFixed(2)} m`);
+    const total = 2 * hi.tris + 2 * lo.tris; assert.ok(total < 215000, `${id}: relief triangles ${total}`);
+    assert.ok(statSync(join(root, `assets/worlds/${id}.png`)).size < 80 * 1024, id);
+  }
 });
