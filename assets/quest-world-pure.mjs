@@ -32,7 +32,7 @@ export const WORLD_ARENAS=[
   // -
   // 'sakura',
   // -
-  // 'kctw',
+  'kctw',
 ];
 // The numbers of a world (its "meta", assets/worlds/<id>.json):
 //   vEye   the row of the painting (0 top, 1 bottom) that sits at eye level        vBase  the row where the scenery meets the water / ground

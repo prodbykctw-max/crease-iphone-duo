@@ -26,9 +26,9 @@ float vn(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);return mix(mix(h21(i
 // uPano = (vEye, S, vBottom, waterY). art(): the painting at (u,v); above its top edge (v < 0) the top row carries on and fades into the night.
 const PANO=`
 #define PI 3.14159265
-uniform sampler2D uMap;uniform float uTime;uniform vec4 uPano;uniform vec3 uEye;uniform vec3 uZen;uniform vec3 uHor;uniform float uGain;uniform float uReflGain;
+uniform sampler2D uMap;uniform float uTime;uniform vec4 uPano;uniform vec3 uEye;uniform vec3 uZen;uniform vec3 uHor;uniform float uGain;uniform float uReflGain;uniform float uBackU;
 ${NOISE}
-vec2 panoUV(vec3 d){return vec2(.5+atan(d.x,abs(d.z))/PI,uPano.x-d.y/max(length(d.xz),1e-5)/uPano.y);}
+vec2 panoUV(vec3 d){float u=.5+atan(d.x,abs(d.z))/PI;if(uBackU>.5&&d.z>0.)u=1.-u;return vec2(u,uPano.x-d.y/max(length(d.xz),1e-5)/uPano.y);}
 vec3 skyProc(vec3 d){float h=clamp(d.y,0.,1.);return mix(uHor,uZen,pow(h,.45));}
 vec3 art(vec2 uv,vec3 d,float bias){float up=max(0.,-uv.y);vec3 c=texture2D(uMap,vec2(uv.x,1.-clamp(uv.y,.004,uPano.z)),bias+up*16.).rgb*uGain;
   return mix(c,skyProc(d),smoothstep(0.,.36,up+(vn(vec2(uv.x*46.,uv.y*7.))-.5)*.1*step(.001,up)));}
@@ -36,9 +36,10 @@ vec3 art(vec2 uv,vec3 d,float bias){float up=max(0.,-uv.y);vec3 c=texture2D(uMap
 vec2 ripple(vec3 W){float k=(cameraPosition.y-uPano.w)/max(cameraPosition.y-W.y,1e-3);vec2 P=cameraPosition.xz+(W.xz-cameraPosition.xz)*k;float t=uTime;
   return vec2(vn(P*2.1+vec2(t*.33,t*.2))-.5,vn(P*2.1+vec2(-t*.26,t*.31)+11.)-.5)+.5*vec2(vn(P*5.7+t*.55)-.5,vn(P*5.7-t*.5+5.)-.5);}`;
 
+// P.backTurn: the half of the painting behind the player is the front half turned round (for a symmetric plate with lettering) instead of its mirror image.
 export function panoUniforms(meta,map,P){const C=c=>new THREE.Color(c);return {
   uMap:{value:map},uTime:{value:0},uPano:{value:new THREE.Vector4(meta.vEye,panoScale(meta),meta.vBottom,meta.waterY)},uEye:{value:new THREE.Vector3(0,meta.eyeH,0)},
-  uZen:{value:C(P.zenith)},uHor:{value:C(P.skyHor)},uGain:{value:P.gain??1},uReflGain:{value:P.reflGain??.8}};}
+  uZen:{value:C(P.zenith)},uHor:{value:C(P.skyHor)},uGain:{value:P.gain??1},uReflGain:{value:P.reflGain??.8},uBackU:{value:P.backTurn?1:0}};}
 
 // The relief. flip = [1, +-1 (reflection in the water), +-1 (the mirrored half behind the player)].
 // Flowing parts (waterfalls, lava) run inside the baked mask wherever the painting has the flow's colour: by default water (blue-green
@@ -53,8 +54,9 @@ void main(){vec3 p=position;float sw=aFx.x;
   vO=p;if(uFlip.y<0.)p.y=2.*uPano.w-p.y;p.z*=uFlip.z;
   vec4 w=modelMatrix*vec4(p,1.);vW=w.xyz;vUV=uv;vFx=aFx;gl_Position=projectionMatrix*viewMatrix*w;}`,
     fragmentShader:`${PANO}
-uniform vec3 uFall;uniform vec4 uKey;uniform vec2 uFlow;varying vec2 vUV;varying vec3 vW;varying vec3 vO;varying vec2 vFx;
+uniform vec3 uFall;uniform vec4 uKey;uniform vec2 uFlow;uniform vec3 uFlip;varying vec2 vUV;varying vec3 vW;varying vec3 vO;varying vec2 vFx;
 void main(){vec2 uv=vUV;float bias=0.;vec3 d=normalize(vO-uEye);
+  if(uBackU>.5&&uFlip.z<0.)uv.x=1.-uv.x; // the half behind the player turned round instead of mirrored, so painted lettering reads the right way
   #ifdef REFLECT
   if(vO.y<uPano.w+.004)discard;
   uv+=ripple(vW)*vec2(.0016,.0075);bias=1.3;
