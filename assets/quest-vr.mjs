@@ -5,6 +5,7 @@ import {updatePinch,acceptSelect,SLOP as HIT_SLOP,loadOptions,saveOptions,autoTa
 import {ease,introFrame,introBeats,INTRO_END,victoryFrame,popFrame,ringFrame,barCells,shakeOffset,unlockLine,paddleLook} from './quest-juice.mjs';
 import {fieldToTable,inputToField,fieldToInput,pickupStyle,envVictim,boardLabel,powerLine,detectEvents,newEventState,usableArena,backdropSize} from './quest-engine.mjs';
 import {createLook} from './quest-look.mjs';
+import {createWorlds} from './quest-worlds.mjs';
 import {XR_SCALE,FOVEATION,newQuality,qualityStep,paddleRingColour,JOINT_NAMES} from './quest-look-pure.mjs';
 import {ONLINE_BUTTON,createOnline,onlineIntent,onlineEvent,onlineTick,onlineFail,onlinePage,drawOnlinePanel,onlineBoard,drawOnlineBoard,mine,feelEvents,mountOnlineFrame} from './quest-online.mjs';
 
@@ -78,6 +79,8 @@ function glowMat(color,opacity=1){return new THREE.MeshBasicMaterial({color,tran
 const CANVAS_SCALE=softGL?1:2,ANISO=softGL?1:Math.min(8,renderer.capabilities.getMaxAnisotropy());
 const puckArt=new Map(); // puck tint -> the phone's puck art canvas for it
 const lk=createLook({scene,table,renderer,soft:softGL});
+// 3D arena worlds (quest-worlds.mjs): built per arena on demand; the painted backdrop below stays for arenas without one and for software GL.
+const worlds=createWorlds({scene,renderer,camera,soft:softGL,search:location.search});
 const legs=lk.legs,paddles=lk.paddles,pucks=lk.pucks,bumpers=lk.bumpers,MAX_PUCKS=pucks.length;
 let grid=new THREE.GridHelper(16,32,0x842e8f,0x271438);grid.position.y=-.01;scene.add(grid);
 // Power-up pick-up: the phone's flat ring, glow and glyph are in the table texture; a faint light beam rising from it shows it from across the room.
@@ -102,10 +105,11 @@ function applyArena(i){
   lk.applyArena(c);arenaCols=c;refreshPaddleStyle();puckArt.clear();
   scene.remove(grid);grid.geometry.dispose();grid.material.dispose();grid=new THREE.GridHelper(16,32,new THREE.Color(c.grid).multiplyScalar(.7),new THREE.Color(c.grid).multiplyScalar(.2));grid.position.y=-.01;scene.add(grid);
   scene.background.set(c.base?.[0]||'#080514');scene.fog.color.set(c.base?.[0]||'#080514');
-  backdropFor=a.id;
-  plateTexture(a.id,t=>{if(backdropFor!==a.id)return;if(!t){backdrop.visible=false;return;}
+  backdropFor=a.id;if(worlds.active&&worlds.active!==a.id)worlds.clear();
+  plateTexture(a.id,t=>{if(backdropFor!==a.id)return;if(!t){backdrop.visible=false;worlds.show(a.id,c,null).then(on=>{if(backdropFor===a.id)grid.visible=!on;});return;}
     const img=t.image,sz=backdropSize(img.width/img.height);backdrop.geometry.dispose();backdrop.geometry=new THREE.CylinderGeometry(sz.radius,sz.radius,sz.height,48,1,true,Math.PI-sz.theta/2,sz.theta);
-    backdrop.material.map=t;backdrop.material.needsUpdate=true;backdrop.visible=true;backdrop.userData.height=sz.height;placeBackdrop();});
+    backdrop.material.map=t;backdrop.material.needsUpdate=true;backdrop.visible=true;backdrop.userData.height=sz.height;placeBackdrop();
+    worlds.show(a.id,c,t).then(on=>{if(backdropFor!==a.id)return;if(on){backdrop.visible=false;}grid.visible=!on;});});
   lastLabel='';menuDirty=true;
 }
 function placeBackdrop(){backdrop.position.set(0,.3+(backdrop.userData.height||5.2)/2,-.6);}
@@ -520,7 +524,7 @@ renderer.setAnimationLoop((now,frame)=>{
   table.position.x=0;table.position.z=-1.25; // the jolt is added after input is read, so it never feeds the paddle
   const session=renderer.xr.getSession();
   // Keep the headset's frame rate: sustained slow frames raise foveation, then draw the field texture every other frame.
-  if(session&&okGap){const qs=qualityStep(quality,gap*1000,1000/(session.frameRate||72),lk.field.ms);if(qs.foveation!==curFov){curFov=qs.foveation;try{renderer.xr.setFoveation(curFov);}catch{}}lk.field.every=softGL?Math.max(qs.fieldEvery,SOFT_FIELD_EVERY):qs.fieldEvery;}
+  if(session&&okGap){const qs=qualityStep(quality,gap*1000,1000/(session.frameRate||72),lk.field.ms);worlds.quality(quality.step);if(qs.foveation!==curFov){curFov=qs.foveation;try{renderer.xr.setFoveation(curFov);}catch{}}lk.field.every=softGL?Math.max(qs.fieldEvery,SOFT_FIELD_EVERY):qs.fieldEvery;}
   if(frame&&session){
     tracked=false;const ref=renderer.xr.getReferenceSpace(),inputs=[...session.inputSources];
     const vp=frame.getViewerPose(ref);if(vp){eyeY=vp.transform.position.y;if(autoPending&&eyeY>.6){autoPending=false;applyHeight(autoTableHeight(eyeY));}}
@@ -636,6 +640,7 @@ renderer.setAnimationLoop((now,frame)=>{
     if(olv)lk.setExternal(eng.view.L,olv.me,olv.them,olv.puck,olv.score);
     lk.updateField(eng);flatInTexture=F.ok&&!softGL;
   }
+  worlds.update(t);
   renderer.render(scene,camera);
 });
 addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);});
@@ -737,7 +742,7 @@ if(/^(localhost|127\.0\.0\.1)$/.test(location.hostname)||new URLSearchParams(loc
   get state(){return usingEngine()?engineCompat():state;},
   get field(){const F=lk.field;return {ok:F.ok,ms:F.ms,frames:F.frames,every:F.every,errors:F.errors,err:F.lastError||'',w:F.canvas()?.width||0,h:F.canvas()?.height||0};},get look3(){return lk;},get softGL(){return softGL;},get renderer(){return renderer;},
   get engine(){return engine.host;},get engineState(){return engine.state;},get arenaList(){return arenaList;},get arenaIx(){return arenaIx;},
-  get audio(){return audio;},get backdrop(){return {visible:backdrop.visible,map:!!backdrop.material.map,id:backdropFor};},
+  get audio(){return audio;},get world(){return worlds;},get backdrop(){return {visible:backdrop.visible,map:!!backdrop.material.map,id:backdropFor};},
   get visible(){return {pucks:pucks.filter(p=>p.visible).length,pickup:pickup.visible,envOrb:envOrb.visible,shields:usingEngine()?engine.host.game.shields.filter(v=>v>0).length:0, // goal walls are drawn by the table texture
     bumpers:bumpers.filter(b=>b.visible).length};},
   get fx(){const L=usingEngine()?engine.host.view.L:1.8;return {parts:partPts.visible?partGeo.drawRange.count:0,rings:ringPool.filter(m=>m.visible).length,pops:popPool.filter(m=>m.mesh.visible).length,bars:bars.map(c=>c.filter(k=>k.fill.visible).length),jolt:Math.hypot(table.position.x,table.position.z+1.25),stamp:stamp.mesh.visible,wash:wash.visible,toast:toast.mesh.visible?toastShown:'',toastQueue:toasts.length,introT,look,dailyMatch,introLine:introLine.visible,fold:table.scale.z,L};},
