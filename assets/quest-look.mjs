@@ -55,7 +55,7 @@ export function createLook({scene,table,renderer,onHeight,soft=false}){
   // while no texture has arrived yet the top is a plain dark panel
   topMat.color.set(0x0a0618);
   let fieldCanvas=null,fieldTex=null;
-  out.field={mesh:top,canvas:()=>fieldCanvas,texture:()=>fieldTex,ms:0,frames:0,every:1,counter:0,errors:0,ok:false,px:FIELD_PX,opts:{bare:false,paddles:[]}};
+  out.field={mesh:top,canvas:()=>fieldCanvas,texture:()=>fieldTex,ms:0,frames:0,every:1,counter:0,errors:0,ok:false,px:FIELD_PX,opts:{bare:false,paddles:[],solid:true}};
   // Draws the phone's field into the texture. Returns false when the engine cannot (old host, or it threw).
   out.updateField=host=>{
     const F=out.field;
@@ -188,14 +188,40 @@ export function createLook({scene,table,renderer,onHeight,soft=false}){
   };
   out.touchArt=()=>{for(const t of pieceTex.values())t.needsUpdate=true;};
 
-  // ---- Bumpers: the phone's bumper art is in the texture; a short glassy cylinder gives it some body -------------------
-  const bumperGeo=new THREE.CylinderGeometry(BUMPER_R*1.02,BUMPER_R*1.1,.016,40);
-  const bumperRimGeo=new THREE.TorusGeometry(BUMPER_R*1.03,.0032,8,48);
+  // ---- Bumpers: real 3D domes. The phone paints a shaded shell, a spinning arc pair and a core; here the shell is a glossy dome wearing the phone's own
+  // shell gradient, and the arcs and core are meshes. The glow, shock ring and "phased" dashes stay in the table texture. Same size and place as on the
+  // phone (BUMPER_R), sitting on the table, so the physics the puck feels (unchanged, in the engine) matches what you see.
+  const dome=BUMPER_R,domeH=dome*.62,arcY=domeH*Math.sqrt(1-.84*.84)+.0015;
+  const domeGeo=(()=>{const g=new THREE.SphereGeometry(dome,40,14,0,Math.PI*2,0,Math.PI/2);g.scale(1,.62,1);const p=g.attributes.position,uv=g.attributes.uv;
+    for(let i=0;i<p.count;i++)uv.setXY(i,p.getX(i)/(2*dome)+.5,.5-p.getZ(i)/(2*dome));return g;})();      // top-down planar mapping of the phone's radial shell
+  const bumperBaseGeo=new THREE.CylinderGeometry(dome*1.03,dome*1.08,.006,40);
+  const arcGeo=(len,start,w)=>{const g=new THREE.TorusGeometry(dome*.84,w,8,28,len);g.scale(1,-1,1);g.rotateX(-Math.PI/2);g.rotateY(-start);return g;};   // canvas angle = torus angle
+  const arc1Geo=arcGeo(Math.PI*1.38,0,dome*.1),arc2Geo=arcGeo(Math.PI*.38,Math.PI*1.54,dome*.0375);
+  const coreGeo=new THREE.SphereGeometry(dome*.33,16,10);
+  const bumperTexCache=new Map();
+  function shellTex(col,hot){const k=col+(hot?'!':'');let t=bumperTexCache.get(k);if(t)return t;
+    const cv=document.createElement('canvas');cv.width=cv.height=128;const c=cv.getContext('2d'),R=64;
+    const g=c.createRadialGradient(R-R*.34,R-R*.43,R*.05,R,R,R);g.addColorStop(0,'#fff');g.addColorStop(.1,hot?'#fff':col);g.addColorStop(.3,col);g.addColorStop(.68,'#101225');g.addColorStop(1,'#02030b');
+    c.fillStyle=g;c.fillRect(0,0,128,128);t=canvasTex(cv,aniso);bumperTexCache.set(k,t);return t;}
+  const bumperBaseMat=glossy(0x090715,{metalness:.8,roughness:.35,clearcoat:.6});
   out.bumpers=[0,1].map(()=>{
     const g=new THREE.Group();
-    const m=new THREE.Mesh(bumperGeo,phys({color:0xffffff,metalness:0,roughness:.05,transparent:true,opacity:.16,clearcoat:1,clearcoatRoughness:.04,envMapIntensity:1.6,depthWrite:false}));m.position.y=.008;g.add(m);
-    const ring=new THREE.Mesh(bumperRimGeo,new THREE.MeshStandardMaterial({color:0xffffff,emissive:0xffffff,emissiveIntensity:.9,metalness:1,roughness:.2,transparent:true,opacity:.8}));ring.rotation.x=Math.PI/2;ring.position.y=.0165;g.add(ring);
-    g.userData={m,ring};g.visible=false;table.add(g);return g;});
+    const base=new THREE.Mesh(bumperBaseGeo,bumperBaseMat);base.position.y=.003;g.add(base);
+    const body=new THREE.Mesh(domeGeo,phys({color:0xffffff,emissive:0xffffff,emissiveIntensity:.8,roughness:.26,metalness:.15,clearcoat:.8,clearcoatRoughness:.12,envMapIntensity:1.3,transparent:true}));body.position.y=.006;g.add(body);
+    const pivot=new THREE.Group();pivot.position.y=.006+arcY;g.add(pivot);
+    const a1=new THREE.Mesh(arc1Geo,new THREE.MeshStandardMaterial({color:0xffffff,emissive:0xffffff,emissiveIntensity:1.6,roughness:.3,metalness:.6,side:THREE.DoubleSide,transparent:true}));pivot.add(a1);
+    const a2=new THREE.Mesh(arc2Geo,new THREE.MeshStandardMaterial({color:0xffffff,emissive:0xffffff,emissiveIntensity:1.4,roughness:.3,metalness:.6,side:THREE.DoubleSide,transparent:true}));pivot.add(a2);
+    const core=new THREE.Mesh(coreGeo,new THREE.MeshStandardMaterial({color:0xffffff,emissive:0xffffff,emissiveIntensity:1.5,roughness:.2,metalness:.2,transparent:true}));core.position.y=.006+domeH+dome*.02;core.scale.y=.6;g.add(core);
+    g.userData={body,a1,a2,pivot,core,base,key:''};g.visible=false;table.add(g);return g;});
+  // st: {col, alt, flash 0..1, active, spin (radians), beat}
+  out.setBumper=(i,st)=>{const g=out.bumpers[i],u=g.userData,f=st.flash,hot=f>.08,key=st.col+(hot?'!':'');
+    if(u.key!==key){u.key=key;const t=shellTex(st.col,hot);u.body.material.map=t;u.body.material.emissiveMap=t;u.body.material.needsUpdate=true;}
+    const a=st.active?1:.22;
+    u.body.material.opacity=a;u.body.material.emissiveIntensity=(.7+f*1.1+st.beat*.25)*(st.active?1:.7);
+    u.a1.material.opacity=a;u.a2.material.opacity=a;u.core.material.opacity=a;
+    const c1=f>.3?'#ffffff':st.col;u.a1.material.color.set(c1);u.a1.material.emissive.set(c1);u.a2.material.color.set(st.alt);u.a2.material.emissive.set(st.alt);
+    const cc=f>.1?'#ffffff':st.col;u.core.material.emissive.set(cc);u.core.material.emissiveIntensity=1.2+f*1.2+st.beat*.5;
+    const k=1+f*.26+st.beat*.1;u.core.scale.set(k,.6*k,k);u.pivot.rotation.y=-st.spin;};
 
   // ---- Arena colours: rails, glow strips, accents ---------------------------------------------------------------
   out.applyArena=c=>{
