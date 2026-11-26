@@ -25,16 +25,16 @@ export async function build({renderer,colors,plate,aniso=4}){
     const la=R()*6.283,lean=rr(.25,.6),path=[];for(let i=0;i<=8;i++){const t=i/8;path.push([x+Math.cos(la)*lean*t*t*h*.3,wy-.1+(h+.1)*t,z+Math.sin(la)*lean*t*t*h*.3,(.13-.06*t)*(.7+h*.08)]);}
     solid.tube(path,6,{tint:bark,vRep:3});
     const top=path[8];
-    for(let k=0;k<11;k++){const a=k/11*6.283+rr(-.2,.2),L=rr(1.2,1.9)*(.6+h*.1),droop=rr(.6,1),sp=[],wd=[],m=7;
+    for(let k=0;k<11;k++){const a=k/14*6.283+rr(-.2,.2),L=rr(1.2,1.9)*(.6+h*.1),droop=rr(.9,1.4),sp=[],wd=[],m=7;
       for(let i=0;i<m;i++){const t=i/(m-1);sp.push([top[0]+Math.cos(a)*L*t,top[1]+.15*L*t-droop*L*t*t,top[2]+Math.sin(a)*L*t]);wd.push(.17*L*Math.sin(Math.PI*Math.min(1,t*1.1+.05))+.01);}
-      fronds.strip(sp,wd,[-Math.sin(a),0,Math.cos(a)],{tint:[.07,.12,.09],ramp:t=>.6+.4*t,glow:.05,fold:.35});}
+      fronds.strip(sp,wd,[-Math.sin(a),0,Math.cos(a)],{tint:[.035,.07,.045],ramp:t=>.5+.5*t,glow:.03,fold:.45});}
     halos.push({x,y:wy+.12,z,s:1.6,sy:.4,c:A.map(v=>v*.5)},{x:top[0],y:top[1],z:top[2],s:2.4,c:A.map(v=>v*.05)});});
   for(const [rad,deg] of MIAMI_BOLLARDS)four(rad,deg,(x,z,sx,sz)=>{const col=sx*sz>0?A:B;
     prism(solid,x,z,[[.11,wy-.2],[.11,wy+.5],[.08,wy+.52],[.08,wy+.62],[.11,wy+.64],[.11,wy+.7]],{tint:[.3,.28,.32],uRep:.8});
     solid.revolve(x,wy+.52,z,[[.075,0],[.075,.1]],8,{tint:hot(col,.4),glow:1.1});
     halos.push({x,y:wy+.57,z,s:.6,c:col.map(v=>v*.6)},{x,y:wy+.05,z,s:1.2,sy:.3,c:col.map(v=>v*.3)});});
   const fg=fronds.geometry();
-  add(new THREE.Mesh(fg,propMaterial(U,LU,{double:true,tintMul:1.4})),{name:'fronds'});
-  add(new THREE.Mesh(fg,propMaterial(U,LU,{double:true,tintMul:1.4,flipY:true})),{name:'fronds-reflection',mirror:true});
+  add(new THREE.Mesh(fg,propMaterial(U,LU,{double:true,tintMul:.9})),{name:'fronds'});
+  add(new THREE.Mesh(fg,propMaterial(U,LU,{double:true,tintMul:.9,flipY:true})),{name:'fronds-reflection',mirror:true});
   return st.finish();
 }
