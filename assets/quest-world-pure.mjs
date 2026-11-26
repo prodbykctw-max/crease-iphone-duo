@@ -18,19 +18,19 @@ export const WORLD_ARENAS=[
   // -
   'toxic',
   // -
-  // 'ice',
+  'ice',
   // -
   'inferno',
   // -
-  // 'ultraviolet',
+  'ultraviolet',
   // -
-  // 'miami',
+  'miami',
   // -
-  // 'gold-rush',
+  'gold-rush',
   // -
-  // 'void',
+  'void',
   // -
-  // 'sakura',
+  'sakura',
   // -
   'kctw',
 ];

@@ -167,3 +167,26 @@ test('every listed world: its relief is built from its baked data, keeps out of 
     assert.ok(statSync(join(root, `assets/worlds/${id}.png`)).size < 80 * 1024, id);
   }
 });
+
+test('ice, ultraviolet, void, miami, gold rush and sakura: their props stand in the water, clear of the island, the table and the view ahead, inside the pool', async () => {
+  const sets = {
+    ice: [(await import('../assets/quest-world-ice.mjs')).ICE_CRYSTALS],
+    ultraviolet: [(await import('../assets/quest-world-ultraviolet.mjs')).UV_ROCKS],
+    void: [(await import('../assets/quest-world-void.mjs')).VOID_MONOLITHS],
+    miami: [(await import('../assets/quest-world-miami.mjs')).MIAMI_PALMS, (await import('../assets/quest-world-miami.mjs')).MIAMI_BOLLARDS],
+    'gold-rush': [(await import('../assets/quest-world-gold-rush.mjs')).GOLD_OBELISKS],
+    sakura: [(await import('../assets/quest-world-sakura.mjs')).SAKURA_LANTERNS],
+  };
+  for (const [id, lists] of Object.entries(sets)) {
+    assert.ok(WORLD_ARENAS.includes(id), id);
+    const m = WORLDS[id], rB = waterDistance(m, m.vBase);
+    for (const L of lists) { assert.ok(L.length >= 2, id);
+      for (const [rad, deg] of L) for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
+        const x = sx * Math.sin(deg * Math.PI / 180) * rad, z = sz * -Math.cos(deg * Math.PI / 180) * rad;
+        assert.ok(Math.hypot(x - ISLAND.x, z - ISLAND.z) > ISLAND.r + .4, `${id}: off the island`);
+        assert.ok(rad < rB - 1.5, `${id}: inside the pool`);
+        assert.ok(!(Math.abs(x) < TABLE_KEEP.x && z > TABLE_KEEP.z0 && z < TABLE_KEEP.z1), `${id}: clear of the table`);
+        assert.ok(deg > 25 && deg < 155, `${id}: the view ahead and behind stays open`);
+      } }
+  }
+});

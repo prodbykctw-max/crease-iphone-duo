@@ -1,0 +1,17 @@
+{
+  "id": "void",
+  "image": "assets/arenas/void.webp",
+  "vEye": 0.568,
+  "vBase": 0.693,
+  "vBottom": 0.718,
+  "eyeH": 1.6,
+  "waterY": -0.12,
+  "grid": [
+    400,
+    100
+  ],
+  "rFar": 220,
+  "skyBelow": 0.06,
+  "falls": [],
+  "sway": []
+}

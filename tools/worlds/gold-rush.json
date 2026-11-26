@@ -1,0 +1,17 @@
+{
+  "id": "gold-rush",
+  "image": "assets/arenas/gold-rush.webp",
+  "vEye": 0.569,
+  "vBase": 0.694,
+  "vBottom": 0.719,
+  "eyeH": 1.6,
+  "waterY": -0.12,
+  "grid": [
+    400,
+    100
+  ],
+  "rFar": 220,
+  "skyBelow": 0.06,
+  "falls": [],
+  "sway": []
+}
