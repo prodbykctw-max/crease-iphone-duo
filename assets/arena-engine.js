@@ -383,5 +383,7 @@
     fade.addColorStop(0,'rgba(3,3,9,0)');fade.addColorStop(1,'rgba(3,3,9,.85)');
     c.fillStyle=fade;c.fillRect(0,H*.8,1,H*.2+.014);c.restore();
   }
-  window.CreaseArenas={worlds,select,prepare,draw,drawCenter,get ready(){return !!plate;},get gpuReady(){return !!centerpiece?.available;}};
+  // The VR page draws the centrepiece as a real 3D object from the same shader and meshes (read only; nothing here changes the phone).
+  const solid={fragment,geometry:()=>({sphere:sphere(),crystal:crystal(),ring:ring()}),get kind(){return worlds[current].kind;},get index(){return current;}};
+  window.CreaseArenas={worlds,select,prepare,draw,drawCenter,solid,get ready(){return !!plate;},get gpuReady(){return !!centerpiece?.available;}};
 })();

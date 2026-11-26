@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="referrer" content="strict-origin-when-cross-origin">
 <!-- Content-Security-Policy: installed by the next script, except on a local test server (localhost / 127.0.0.1) where the capture harness rewrites the game script. Update hashes with: node tools/csp-hash.mjs -->
-<meta name="crease-csp" content="default-src 'self'; script-src 'self' 'sha256-9kyMFOQq/HLwXlyiVTgCTQzmo6H4oBBvtdWEJb0rIFI=' 'sha256-SIQ0aVzoYnJgr9hK//fCFNrE2wZQlyshcDEXoC9JlRE='; connect-src 'self' https://crease-metrics.prodbykctw.workers.dev https://crease-license.prodbykctw.workers.dev; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta name="crease-csp" content="default-src 'self'; script-src 'self' 'sha256-9kyMFOQq/HLwXlyiVTgCTQzmo6H4oBBvtdWEJb0rIFI=' 'sha256-u2Xjih0zqb/V/eMcmzRtxmG4h2EIqd3ONR5XtksDJDg='; connect-src 'self' https://crease-metrics.prodbykctw.workers.dev https://crease-license.prodbykctw.workers.dev; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <script>(function(){var h=location.hostname;if(h==='localhost'||h==='127.0.0.1')return;var p=document.querySelector('meta[name="crease-csp"]'),m=document.createElement('meta');m.httpEquiv='Content-Security-Policy';m.content=p.content;document.head.appendChild(m);})();</script>
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -558,7 +558,7 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--p1);outline-offset:
 <script src="analytics-config.js"></script>
 <script src="analytics.js"></script>
 <script src="assets/crease-logo.js?v=b9edba6bb1"></script>
-<script src="assets/arena-engine.js?v=839de2dcf7"></script>
+<script src="assets/arena-engine.js?v=2d46f6a2f8"></script>
 <script src="assets/progression.js?v=cba130d647"></script>
 <script src="assets/commerce-config.js?v=2852d1a5c2"></script>
 <script src="assets/monetization.js?v=92370ed885"></script>
@@ -574,7 +574,7 @@ const $ = id => document.getElementById(id);
 const HOST = (() => { try { return /[?&]vrhost=1(&|$)/.test(location.search) && window.parent !== window && !!window.parent.document; } catch (_) { return false; } })();
 // HOST only: what the VR page's field texture and piece art renders are doing right now. mode 0 = normal drawing (always, on the phone),
 // 1 = field texture (flat paddle and puck bodies are left out, the VR page draws them in 3D), 2 = a single piece's top art (no glow, trail or flames).
-const hostF = { on: false, mode: 0, w: 0, h: 0, cv: null, c: null, key: '', pcv: null, pc: null, pieces: {} };
+const hostF = { on: false, mode: 0, solid: false, w: 0, h: 0, cv: null, c: null, key: '', pcv: null, pc: null, pieces: {} };
 
 // ---------- Glide: nothing just appears ----------
 // Dialogs and overlays grow out of the button that opened them and shrink back into it. Motion only:
@@ -2278,14 +2278,14 @@ function drawScenery(t) {
   ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
   const L = view.L, s = view.s, dpr = view.dpr, H = HORIZON, sc = SCENES[stageIx];
   const arenas = window.CreaseArenas;
-  const focal = arenas?.ready ? arenas.prepare(t, Math.min(1,game.beat+game.stageFlash+((game.fire[0]>0||game.fire[1]>0)?.3:0)), perf.detail) : null;
+  const focal = arenas?.ready && !hostF.solid ? arenas.prepare(t, Math.min(1,game.beat+game.stageFlash+((game.fire[0]>0||game.fire[1]>0)?.3:0)), perf.detail) : null;
   ctx.save(); fieldTf(); rr(ctx, 0, 0, 1, L, 0.06); ctx.clip();
   for (const half of [0, 1]) {
     ctx.save();
     if (half === 1) { ctx.translate(1, L); ctx.rotate(Math.PI); }
     ctx.translate(0, L / 2);                                   // v = 0 at the crease
     const tf = tiltField(), arenaLean = ((game.pucks.length ? game.pucks[0].u - .5 : 0) + tf.u * 0.9) * (half ? -1 : 1);
-    if (arenas?.draw(ctx,{H,t,half,lean:arenaLean,beat:game.beat,flash:game.stageFlash,detail:perf.detail,focal})) {
+    if (!hostF.solid && arenas?.draw(ctx,{H,t,half,lean:arenaLean,beat:game.beat,flash:game.stageFlash,detail:perf.detail,focal})) {
       ctx.restore(); continue;
     }
     // Depth in the background only. Four passes of the same world at different distances:
@@ -2300,7 +2300,7 @@ function drawScenery(t) {
         ['mid',  0.88, -0.06 * H, 0.020, 0.080, 0.14, 0.022],
         ['near', 1.00, 0, 0.042, 0.130, 0, 0.042],
       ];
-    for (const [k, sc2, lift, dr, sp2, hazeAmt, pull] of PASSES) {
+    if (!hostF.solid) for (const [k, sc2, lift, dr, sp2, hazeAmt, pull] of PASSES) {   // (VR: the window scene is a 3D diorama on the table)
       const dx = Math.sin(t * sp2 * Math.PI * 2 + half * 1.7) * dr - lean * pull;
       ctx.save();
       ctx.translate(0.5 + dx, H + lift);                          // keep the horizon anchored, shrink upward
@@ -2327,7 +2327,7 @@ function drawScenery(t) {
     sceneFx(t, H, half);
     ctx.restore();
   }
-  arenas?.drawCenter(ctx,{L,focal,beat:Math.min(1,game.beat+game.stageFlash),t});
+  if (!hostF.solid) arenas?.drawCenter(ctx,{L,focal,beat:Math.min(1,game.beat+game.stageFlash),t});   // (VR: the centrepiece is a real 3D object there)
   ctx.restore();
 }
 function sceneFx(t, H, half) {
@@ -4246,6 +4246,7 @@ function drawBumpers() {
     glowCircle(b.u, b.v, r * 2.1, col, phase*(.16 + f * .3 + game.beat * .08));
     if (f > 0.05) { ctx.globalAlpha = f * 0.5; ctx.strokeStyle = col; ctx.lineWidth = 3 * px;
       ctx.beginPath(); ctx.arc(b.u, b.v, r * (1.4 + (1 - f) * 2.2), 0, Math.PI * 2); ctx.stroke(); ctx.globalAlpha = 1; }
+    if(!hostF.solid){   // (VR draws the bumper body as a real 3D dome; its glow, shock ring and dashes stay here)
     ctx.globalAlpha=phase;ctx.fillStyle='rgba(0,0,0,.58)';ctx.beginPath();ctx.ellipse(b.u+r*.13,b.v+r*.21,r*1.1,r*.6,0,0,Math.PI*2);ctx.fill();
     ctx.fillStyle='#090715';ctx.beginPath();ctx.arc(b.u,b.v+r*.15,r*1.02,0,Math.PI*2);ctx.fill();
     const shell=ctx.createRadialGradient(b.u-r*.34,b.v-r*.43,r*.05,b.u,b.v,r);
@@ -4253,6 +4254,7 @@ function drawBumpers() {
     const spin=game.t*4.8+b.u*8;ctx.lineCap='round';ctx.lineWidth=Math.max(3*px,r*.2);ctx.strokeStyle=f>.3?'#fff':col;ctx.beginPath();ctx.arc(b.u,b.v,r*.84,spin,spin+Math.PI*1.38);ctx.stroke();
     ctx.strokeStyle=alt;ctx.lineWidth=Math.max(1.5*px,r*.075);ctx.beginPath();ctx.arc(b.u,b.v,r*.84,spin+Math.PI*1.54,spin+Math.PI*1.92);ctx.stroke();
     const core=ctx.createRadialGradient(b.u-r*.1,b.v-r*.14,r*.02,b.u,b.v,r*.35);core.addColorStop(0,'#fff');core.addColorStop(.25,f>.1?'#fff':col);core.addColorStop(1,alt);ctx.fillStyle=core;ctx.beginPath();ctx.arc(b.u,b.v,r*.33*(1+f*.26+game.beat*.1),0,Math.PI*2);ctx.fill();
+    }
     if(!active){ctx.globalAlpha=.75;ctx.strokeStyle=alt;ctx.lineWidth=Math.max(1.5*px,r*.06);ctx.setLineDash([r*.18,r*.13]);ctx.beginPath();ctx.arc(b.u,b.v,r*1.22,0,Math.PI*2);ctx.stroke();ctx.setLineDash([]);}
     ctx.globalAlpha=1;
   }
@@ -5519,7 +5521,7 @@ function hostRenderField(pxPerUnit, opts) {
     if (window.CreaseArenas && F.arena !== stageIx) { F.arena = stageIx; window.CreaseArenas.select(stageIx); }
     const st = ST(), key = [stageIx, L, W, H, st.base[0], st.base[1], st.grid, st.rail].join('|');
     if (F.key !== key) { F.key = key; F.w = W; F.h = H; F.on = true; try { sceneLayers.key = ''; buildBg(); } finally { F.on = false; } }
-    const c = F.c; ctx = c; F.mode = 1;
+    const c = F.c; ctx = c; F.mode = 1; F.solid = !!(opts && opts.solid);
     const bare = !!(opts && opts.bare), ext = bare && !!opts.pucks, keep = bare ? { p: game.paddles, k: game.pucks, a: game.parts, h: game.railHits, r: game.rings, u: game.pups, s: game.shields, o: game.envOrb, e: game.env, b: game.board, sc: game.score } : null;
     if (bare) {
       game.paddles = opts.paddles || []; game.pucks = ext ? opts.pucks : []; game.parts = []; game.railHits = []; game.rings = []; game.pups = []; game.shields = [0, 0]; game.envOrb = null; game.env = null; game.board = null;
@@ -5551,7 +5553,7 @@ function hostRenderField(pxPerUnit, opts) {
     }
     return F.cv;
   } finally {
-    F.mode = 0; ctx = sctx;
+    F.mode = 0; F.solid = false; ctx = sctx;
     view.dpr = saved.dpr; view.vw = saved.vw; view.vh = saved.vh; view.land = saved.land; view.s = saved.s; view.ox = saved.ox; view.oy = saved.oy;
   }
 }
@@ -5629,6 +5631,8 @@ if (HOST) window.__creaseHost = {
   // The table top as the phone draws it, top-down and unrotated, pxPerUnit pixels across the 1-unit table width plus the rail-glow margin
   // (fieldMargin on each side). The returned canvas is reused every call. Paddle and puck bodies are left out: see pieceArt.
   renderField(pxPerUnit, opts) { return hostRenderField(pxPerUnit > 0 ? pxPerUnit : 1024, opts); },
+  // The arena's centrepiece shader and meshes (from arena-engine.js) for a real 3D object; null until the engine file has loaded.
+  centerAssets() { const A = window.CreaseArenas; return A && A.solid ? { fragment: A.solid.fragment, geometry: A.solid.geometry() } : null; },
   fieldMargin: HOST_MARGIN,
   // Top art for a 3D piece: kind 'paddle' (a = player 1 or 2) or 'puck' (a = the tint colour, a CSS colour string). A small canvas, disc clipped.
   pieceArt(kind, a) { return hostPieceArt(kind, a); },

@@ -6,6 +6,9 @@ import {ease,introFrame,introBeats,INTRO_END,victoryFrame,popFrame,ringFrame,bar
 import {fieldToTable,inputToField,fieldToInput,pickupStyle,envVictim,boardLabel,powerLine,detectEvents,newEventState,usableArena,backdropSize} from './quest-engine.mjs';
 import {createLook} from './quest-look.mjs';
 import {createWorlds} from './quest-worlds.mjs';
+import {createCentre} from './quest-centre.mjs';
+import {createDiorama} from './quest-diorama.mjs';
+import {ARENA_KINDS} from './quest-centre-pure.mjs';
 import {XR_SCALE,FOVEATION,newQuality,qualityStep,paddleRingColour,JOINT_NAMES} from './quest-look-pure.mjs';
 import {ONLINE_BUTTON,createOnline,onlineIntent,onlineEvent,onlineTick,onlineFail,onlinePage,drawOnlinePanel,onlineBoard,drawOnlineBoard,mine,feelEvents,mountOnlineFrame} from './quest-online.mjs';
 
@@ -81,6 +84,10 @@ const puckArt=new Map(); // puck tint -> the phone's puck art canvas for it
 const lk=createLook({scene,table,renderer,soft:softGL});
 // 3D arena worlds (quest-worlds.mjs): built per arena on demand; the painted backdrop below stays for arenas without one and for software GL.
 const worlds=createWorlds({scene,renderer,camera,soft:softGL,search:location.search});
+// The arena's centrepiece (sun, crystal, ringed planet ...) as a real 3D object floating over the table; see quest-centre.mjs.
+const centre=createCentre({table,soft:softGL}),centreInfo={kind:'sun',index:0},sightPts=new Float32Array(3*(2+3)),eyeV=new THREE.Vector3();let centreTries=0;
+// The window scene of the arena (ridges, towers, trees, cacti ...) as a small 3D diorama on the table; see quest-diorama.mjs.
+const diorama=createDiorama({table,soft:softGL});
 const legs=lk.legs,paddles=lk.paddles,pucks=lk.pucks,bumpers=lk.bumpers,MAX_PUCKS=pucks.length;
 let grid=new THREE.GridHelper(16,32,0x842e8f,0x271438);grid.position.y=-.01;scene.add(grid);
 // Power-up pick-up: the phone's flat ring, glow and glyph are in the table texture; a faint light beam rising from it shows it from across the room.
@@ -440,10 +447,10 @@ function syncEngine(dt,t){
     const hot=pk.smashT>0,env=g.env,uv=env&&env.type==='UV'&&env.t>0&&(env.who===1?pk.v<L/2:pk.v>L/2);
     const col=hot?h.COL.gold:pk.last===1?h.COL.p1:pk.last===2?h.COL.p2:'#ffffff';
     lk.tintPuck(m,col,puckArtFor(h,col),hot,uv?.15:1);}
-  // bumpers on the crease: the phone's bumper art is in the texture; a glassy cylinder gives it body, ghosted when "phased"
+  // bumpers on the crease: real 3D domes (the phone's shell, spinning arcs and core); their glow and shock ring are in the texture. "Phased" ones ghost out.
   for(let i=0;i<2;i++){const b=g.bumpers[i],m=bumpers[i];if(!b){m.visible=false;continue;}m.visible=true;
-    fieldToTable(b.u,b.v,L,fp);m.position.set(fp.x,0,fp.z);const on=h.bumperActive(b),col=b.u<.5?h.COL.p1:h.COL.p2,s=1+Math.max(0,b.punch)*.35+b.flash*.15;m.scale.set(s,1,s);
-    const u=m.userData;u.m.material.color.set(col);u.m.material.opacity=on?.16+b.flash*.3:.06;u.ring.material.opacity=on?.85:.3;u.ring.material.color.set(b.flash>.2?'#ffffff':col);u.ring.material.emissive.set(b.flash>.2?'#ffffff':col);}
+    fieldToTable(b.u,b.v,L,fp);m.position.set(fp.x,0,fp.z);const s=1+Math.max(0,b.punch)*.35;m.scale.set(s,1,s);
+    lk.setBumper(i,{col:b.u<.5?h.COL.p1:h.COL.p2,alt:b.u<.5?h.COL.p2:h.COL.p1,flash:b.flash,active:h.bumperActive(b),spin:g.t*4.8+b.u*8,beat});}
   // power-up pick-up: the table texture draws its ring and glyph; a light beam shows it from afar
   const pu=g.pups[0];
   if(pu&&!pu.dead){const st=pickupStyle(pu.type),u=pickup.userData;pickup.visible=true;fieldToTable(pu.u,pu.v,L,fp);const fade=pu.life<2?(Math.sin(t*20)>0?1:.35):1;
@@ -639,6 +646,15 @@ renderer.setAnimationLoop((now,frame)=>{
       else{pa[0].u=.5;pa[0].v=1.6*Lh/1.8;pa[1].u=.5;pa[1].v=.2*Lh/1.8;}}
     if(olv)lk.setExternal(eng.view.L,olv.me,olv.them,olv.puck,olv.score);
     lk.updateField(eng);flatInTexture=F.ok&&!softGL;
+    // the centrepiece: needs the phone's shader and meshes once, then follows the arena; fades while it would hide the puck or a paddle from your eye
+    if(!centre.ok&&centreTries<600){centreTries++;try{centre.setAssets(eng.centerAssets());}catch{}}
+    if(centre.ok||diorama.ok){const ecam=renderer.xr.isPresenting?renderer.xr.getCamera():camera;ecam.getWorldPosition(eyeV);centreInfo.index=arenaIx;centreInfo.kind=ARENA_KINDS[arenaIx]||'sun';
+      let ns=0;for(const m of paddles)if(m.visible){sightPts[ns*3]=m.position.x;sightPts[ns*3+1]=.02;sightPts[ns*3+2]=m.position.z;ns++;}
+      for(let i=0;i<MAX_PUCKS;i++){const m=pucks[i];if(m.visible){sightPts[ns*3]=m.position.x;sightPts[ns*3+1]=.02;sightPts[ns*3+2]=m.position.z;ns++;}}
+      const ex=eyeV.x-table.position.x,ey=eyeV.y-table.position.y,ez=eyeV.z-table.position.z;
+      if(centre.ok)centre.update(centreInfo,t,OL.on?0:Math.min(1,g.beat||0),dt,ex,ey,ez,sightPts,ns);
+      if(diorama.index!==arenaIx){try{diorama.set(arenaIx,eng.stageColors(arenaIx));}catch{}}
+      diorama.update(t,dt,ex,ey,ez,sightPts,ns);}
   }
   worlds.update(t);
   renderer.render(scene,camera);
@@ -733,7 +749,7 @@ function engineCompat(){
   compat={host:h,obj};return obj;
 }
 // Test hook (local server or ?qa=1 only), same convention as the phone game.
-if(/^(localhost|127\.0\.0\.1)$/.test(location.hostname)||new URLSearchParams(location.search).has('qa'))window.__creaseVR={options,get session(){return renderer.xr.getSession();},get freeze(){return freeze;},set freeze(v){freeze=!!v;},get recoveries(){return engine.recoveries||0;},get stalled(){return stallT;},
+if(/^(localhost|127\.0\.0\.1)$/.test(location.hostname)||new URLSearchParams(location.search).has('qa'))window.__creaseVR={options,get session(){return renderer.xr.getSession();},get diorama(){return diorama;},get centre(){return centre;},get renderInfo(){const r=renderer.info.render;return {calls:r.calls,triangles:r.triangles,dioTris:diorama.tris,dioIndex:diorama.index};},get freeze(){return freeze;},set freeze(v){freeze=!!v;},get recoveries(){return engine.recoveries||0;},get stalled(){return stallT;},
   // Drives the engine exactly like a frame would, with the hand at table coordinates (x,y): used to test swing speed.
   feed(x,y,dt){target.x=x;target.y=y;driveEngine(dt,true);},
   resetFeed(x,y){target.x=x;target.y=y;prevT.x=x;prevT.y=y;needSync=false;},
