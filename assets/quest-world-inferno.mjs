@@ -1,7 +1,7 @@
 // CREASE VR world: INFERNO. The volcano of the painted arena as a real place: the table stands on a basalt island in a lake of black
 // volcanic glass, the lava falls, spires and the far cone rise round it as a relief and burn again in the glass. Near the player:
-// obsidian shards standing in the glass with an ember glow at their feet, embers rising, drifting smoke.
-import {openStage,lin,four} from './quest-world-stage.mjs';
+// obsidian shards standing in the glass, veined with melt and ringed with it at their feet, embers rising, drifting smoke.
+import {openStage,lin,hot,four} from './quest-world-stage.mjs';
 
 // Where the shards stand: [distance, bearing from straight ahead in degrees, height], planted four ways.
 export const INFERNO_SHARDS=[[4.7,52,1.3],[7.6,32,2.4],[8.2,70,1.9],[10.6,50,3.2]];
@@ -10,7 +10,15 @@ export const INFERNO_SHARDS=[[4.7,52,1.3],[7.6,32,2.4],[8.2,70,1.9],[10.6,50,3.2
 function shard(gb,x,z,h,r,R,wy){const lean=[(R()-.5)*.22*h,(R()-.5)*.22*h],jit=[];for(let j=0;j<6;j++)jit.push([.75+R()*.5,(R()-.5)*.5]);
   const P=[];for(const [k,t] of [[1.25,-.35],[1.1,0],[.82,.28],[.5,.62],[.2,.88],[.01,1]]){const row=[];for(let j=0;j<=6;j++){const q=jit[j%6],a=(j%6)/6*6.2832+q[1];
       row.push([x+Math.cos(a)*r*k*q[0]+lean[0]*t,wy+h*t,z+Math.sin(a)*r*k*q[0]+lean[1]*t]);}P.push(row);}
-  gb.grid(P,6,{flat:true,tint:[.3,.26,.27],uRep:2,vAt:i=>i*.6});}
+  gb.grid(P,6,{flat:true,tint:[.3,.26,.27],uRep:2,vAt:i=>i*.6});return P;}
+// Cracks of melt up a shard's faces: thin glowing strips laid just proud of every other edge, white-hot at the foot and dying out towards
+// the tip, so the obsidian reads as cooling round a molten core.
+function veins(gb,P,hotA,hotB,reach){for(let j=0;j<6;j+=2){const T=[];for(let i=0;i<P.length;i++){const a=P[i][j],b=P[i][j+1];T.push([a[0]+(b[0]-a[0])*.4,a[1],a[2]+(b[2]-a[2])*.4],[a[0]+(b[0]-a[0])*.52,a[1],a[2]+(b[2]-a[2])*.52]);}
+  const cx=(P[1][0][0]+P[1][3][0])/2,cz=(P[1][0][2]+P[1][3][2])/2,push=p=>{const dx=p[0]-cx,dz=p[2]-cz,l=Math.hypot(dx,dz)||1;return [p[0]+dx/l*.006,p[1],p[2]+dz/l*.006];};
+  // rows 1.. are above the glass (row 0 is under it); the strip runs from row 1 up through `reach` rows
+  for(let i=1;i<=reach&&i+1<P.length;i++){const f0=(i-1)/reach,f1=i/reach,k0=Math.max(0,1-f0),k1=Math.max(0,1-f1),c0=hotA.map((v,q)=>(v*k0+hotB[q]*(1-k0))*k0),c1=hotA.map((v,q)=>(v*k1+hotB[q]*(1-k1))*k1);
+    const p=[T[2*i+1],T[2*i],T[2*i+2],T[2*i+3]].map(push),n=[(p[0][0]-cx),0,(p[0][2]-cz)],l=Math.hypot(n[0],n[2])||1;
+    gb.quad(p,[n[0]/l,0,n[2]/l],[[0,0],[1,0],[1,1],[0,1]],[c0,c0,c1,c1],1.3);}}}
 
 export async function build({renderer,colors,plate,aniso=4}){
   const c=colors||{},P={a:c.p1||'#ffb02f',b:c.grid||'#ff3b2f',zenith:'#040101',skyHor:'#120403',gain:1.1,reflGain:.8,deep:'#040101',
@@ -22,9 +30,11 @@ export async function build({renderer,colors,plate,aniso=4}){
     motes:{n:260,cols:[lin('#ff7a2f'),lin('#ffd23f'),lin('#ff7a2f'),lin('#ff3b2f')],rise:1.6,height:6,r0:2.5,r1:14}});
   const {R,rr,solid,halos,meta}=st,A=lin(P.a),B=lin(P.b),wy=meta.waterY;
   for(const [rad,deg,h] of INFERNO_SHARDS)four(rad,deg+rr(-3,3),(x,z)=>{
-    shard(solid,x,z,h*rr(.9,1.1),.12+h*.05,R,wy);
+    const big=shard(solid,x,z,h*rr(.9,1.1),.12+h*.05,R,wy);veins(solid,big,hot(A,.45),B,3);
+    // a rim of melt where it meets the glass
+    solid.revolve(x,wy-.01,z,[[.12+h*.05*1.32,0],[.12+h*.05*1.18,.035]],12,{tint:hot(A,.35),glow:1.25});
     // two lesser splinters at its foot, and the glow of the melt it stands in
-    for(let k=0;k<2;k++){const a=R()*6.283,d=.22+h*.12;shard(solid,x+Math.cos(a)*d,z+Math.sin(a)*d,h*rr(.25,.45),.08+h*.03,R,wy);}
+    for(let k=0;k<2;k++){const a=R()*6.283,d=.22+h*.12,sm=shard(solid,x+Math.cos(a)*d,z+Math.sin(a)*d,h*rr(.25,.45),.08+h*.03,R,wy);veins(solid,sm,hot(A,.3),B,2);}
     halos.push({x,y:wy+.12,z,s:1.3+h*.5,sy:.5,c:B.map(v=>v*.55)},{x,y:wy+.06,z,s:.6+h*.2,sy:.22,c:A.map(v=>v*.7)});});
   return st.finish();
 }

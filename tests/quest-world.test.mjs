@@ -168,8 +168,11 @@ test('every listed world: its relief is built from its baked data, keeps out of 
   }
 });
 
-test('ice, ultraviolet, void, miami, gold rush and sakura: their props stand in the water, clear of the island, the table and the view ahead, inside the pool', async () => {
+test('toxic, inferno, kctw, ice, ultraviolet, void, miami, gold rush and sakura: their props stand in the water, clear of the island, the table and the view ahead, inside the pool', async () => {
   const sets = {
+    toxic: [(await import('../assets/quest-world-toxic.mjs')).TOXIC_BEDS, (await import('../assets/quest-world-toxic.mjs')).TOXIC_TANKS],
+    inferno: [(await import('../assets/quest-world-inferno.mjs')).INFERNO_SHARDS],
+    kctw: [(await import('../assets/quest-world-kctw.mjs')).KCTW_TOTEMS, (await import('../assets/quest-world-kctw.mjs')).KCTW_SPEAKERS],
     ice: [(await import('../assets/quest-world-ice.mjs')).ICE_CRYSTALS],
     ultraviolet: [(await import('../assets/quest-world-ultraviolet.mjs')).UV_ROCKS],
     void: [(await import('../assets/quest-world-void.mjs')).VOID_MONOLITHS],
