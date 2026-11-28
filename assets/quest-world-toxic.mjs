@@ -25,7 +25,7 @@ function tank(gb,x,z,h,wy,A,B,halos,R){const r=.3+h*.08,y0=wy+.34,y1=y0+h,iron=[
   const d=Math.hypot(x,z)||1,ux=-x/d,uz=-z/d,rs=r*1.012,on=(s,y)=>[x+rs*(ux*Math.cos(s/r)-uz*Math.sin(s/r)),y,z+rs*(uz*Math.cos(s/r)+ux*Math.sin(s/r))],
     side=s=>[-(uz*Math.cos(s/r)+ux*Math.sin(s/r)),0,ux*Math.cos(s/r)-uz*Math.sin(s/r)],dk=[.012,.04,.022],m=12;
   {const sp=[],wd=[];for(let i=0;i<=m;i++){const t=i/m;sp.push(on(Math.sin(t*3)*r*.04,y0+h*(.42+.42*t)));wd.push(r*(.05+.2*Math.pow(Math.sin(Math.PI*Math.min(1,t*1.25)),.7)*(t>.6?1.15:1)));}
-    gb.strip(sp,wd,side(0),{tint:dk,glow:.02});}
+    gb.strip(sp,wd,side(0).map(v=>-v),{tint:dk,glow:.02});}
   for(let k=0;k<4;k++){const s0=(k-1.5)*r*.11,ph=R()*6,sp=[],wd=[];for(let i=0;i<=m;i++){const t=i/m;sp.push(on(s0*(1+.8*t)+Math.sin(t*5+ph)*r*.07,y0+h*(.5-.44*t)));wd.push(r*.035*(1-.7*t)+.003);}
     gb.strip(sp,wd,side(s0),{tint:dk,glow:.02});}
   halos.push({x,y:y0+h*.5,z,s:r*4.2,sy:h*1.2,c:A.map(v=>v*.22)},{x,y:wy+.08,z,s:r*5,sy:.5,c:A.map(v=>v*.3)});
