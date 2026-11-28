@@ -20,9 +20,14 @@ function tank(gb,x,z,h,wy,A,B,halos,R){const r=.3+h*.08,y0=wy+.34,y1=y0+h,iron=[
   for(let k=0;k<6;k++){const a=k/6*6.2832+.26,bx=x+Math.cos(a)*r*1.06,bz=z+Math.sin(a)*r*1.06;gb.tube([[bx,y0-.04,bz,.022],[bx,y1+.04,bz,.022]],5,{tint:iron});}
   gb.revolve(x,y1,z,[[r*1.12,0],[r*1.18,.06],[r*1.18,.16],[r*.9,.24],[r*.5,.3],[r*.2,.42],[.02,.46]],12,{tint:iron,uRep:2,vRep:.4});
   gb.revolve(x,y1+.08,z,[[r*1.19,0],[r*1.19,.035]],24,{tint:hot(A,.4),glow:1.3});
-  // the specimen: a dark curled body hanging in the fluid, just inside the glass towards the player
-  const d=Math.hypot(x,z)||1,fx=x-x/d*r*.84,fz=z-z/d*r*.84,sp=[];for(let i=0;i<=10;i++){const t=i/10;sp.push([fx+Math.sin(t*5)*r*.1*z/d,y0+h*(.16+.6*t),fz-Math.sin(t*5)*r*.1*x/d,r*(.05+.17*Math.sin(t*Math.PI)*(1-.35*t))]);}
-  gb.tube(sp,8,{tint:[.02,.05,.03],glow:0});
+  // the specimen: a dark body with trailing tendrils, seen through the glass on the side facing the player (laid on the glass so the
+  // opaque fluid can't hide it)
+  const d=Math.hypot(x,z)||1,ux=-x/d,uz=-z/d,rs=r*1.012,on=(s,y)=>[x+rs*(ux*Math.cos(s/r)-uz*Math.sin(s/r)),y,z+rs*(uz*Math.cos(s/r)+ux*Math.sin(s/r))],
+    side=s=>[-(uz*Math.cos(s/r)+ux*Math.sin(s/r)),0,ux*Math.cos(s/r)-uz*Math.sin(s/r)],dk=[.012,.04,.022],m=12;
+  {const sp=[],wd=[];for(let i=0;i<=m;i++){const t=i/m;sp.push(on(Math.sin(t*3)*r*.04,y0+h*(.42+.42*t)));wd.push(r*(.05+.2*Math.pow(Math.sin(Math.PI*Math.min(1,t*1.25)),.7)*(t>.6?1.15:1)));}
+    gb.strip(sp,wd,side(0),{tint:dk,glow:.02});}
+  for(let k=0;k<4;k++){const s0=(k-1.5)*r*.11,ph=R()*6,sp=[],wd=[];for(let i=0;i<=m;i++){const t=i/m;sp.push(on(s0*(1+.8*t)+Math.sin(t*5+ph)*r*.07,y0+h*(.5-.44*t)));wd.push(r*.035*(1-.7*t)+.003);}
+    gb.strip(sp,wd,side(s0),{tint:dk,glow:.02});}
   halos.push({x,y:y0+h*.5,z,s:r*4.2,sy:h*1.2,c:A.map(v=>v*.22)},{x,y:wy+.08,z,s:r*5,sy:.5,c:A.map(v=>v*.3)});
   for(let k=0;k<5;k++)halos.push({x:x+(R()-.5)*r*.8,y:y0+h*(.15+.75*R()),z:z+(R()-.5)*r*.8,s:.07+R()*.07,c:hot(A,.5).map(v=>v*.8)});}
 
