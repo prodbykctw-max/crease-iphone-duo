@@ -13,7 +13,7 @@ function shard(gb,x,z,h,r,R,wy){const lean=[(R()-.5)*.22*h,(R()-.5)*.22*h],jit=[
   gb.grid(P,6,{flat:true,tint:[.3,.26,.27],uRep:2,vAt:i=>i*.6});return P;}
 // Cracks of melt up a shard's faces: thin glowing strips laid just proud of every other edge, white-hot at the foot and dying out towards
 // the tip, so the obsidian reads as cooling round a molten core.
-function veins(gb,P,hotA,hotB,reach){for(let j=0;j<6;j+=2){const T=[];for(let i=0;i<P.length;i++){const a=P[i][j],b=P[i][j+1];T.push([a[0]+(b[0]-a[0])*.4,a[1],a[2]+(b[2]-a[2])*.4],[a[0]+(b[0]-a[0])*.52,a[1],a[2]+(b[2]-a[2])*.52]);}
+function veins(gb,P,hotA,hotB,reach,R){for(let j=0;j<6;j+=2){const T=[];for(let i=0;i<P.length;i++){const a=P[i][j],b=P[i][j+1],m=.28+.44*R(),w=.09*Math.max(.25,1-i/(reach+1)),f0=m-w,f1=m+w;T.push([a[0]+(b[0]-a[0])*f0,a[1],a[2]+(b[2]-a[2])*f0],[a[0]+(b[0]-a[0])*f1,a[1],a[2]+(b[2]-a[2])*f1]);}
   const cx=(P[1][0][0]+P[1][3][0])/2,cz=(P[1][0][2]+P[1][3][2])/2,push=p=>{const dx=p[0]-cx,dz=p[2]-cz,l=Math.hypot(dx,dz)||1;return [p[0]+dx/l*.006,p[1],p[2]+dz/l*.006];};
   // rows 1.. are above the glass (row 0 is under it); the strip runs from row 1 up through `reach` rows
   for(let i=1;i<=reach&&i+1<P.length;i++){const f0=(i-1)/reach,f1=i/reach,k0=Math.max(0,1-f0),k1=Math.max(0,1-f1),c0=hotA.map((v,q)=>(v*k0+hotB[q]*(1-k0))*k0),c1=hotA.map((v,q)=>(v*k1+hotB[q]*(1-k1))*k1);
@@ -30,11 +30,11 @@ export async function build({renderer,colors,plate,aniso=4}){
     motes:{n:260,cols:[lin('#ff7a2f'),lin('#ffd23f'),lin('#ff7a2f'),lin('#ff3b2f')],rise:1.6,height:6,r0:2.5,r1:14}});
   const {R,rr,solid,halos,meta}=st,A=lin(P.a),B=lin(P.b),wy=meta.waterY;
   for(const [rad,deg,h] of INFERNO_SHARDS)four(rad,deg+rr(-3,3),(x,z)=>{
-    const big=shard(solid,x,z,h*rr(.9,1.1),.12+h*.05,R,wy);veins(solid,big,hot(A,.45),B,3);
+    const big=shard(solid,x,z,h*rr(.9,1.1),.12+h*.05,R,wy);veins(solid,big,hot(A,.1),B,3,R);
     // a rim of melt where it meets the glass
-    solid.revolve(x,wy-.01,z,[[.12+h*.05*1.32,0],[.12+h*.05*1.18,.035]],12,{tint:hot(A,.35),glow:1.25});
+    solid.revolve(x,wy-.01,z,[[.12+h*.05*1.4,0],[.12+h*.05*1.16,.03]],12,{tint:A.map((v,q)=>(v+B[q])*.5),glow:1.3});
     // two lesser splinters at its foot, and the glow of the melt it stands in
-    for(let k=0;k<2;k++){const a=R()*6.283,d=.22+h*.12,sm=shard(solid,x+Math.cos(a)*d,z+Math.sin(a)*d,h*rr(.25,.45),.08+h*.03,R,wy);veins(solid,sm,hot(A,.3),B,2);}
+    for(let k=0;k<2;k++){const a=R()*6.283,d=.22+h*.12,sm=shard(solid,x+Math.cos(a)*d,z+Math.sin(a)*d,h*rr(.25,.45),.08+h*.03,R,wy);veins(solid,sm,hot(A,.06),B,2,R);}
     halos.push({x,y:wy+.12,z,s:1.3+h*.5,sy:.5,c:B.map(v=>v*.55)},{x,y:wy+.06,z,s:.6+h*.2,sy:.22,c:A.map(v=>v*.7)});});
   return st.finish();
 }

@@ -23,7 +23,8 @@ function speaker(gb,h,col,alt){const w=.42+h*.12,d=w*.9,y0=.02,dark=[.32,.34,.4]
   // lit edge lines up the front corners and across the top
   for(const sx of [-1,1])box(sx*w-.012,sx*w+.012,y0+.14,y0+.1+h,d-.004,d+.012,hot(col,.4),1.2);
   box(-w*.96,w*.96,y0+h+.06,y0+h+.1,d-.004,d+.012,hot(alt,.4),1.2);
-  const r1=w*.62,fz=d+.004;cone(gb,0,y0+.12+h*.27,fz,r1,hot(col,.3));cone(gb,0,y0+.12+h*.64,fz,r1,hot(col,.3));cone(gb,0,y0+.12+h*.89,fz,w*.2,hot(alt,.3));
+  // woofers sized to the box height so their lit surrounds never touch
+  const r1=Math.min(w*.62,h*.15),fz=d+.004;cone(gb,0,y0+.12+h*.25,fz,r1,hot(col,.3));cone(gb,0,y0+.12+h*.58,fz,r1,hot(col,.3));cone(gb,0,y0+.12+h*.87,fz,w*.2,hot(alt,.3));
   return [r1,d];}
 
 export async function build({renderer,colors,plate,aniso=4}){
@@ -47,6 +48,6 @@ export async function build({renderer,colors,plate,aniso=4}){
     const col=(sx*sz>0)===(k%2===1)?A:B,alt=col===A?B:A;
     solid.at(Math.atan2(-x,-z),x,wy,z);const [r1,d]=speaker(solid,h,col,alt);solid.at(0,0,0,0);
     const l=Math.hypot(x,z)||1,fx=x-x/l*(d+.05),fz=z-z/l*(d+.05);
-    halos.push({x:fx,y:wy+.12+h*.27,z:fz,s:r1*3,c:col.map(v=>v*.16)},{x:fx,y:wy+.12+h*.64,z:fz,s:r1*3,c:col.map(v=>v*.16)},{x,y:wy+.04,z,s:2.6,sy:.4,c:col.map(v=>v*.22)});}));
+    halos.push({x:fx,y:wy+.12+h*.25,z:fz,s:r1*3,c:col.map(v=>v*.16)},{x:fx,y:wy+.12+h*.58,z:fz,s:r1*3,c:col.map(v=>v*.16)},{x,y:wy+.04,z,s:2.6,sy:.4,c:col.map(v=>v*.22)});}));
   return st.finish();
 }

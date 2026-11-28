@@ -15,13 +15,14 @@ export const TOXIC_TANKS=[[5.6,58,1.9],[8.9,40,2.7]];
 function tank(gb,x,z,h,wy,A,B,halos,R){const r=.3+h*.08,y0=wy+.34,y1=y0+h,iron=[.34,.4,.36],glass=hot(A,.18);
   gb.revolve(x,wy-.3,z,[[r*1.45,0],[r*1.45,.36],[r*1.32,.42],[r*1.32,.52],[r*1.12,.58],[r*1.08,.64]],12,{tint:iron,uRep:2,vRep:.4});
   gb.revolve(x,y0-.02,z,[[r*1.15,0],[r*1.15,.04]],24,{tint:hot(B,.3),glow:1.2});
-  gb.revolve(x,y0,z,[[r,0],[r,h]],24,{tint:glass,ramp:t=>.55+.45*Math.sin(t*Math.PI),glow:t=>.55+.5*Math.sin(t*Math.PI),uRep:2});
+  gb.revolve(x,y0,z,[[r,0],[r,h]],24,{tint:A.map(v=>v*.7),ramp:t=>.3+.7*Math.pow(1-t,1.4),glow:t=>.18+.62*Math.pow(1-t,1.6)+.25*Math.exp(-Math.pow((t-.97)/.03,2)),uRep:2});
+  for(const f of [.34,.68])gb.revolve(x,y0+h*f,z,[[r*1.035,0],[r*1.07,.02],[r*1.07,.05],[r*1.035,.07]],24,{tint:iron});
   for(let k=0;k<6;k++){const a=k/6*6.2832+.26,bx=x+Math.cos(a)*r*1.06,bz=z+Math.sin(a)*r*1.06;gb.tube([[bx,y0-.04,bz,.022],[bx,y1+.04,bz,.022]],5,{tint:iron});}
   gb.revolve(x,y1,z,[[r*1.12,0],[r*1.18,.06],[r*1.18,.16],[r*.9,.24],[r*.5,.3],[r*.2,.42],[.02,.46]],12,{tint:iron,uRep:2,vRep:.4});
   gb.revolve(x,y1+.08,z,[[r*1.19,0],[r*1.19,.035]],24,{tint:hot(A,.4),glow:1.3});
   // the specimen: a dark curled body hanging in the fluid, just inside the glass towards the player
-  const d=Math.hypot(x,z)||1,fx=x-x/d*r*.35,fz=z-z/d*r*.35,sp=[];for(let i=0;i<=8;i++){const t=i/8;sp.push([fx+Math.sin(t*5)*r*.12,y0+h*(.18+.62*t),fz+Math.cos(t*4)*r*.1,r*(.16+.22*Math.sin(t*Math.PI))]);}
-  gb.tube(sp,7,{tint:[.05,.12,.07],glow:.08});
+  const d=Math.hypot(x,z)||1,fx=x-x/d*r*.84,fz=z-z/d*r*.84,sp=[];for(let i=0;i<=10;i++){const t=i/10;sp.push([fx+Math.sin(t*5)*r*.1*z/d,y0+h*(.16+.6*t),fz-Math.sin(t*5)*r*.1*x/d,r*(.05+.17*Math.sin(t*Math.PI)*(1-.35*t))]);}
+  gb.tube(sp,8,{tint:[.02,.05,.03],glow:0});
   halos.push({x,y:y0+h*.5,z,s:r*4.2,sy:h*1.2,c:A.map(v=>v*.22)},{x,y:wy+.08,z,s:r*5,sy:.5,c:A.map(v=>v*.3)});
   for(let k=0;k<5;k++)halos.push({x:x+(R()-.5)*r*.8,y:y0+h*(.15+.75*R()),z:z+(R()-.5)*r*.8,s:.07+R()*.07,c:hot(A,.5).map(v=>v*.8)});}
 
